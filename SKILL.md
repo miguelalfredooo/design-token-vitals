@@ -66,15 +66,40 @@ the leading `<!-- … -->` instruction comment at the top of the copy — it
 tells a contributor how to fill the template, and a finished report goes to
 a stakeholder instead. Leave that comment in place in the template itself.
 
-Remove every element whose `data-tier` list excludes the chosen tier.
-Replace the contents of each `<!-- SLOT:name --> … <!-- /SLOT:name -->`
-region with real findings, leaving every other line of the template —
-headings, ledes, legend, panel titles — unchanged. Fill `doc-title` with
-the project name and the short commit ref, using the same "`<repo>` @
-`<short-sha>`" pattern as `runhead-tag`. The `runhead-tag` region ships
-reading "Sample report · representative data"; replace it with something
-that names the actual subject (for example "Live report · `<repo>` @
-`<short-sha>`") so a real run always carries the subject it describes.
+Remove every element whose `data-tier` list excludes the chosen tier. A
+region that belongs to a section the chosen tier removed is gone along with
+its section — that is expected, not an omission.
+
+Work through the seventeen regions below as a checklist. Every region still
+present after tier removal must be filled with real findings from this run
+— leaving every other line of the template — headings, ledes, legend, panel
+titles — unchanged. A region that still holds the template's own sample
+data once you are done is a bug, not an acceptable gap: it means the
+report ships describing a codebase that was never scanned.
+
+- [ ] `doc-title` — the project name and the short commit ref, using the
+      same "`<repo>` @ `<short-sha>`" pattern as `runhead-tag`.
+- [ ] `runhead-tag` — ships reading "Sample report · representative data";
+      replace it with something that names the actual subject (for example
+      "Live report · `<repo>` @ `<short-sha>`") so a real run always
+      carries the subject it describes.
+- [ ] `runhead-meta`
+- [ ] `vitals-grid`
+- [ ] `next-steps` — the ranked next-actions list; derive it using the
+      order defined in "Deriving the next-steps list" in
+      `references/report.md`.
+- [ ] `inventory-color`
+- [ ] `inventory-type`
+- [ ] `inventory-space`
+- [ ] `families`
+- [ ] `leak-redundant`
+- [ ] `leak-near-miss`
+- [ ] `leak-uncovered`
+- [ ] `modes-coverage`
+- [ ] `modes-gaps`
+- [ ] `orphans`
+- [ ] `enforcement`
+- [ ] `footer-meta`
 
 For a generated sentence, use the slot templates in `references/voice.md`
 verbatim, filling only the named placeholders. For a vital card, set its
@@ -85,12 +110,34 @@ earned for that family. A card whose stripe and chip disagree, or a pip
 that disagrees with the card it summarizes, is exactly the drift this
 skill exists to catch.
 
+### Completeness check — required before writing the report
+
+This skill asserts things about other people's codebases. Before writing
+`.token-vitals/report.html`, verify these are all true of the file you are
+about to write. If any fails, fix it and check again — do not write the
+report while one of these is still failing:
+
+- No region still holds template sample content. The tell-tale strings are
+  `northwind-ds`, `acme-storefront`, `Sample report · representative
+  data`, `7f0c22ab`, `a91f4c07`.
+- Every `SLOT` region present in the file (after tier removal) has real
+  content between its markers — none are empty.
+- Every vital card's `data-grade` matches its chip's `data-g`.
+- The leading instruction comment is gone.
+
 ## Stage 6 — Write the outputs
 
-Write `.token-vitals/report.html` (from Stage 5), `.token-vitals/report.json`
-(the filled-in `assets/capability-map.yml` schema, as JSON), and a short
-terminal summary: the tier chosen, each vital's grade, and the one thing
-worth doing first. Tell the user the report path and that one next step.
+Write `.token-vitals/report.html` (from Stage 5) and `.token-vitals/report.json`
+(the filled-in `assets/capability-map.yml` schema, as JSON). The HTML report
+is the deliverable — it is what a stakeholder opens, reads, and acts on.
+
+Then print a short terminal summary that points at the report rather than
+standing in for it: the tier chosen, the count of vitals at each grade, the
+single action worth doing first from `next-steps`, and the report's path.
+Tell the user what the report itself contains, so the summary reads as a
+pointer, not a replacement: the eight vitals, the rendered token
+inventory, the three leakage tiers, mode coverage, orphans, enforcement,
+and the "Where to start" section ranking what to do first.
 
 ## Stop and ask
 
