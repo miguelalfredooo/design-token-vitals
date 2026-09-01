@@ -682,6 +682,74 @@
   .dot[data-s="gap"]  { color: var(--fail); background: var(--fail-bg); font-weight: 600; }
   .dot[data-s="none"] { color: var(--na); }
 
+  /* ---------- executive summary ---------- */
+
+  .exec { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0; margin-bottom: 8px;
+          border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden; }
+  .exec > div { padding: 16px 18px; border-right: 1px solid var(--line); background: var(--surface); }
+  .exec > div:last-child { border-right: none; }
+  .exec dt { margin: 0 0 6px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em;
+             text-transform: uppercase; color: var(--ink-mute); }
+  .exec dd { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+  .exec dd b { font-weight: 600; }
+  .exec .big { font-size: 21px; font-weight: 600; letter-spacing: -0.015em; font-variant-numeric: tabular-nums; }
+
+  /* Confirmed sits apart from what could not be measured, rather than
+     sharing a row with it. */
+  .split { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .split span {
+    padding: 2px 8px; border-radius: 3px;
+    font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums;
+  }
+  .split .ok    { background: var(--pass-bg); color: var(--pass); }
+  .split .block { background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px),
+                              var(--surface-sunk); color: var(--ink-soft); }
+  .split .unk   { background: var(--surface-sunk); color: var(--ink-mute); }
+
+  /* ---------- priority, shown with its inputs ---------- */
+
+  .prio { display: inline-flex; align-items: baseline; gap: 7px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .prio b { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .prio i { font-style: normal; font-size: 10.5px; color: var(--ink-mute); }
+
+  /* ---------- fix queue ---------- */
+
+  .auto {
+    display: inline-block; padding: 1px 7px; border-radius: 3px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.02em;
+  }
+  .auto[data-a="yes"] { background: var(--pass-bg); color: var(--pass); }
+  .auto[data-a="no"]  { background: var(--surface-sunk); color: var(--ink-mute); }
+  .conf { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); }
+
+  /* ---------- lineage ---------- */
+
+  .lin { display: flex; flex-direction: column; gap: 9px; }
+  .lin-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-family: var(--mono); font-size: 11.5px; }
+  .lin-row .step {
+    padding: 2px 8px; border-radius: 3px; background: var(--surface-sunk); color: var(--ink-soft);
+    border: 1px solid var(--line);
+  }
+  .lin-row .step[data-k="primitive"] { border-color: var(--line-strong); }
+  .lin-row .step[data-k="semantic"]  { background: var(--pass-bg); color: var(--pass); border-color: transparent; }
+  .lin-row .step[data-k="missing"]   { background: transparent; color: var(--ink-mute); border-style: dashed; }
+  .lin-row .arrow { color: var(--ink-mute); flex: none; }
+
+  /* ---------- coverage matrix ---------- */
+
+  .cm td.cell { text-align: center; padding: 0; }
+  .cm .c {
+    display: block; padding: 8px 0;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em;
+  }
+  .cm .c[data-s="measured"]       { background: var(--pass-bg); color: var(--pass); }
+  .cm .c[data-s="unmeasured"]     { background: var(--surface-sunk); color: var(--ink-mute); }
+  .cm .c[data-s="blocked"]        { color: var(--ink-soft);
+    background: repeating-linear-gradient(135deg, var(--block) 0 3px, transparent 3px 6px); }
+  .cm .c[data-s="not_applicable"] { color: var(--na); }
+  .cm th.fam { text-align: center; font-size: 9.5px; }
+  .cm td:first-child { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
+
   /* ---------- measurement state ---------- */
 
   /* Measured, unmeasured and absent are three different claims. An
@@ -748,6 +816,72 @@
     </dl>
     <!-- /SLOT:runhead-meta -->
   </header>
+
+  <section>
+    <div class="eyebrow">Summary</div>
+    <h2>What is worst, and what to do first</h2>
+    <!-- SLOT:exec-summary -->
+    <div class="exec">
+      <div>
+        <dt>Highest impact</dt>
+        <dd><b>One brand color is hardcoded past the token that holds it.</b> <span class="lit">#0F8A83</span> appears where <span class="tok">--brand</span> already carries the same value.</dd>
+      </div>
+      <div>
+        <dt>Affected</dt>
+        <dd><span class="big">84</span> owned files<br><span class="big">11</span> components</dd>
+      </div>
+      <div>
+        <dt>Fix first</dt>
+        <dd>Swap <span class="lit">#0F8A83</span> for <span class="tok">--brand</span> — mechanical, no decision needed.<br><span class="path">components/Link.tsx:11</span></dd>
+      </div>
+      <div>
+        <dt>Confidence of these results</dt>
+        <dd>
+          Six of eight vitals are confirmed against evidence in this repository.
+          <div class="split">
+            <span class="ok">6 confirmed</span>
+            <span class="block">1 blocked</span>
+            <span class="unk">1 unmeasured</span>
+          </div>
+          <div style="margin-top:8px;font-size:12.5px;color:var(--ink-mute)">
+            <b>enforcement</b> is blocked: nothing in lint or CI reads the token layer, so there is no artifact to grade.
+            <b>grid</b> is unmeasured: container widths resolve in a build step this run could not execute.
+          </div>
+        </dd>
+      </div>
+    </div>
+    <!-- /SLOT:exec-summary -->
+  </section>
+
+  <section>
+    <div class="eyebrow">Trend</div>
+    <h2>What moved since the last run</h2>
+    <p class="lede">
+      Findings carry stable ids, so two runs across two commits can be compared. A comparison only runs when the framework, adapters, owned paths, scan scope and token sources match — two runs that scoped differently answer different questions, and a diff between them would read as progress without being progress.
+    </p>
+    <!-- SLOT:trend -->
+    <div class="split" style="margin-bottom:14px">
+      <span class="ok">12 resolved</span>
+      <span class="unk">3 new</span>
+      <span class="block">1 regression</span>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>Change</th><th>Finding</th><th class="num">Was</th><th class="num">Now</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="auto" data-a="no">regression</span></td><td><span class="lit">8px</span> &rarr; <span class="tok">--space-2</span></td><td class="num">54</td><td class="num">71</td><td class="why">Count grew by 17 across 9 new files.</td></tr>
+          <tr><td><span class="auto" data-a="yes">resolved</span></td><td><span class="lit">#1D4FDD</span> &rarr; <span class="tok">--link</span></td><td class="num">19</td><td class="num">0</td><td class="why">Swapped throughout.</td></tr>
+          <tr><td><span class="auto" data-a="no">new</span></td><td><span class="lit">#6B65FF</span> &rarr; <span class="tok">--accent</span></td><td class="num">&mdash;</td><td class="num">7</td><td class="why">First seen in this run.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note" style="margin-top:16px">
+      <b>Compared against <code>a91f4c07</code>.</b> Same framework, adapters, owned paths, scope and token sources, so the two runs are measuring the same thing and the movement above is real.
+    </div>
+    <!-- /SLOT:trend -->
+  </section>
 
   <section>
     <div class="eyebrow">The eight vitals</div>
@@ -1040,6 +1174,155 @@
       <b>A single row here can stand in for two hundred tokens, but it always points at a real file you can open.</b> Counts can be summarized; evidence cannot. A row must show you where something lives before it counts as a finding.
     </div>
     <!-- /SLOT:families -->
+  </section>
+
+
+  <section>
+    <div class="eyebrow">Fix queue</div>
+    <h2>What a person or an agent can act on now</h2>
+    <p class="lede">
+      Every finding with a canonical replacement, ordered by remediation priority. The score is <code>(n + 2f + 3b) &times; c</code> over occurrences, affected owned files, breadth across components, and confidence in the fix — the inputs sit beside it so you can see what drove the order, and re-rank on your own weights from the JSON.
+    </p>
+    <!-- SLOT:fix-queue -->
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>Finding</th><th>Literal</th><th>Replacement</th><th>Priority<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">(n + 2f + 3b) &times; c. Files outweigh occurrences because ten occurrences in one file is one edit. Breadth outweighs both, because a value crossing many components is a missing system decision.</span></span></th><th>Confidence</th><th>Automation<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Only a value a token already holds can be swapped without a decision. Drift and uncovered values always need a person.</span></span></th><th>First location</th></tr>
+        </thead>
+        <tbody>
+              <tr data-finding="c3b404ccdd7e">
+                <td><code>c3b404ccdd7e</code></td>
+                <td><span class="lit">#0F8A83</span></td>
+                <td><span class="tok">--brand</span></td>
+                <td><span class="prio"><b>270.75</b> <i>n84 &middot; f84 &middot; b11 &middot; c0.95</i></span></td>
+                <td><span class="conf">exact static match</span></td>
+                <td><span class="auto" data-a="yes">automatable</span></td>
+                <td><span class="path">components/Link.tsx:11</span></td>
+              </tr>
+              <tr data-finding="4ccda3abfece">
+                <td><code>4ccda3abfece</code></td>
+                <td><span class="lit">#B3402F</span></td>
+                <td><span class="tok">--danger</span></td>
+                <td><span class="prio"><b>85.5</b> <i>n24 &middot; f24 &middot; b6 &middot; c0.95</i></span></td>
+                <td><span class="conf">exact static match</span></td>
+                <td><span class="auto" data-a="yes">automatable</span></td>
+                <td><span class="path">components/Toast.tsx:19</span></td>
+              </tr>
+              <tr data-finding="e9b395923232">
+                <td><code>e9b395923232</code></td>
+                <td><span class="lit">#3E7C4F</span></td>
+                <td><span class="tok">--ok</span></td>
+                <td><span class="prio"><b>56.7</b> <i>n17 &middot; f17 &middot; b4 &middot; c0.90</i></span></td>
+                <td><span class="conf">import-graph verified</span></td>
+                <td><span class="auto" data-a="yes">automatable</span></td>
+                <td><span class="path">components/status-dot.tsx:12</span></td>
+              </tr>
+              <tr data-finding="938b90223b1e">
+                <td><code>938b90223b1e</code></td>
+                <td><span class="lit">8px</span></td>
+                <td><span class="tok">--space-2</span></td>
+                <td><span class="prio"><b>228.0</b> <i>n71 &middot; f71 &middot; b9 &middot; c0.95</i></span></td>
+                <td><span class="conf">exact static match</span></td>
+                <td><span class="auto" data-a="yes">automatable</span></td>
+                <td><span class="path">components/Stack.tsx:29</span></td>
+              </tr>
+              <tr data-finding="bac392391fab">
+                <td><code>bac392391fab</code></td>
+                <td><span class="lit">24px</span></td>
+                <td><span class="tok">--space-6</span></td>
+                <td><span class="prio"><b>74.1</b> <i>n21 &middot; f21 &middot; b5 &middot; c0.95</i></span></td>
+                <td><span class="conf">exact static match</span></td>
+                <td><span class="auto" data-a="yes">automatable</span></td>
+                <td><span class="path">components/Section.tsx:12</span></td>
+              </tr>
+              <tr data-finding="34883b1bd180">
+                <td><code>34883b1bd180</code></td>
+                <td><span class="lit">#0F8B84</span></td>
+                <td><span class="tok">--brand</span></td>
+                <td><span class="prio"><b>54.0</b> <i>n38 &middot; f38 &middot; b7 &middot; c0.40</i></span></td>
+                <td><span class="conf">manual review</span></td>
+                <td><span class="auto" data-a="no">needs a person</span></td>
+                <td><span class="path">components/Tag.tsx:44</span></td>
+              </tr>
+              <tr data-finding="bb8650af35d0">
+                <td><code>bb8650af35d0</code></td>
+                <td><span class="lit">13px</span></td>
+                <td><span class="tok">--text-sm</span></td>
+                <td><span class="prio"><b>37.2</b> <i>n26 &middot; f26 &middot; b5 &middot; c0.40</i></span></td>
+                <td><span class="conf">manual review</span></td>
+                <td><span class="auto" data-a="no">needs a person</span></td>
+                <td><span class="path">components/Caption.tsx:8</span></td>
+              </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note" style="margin-top:16px">
+      <b>Five of these seven are safe to automate.</b> Each is a value one of your tokens already holds, so the swap carries no decision. The two marked as needing a person are drift — someone has to decide whether the near-miss was deliberate before it gets reconciled.
+    </div>
+    <!-- /SLOT:fix-queue -->
+  </section>
+
+  <section>
+    <div class="eyebrow">Ownership</div>
+    <h2>The same findings, grouped by who owns them</h2>
+    <p class="lede">
+      An engineer owns a component rather than a hex code. Every finding above appears here too, under the component, plugin or route that holds it, so you can start from what you maintain.
+    </p>
+    <!-- SLOT:groups -->
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>Owner</th><th>Kind</th><th class="num">Findings</th><th class="num">Occurrences</th><th class="num">Files</th><th>Worst finding</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>components/Link</code></td><td>component</td><td class="num">3</td><td class="num">96</td><td class="num">84</td><td><span class="lit">#0F8A83</span></td></tr>
+          <tr><td><code>components/Stack</code></td><td>component</td><td class="num">2</td><td class="num">71</td><td class="num">71</td><td><span class="lit">8px</span></td></tr>
+          <tr><td><code>components/Toast</code></td><td>component</td><td class="num">2</td><td class="num">31</td><td class="num">24</td><td><span class="lit">#B3402F</span></td></tr>
+          <tr><td><code>app/(marketing)</code></td><td>route</td><td class="num">4</td><td class="num">52</td><td class="num">18</td><td><span class="lit">#0F8B84</span></td></tr>
+          <tr><td><code>app/globals.css</code></td><td>bundle</td><td class="num">1</td><td class="num">9</td><td class="num">1</td><td><span class="lit">24px</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /SLOT:groups -->
+  </section>
+
+  <section>
+    <div class="eyebrow">Lineage</div>
+    <h2>Where each token comes from</h2>
+    <p class="lede">
+      A chain runs primitive definition to semantic alias to custom-property projection to the components that use it. The chain is what separates a deliberate alias from a duplicate definition: two names for one value with a link between them is the system working, and two names without one is drift. A dashed step is a link this run could not trace.
+    </p>
+    <!-- SLOT:lineage -->
+    <div class="lin">
+      <div class="lin-row">
+        <span class="step" data-k="primitive">$teal-600</span><span class="arrow">&rarr;</span>
+        <span class="step" data-k="semantic">--brand</span><span class="arrow">&rarr;</span>
+        <span class="step">--color-brand</span><span class="arrow">&rarr;</span>
+        <span class="step">11 components</span>
+      </div>
+      <div class="lin-row">
+        <span class="step" data-k="primitive">$font-size-3</span><span class="arrow">&rarr;</span>
+        <span class="step" data-k="semantic">--text-sm</span><span class="arrow">&rarr;</span>
+        <span class="step">--typeset-body-sm</span><span class="arrow">&rarr;</span>
+        <span class="step">28 components</span>
+      </div>
+      <div class="lin-row">
+        <span class="step" data-k="primitive">$font-size-4</span><span class="arrow">&rarr;</span>
+        <span class="step" data-k="semantic">--text-base</span><span class="arrow">&rarr;</span>
+        <span class="step" data-k="missing">no projection traced</span><span class="arrow">&rarr;</span>
+        <span class="step">9 components</span>
+      </div>
+      <div class="lin-row">
+        <span class="step" data-k="primitive">#0F8A83</span><span class="arrow">&rarr;</span>
+        <span class="step" data-k="missing">no semantic alias</span><span class="arrow">&rarr;</span>
+        <span class="step" data-k="missing">no projection</span><span class="arrow">&rarr;</span>
+        <span class="step">2 components</span>
+      </div>
+    </div>
+    <div class="note" style="margin-top:16px">
+      <b>The fourth chain is the duplicate this catches.</b> <span class="lit">#0F8A83</span> is defined a second time with nothing linking it to <span class="tok">--brand</span>, which already holds that value. The first three chains are alias layers working as designed, and grading them the same way would report a healthy system as drift.
+    </div>
+    <!-- /SLOT:lineage -->
   </section>
 
   <section>
@@ -1362,6 +1645,43 @@
       </div>
     </div>
     <!-- /SLOT:family-coverage -->
+  </section>
+
+
+  <section>
+    <div class="eyebrow">Coverage</div>
+    <h2>What was measured, per bundle and mode</h2>
+    <p class="lede">
+      Each entry bundle crossed with each theme, against every foundational family. A cell says whether this run measured that combination, and a gap in what the run could see reads as a shape rather than as an absence you have to notice. Four states only: measured, unmeasured, blocked, and not applicable where the project declares nothing.
+    </p>
+    <!-- SLOT:coverage-matrix -->
+    <div class="tbl-scroll">
+      <table class="cm">
+        <thead>
+          <tr><th>Bundle &middot; mode</th><th class="fam">color</th><th class="fam">typography</th><th class="fam">spacing</th><th class="fam">radius</th><th class="fam">border</th><th class="fam">elevation</th><th class="fam">opacity</th><th class="fam">z-index</th><th class="fam">breakpoint</th><th class="fam">motion</th></tr>
+        </thead>
+        <tbody>
+              <tr><td>common &middot; light</td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="not_applicable">n/a</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td></tr>
+              <tr><td>common &middot; dark</td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="not_applicable">n/a</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td></tr>
+              <tr><td>desktop &middot; light</td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="unmeasured">?</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="not_applicable">n/a</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td></tr>
+              <tr><td>desktop &middot; dark</td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="unmeasured">?</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="not_applicable">n/a</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td></tr>
+              <tr><td>mobile &middot; light</td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="unmeasured">?</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="not_applicable">n/a</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td></tr>
+              <tr><td>mobile &middot; dark</td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="split" style="margin-top:12px">
+      <span class="ok">measured</span>
+      <span class="unk">unmeasured</span>
+      <span class="block">blocked</span>
+    </div>
+    <div class="note" style="margin-top:16px">
+      <b>The mobile dark bundle was never resolved.</b> No compiled output exists for it, so this run measured nothing there and grades nothing there. Building that bundle and re-running fills the row. <b>Elevation is unmeasured on desktop and mobile</b> because the shadow scale resolves in a build step this run could not execute — the tokens may be complete, and this run cannot say so.
+    </div>
+    <div class="note" style="margin-top:12px">
+      <b>This bundle layout is a worked example and it is unverified.</b> The <code>common</code>, <code>desktop</code> and <code>mobile</code> split is the shape a Discourse tree takes, and the adapter for it has not yet been run against a real checkout. The matrix itself is generic: the first axis is whatever entry bundles discovery found.
+    </div>
+    <!-- /SLOT:coverage-matrix -->
   </section>
 
   <section>
@@ -2187,6 +2507,18 @@
         <dl class="meta">
           <dt>excluded</dt><dd>node_modules/ — dependency, not authored by this repository</dd>
           <dt>excluded</dt><dd>dist/ — generated build output</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Provenance</h3>
+        <p class="sub">what this run was, and what it is comparable to</p>
+        <dl class="meta">
+          <dt>report schema</dt><dd>2</dd>
+          <dt>skill version</dt><dd>design-token-vitals @ <code>0000000</code></dd>
+          <dt>adapters</dt><dd>tailwind, css-vars</dd>
+          <dt>commit</dt><dd><code>7f0c22ab</code></dd>
+          <dt>generated</dt><dd>2026-01-01T00:00:00Z</dd>
+          <dt>scope</dt><dd><code>apps/v4/**</code> — 1,230 files</dd>
         </dl>
       </div>
       <div class="panel">

@@ -3,18 +3,22 @@
 
     python3 tools/validate_run.py .token-vitals/report.json [--html report.html]
 
-Six rules, from the framework-aware discovery design. Each one describes a
-report that looks finished and is not, and every one of them has produced a
-plausible-looking report at some point. Exit status is 1 when any rule
-fails.
+Eight rules, from the framework-aware discovery and actionable-report
+designs. Each one describes a report that looks finished and is not, and
+every one of them has produced a plausible-looking report at some point.
+Exit status is 1 when any rule fails.
 
 These run as code rather than as prose the agent checks itself against,
 because a rule the run re-derives each time is a rule that drifts.
 """
 import argparse
 import json
+import os
 import re
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from findings import collect_ids, is_automatable  # noqa: E402
 
 TAXONOMY_TIER_ONE = [
     "color", "typography", "spacing", "sizing", "radius", "border",
@@ -168,6 +172,58 @@ def rule_6_html_matches_json(doc, html):
     return None
 
 
+CONFIDENCES = {
+    "exact static match", "import-graph verified",
+    "compiled-runtime verified", "manual review",
+}
+
+
+def rule_7_fix_queue_integrity(doc):
+    """A fix queue that cannot be acted on, or that promises too much."""
+    queue = get(doc, "fix_queue", default=None)
+    if queue is None:
+        return None
+    bad = []
+    for item in queue:
+        if not isinstance(item, dict):
+            bad.append("a queue entry is not an object")
+            continue
+        label = item.get("id") or item.get("literal") or "?"
+        conf = item.get("confidence")
+        if conf not in CONFIDENCES:
+            bad.append("%s: confidence %r is not one of the four levels" % (label, conf))
+        if not item.get("replacement"):
+            bad.append("%s: no canonical replacement token" % label)
+        if not item.get("locations"):
+            bad.append("%s: no file:line locations to act on" % label)
+        auto = item.get("safe_to_automate")
+        if auto is None:
+            bad.append("%s: does not say whether the swap is safe to automate" % label)
+        elif auto and not is_automatable(item.get("tier"), conf):
+            bad.append("%s: marked safe to automate at tier %r, confidence %r"
+                       % (label, item.get("tier"), conf))
+    if bad:
+        return Failure("7-fix-queue", "%d fix-queue entry problem(s)" % len(bad), bad[:8])
+    return None
+
+
+def rule_8_html_holds_every_finding(doc, html):
+    """The HTML rendered less than the JSON holds."""
+    if html is None:
+        return None
+    json_ids = collect_ids(doc)
+    if not json_ids:
+        return None
+    missing = sorted(fid for fid in json_ids if fid not in html)
+    if missing:
+        return Failure(
+            "8-html-completeness",
+            "%d finding(s) exist in the JSON and appear nowhere in the HTML" % len(missing),
+            missing[:8],
+        )
+    return None
+
+
 def validate(doc, html=None):
     checks = [
         rule_1_discovery_evidence(doc),
@@ -176,6 +232,8 @@ def validate(doc, html=None):
         rule_4_no_zero_for_unmeasured(doc),
         rule_5_family_coverage(doc),
         rule_6_html_matches_json(doc, html),
+        rule_7_fix_queue_integrity(doc),
+        rule_8_html_holds_every_finding(doc, html),
     ]
     return [c for c in checks if c is not None]
 
@@ -195,13 +253,13 @@ def main(argv):
 
     failures = validate(doc, html)
     if not failures:
-        print("validate: pass — all six rules hold")
+        print("validate: pass — all eight rules hold")
         return 0
     for f in failures:
         print("FAIL  %-22s %s" % (f.rule, f.message))
         for line in f.detail:
             print("%26s%s" % ("", line))
-    print("\n%d of 6 rules failed. The report claims more than the run established." % len(failures))
+    print("\n%d of 8 rules failed. The report claims more than the run established." % len(failures))
     return 1
 
 

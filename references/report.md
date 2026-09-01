@@ -164,6 +164,180 @@ An action must carry a real `file:line`, the same evidence rule as every
 other finding in this report. An action with no reachable instance to
 point at does not appear on the list.
 
+## The executive summary
+
+The first thing on the page, answering four questions in this order:
+
+1. **What is the highest-impact problem?** One sentence, naming the finding
+   or the vital, with its blast radius.
+2. **How many owned files and components does it affect?** Counts, from the
+   scope Stage 1 derived.
+3. **What should be fixed first?** The top entry from "Where to start",
+   restated with its `file:line`.
+4. **Which results are confirmed, and which are blocked or unmeasured?**
+   The count at each, and what each blocked result is waiting on.
+
+Question four carries equal weight with the other three. A summary that
+reports six confirmed grades while staying quiet about two blocked ones
+describes a healthier system than the run established, which is the failure
+this whole skill exists to avoid.
+
+## Ranking by remediation priority
+
+Four inputs, all of them recorded and rendered next to the score:
+
+| Input | Symbol | What it is |
+|---|---|---|
+| Occurrences | `n` | How many times the value appears |
+| Affected owned files | `f` | How many owned files hold it |
+| Breadth | `b` | Distinct components, plugins, routes or bundles it crosses |
+| Confidence | `c` | Confidence in the proposed fix, as a multiplier |
+
+```
+priority = (n + 2f + 3b) x c
+```
+
+| Confidence | `c` |
+|---|---|
+| `compiled-runtime verified` | 1.0 |
+| `exact static match` | 0.95 |
+| `import-graph verified` | 0.9 |
+| `manual review` | 0.4 |
+
+Files outweigh occurrences because ten occurrences in one file is one edit.
+Breadth outweighs both because a value crossing six components is a missing
+system decision rather than a local slip. Confidence multiplies rather than
+adds, so a high-volume finding nobody can safely change cannot rank first
+on volume alone.
+
+**Show the inputs, never only the score.** A reader who disagrees with the
+order needs to see which input drove it, and an agent consuming the JSON
+re-ranks on its own weights rather than trusting a number it cannot take
+apart. `tools/findings.py` implements this; two runs rank identically
+because the formula is fixed.
+
+## The fix queue
+
+Every finding safe enough to act on mechanically, in both HTML and JSON.
+Per entry:
+
+| Field | Content |
+|---|---|
+| `id` | The stable finding id |
+| `literal` | The current literal or token |
+| `replacement` | The canonical replacement token |
+| `locations` | Affected files, each a real `file:line` |
+| `occurrences`, `files` | The counts behind the ranking |
+| `confidence` | `exact static match`, `import-graph verified`, `compiled-runtime verified`, or `manual review` |
+| `safe_to_automate` | Whether the swap needs a person |
+
+**Safe to automate means the `redundant` tier at a confidence other than
+`manual review`** — a token already holds this exact value, so the change
+carries no decision. Near-miss drift and uncovered values are never
+automatable: one needs a person to decide what was intended, the other
+needs a token to exist first. `tools/validate_run.py` rule 7 fails a queue
+that says otherwise.
+
+Order the queue by priority. Lead with exact color replacements where they
+exist: they are the highest-confidence, highest-volume class of finding in
+most codebases, and they are what a follow-on agent can act on immediately.
+
+## Grouping by owner
+
+Findings group by literal value, and **also** by owning component, plugin,
+and route or bundle. An engineer owns a component, not a hex code, and
+starting from the component is how token debt gets paid down in practice.
+
+Each group carries its own counts and its own priority ordering, and every
+finding appears in both views. A finding the value view holds and the owner
+view drops is a finding whose owner nobody can find.
+
+## Token lineage
+
+Trace the chain wherever it can be traced:
+
+```
+primitive definition -> semantic alias -> custom-property projection -> consumer usage
+```
+
+Lineage is what separates an intentional semantic alias from a duplicate
+definition. Two names for one value **with** a lineage edge between them is
+a system working as designed. Two names **without** one is the duplicate
+that `single-source` exists to catch. Grading them the same way reports a
+healthy alias layer as drift.
+
+Typography is where this matters most and shows least: a type scale often
+runs primitive size to semantic role to a projected custom property to a
+utility class, and a flat token list renders that four-link chain as four
+unrelated tokens.
+
+Record each link with its source id, and say where a chain could not be
+completed rather than inferring the missing link.
+
+## The coverage matrix
+
+`entry bundle x theme or mode x token family`, covering at least color,
+typography, spacing, radius, border, elevation, opacity, z-index,
+breakpoint and motion.
+
+Every cell is `measured`, `unmeasured`, `not_applicable` or `blocked`, and
+carries its evidence. A gap in what the run could see becomes a shape on
+the page rather than an absence a reader has to notice.
+
+For a framework that registers several bundles separately, the bundle axis
+is those bundles. A Discourse tree would run `common`, `desktop` and
+`mobile` against light and dark. **That shape is a worked example and it is
+unverified** — the Discourse adapter is still held pending a real checkout,
+so treat it as the shape rather than as a tested path.
+
+## Uncertainty is first-class
+
+- **An unknown never renders as zero, passing, or complete.**
+- **Confirmed findings are visually separated** from blocked and unmeasured
+  areas, rather than sharing a table with them.
+- **Every blocked or unmeasured result names the missing artifact** and what
+  would produce it.
+
+This is the measured / unmeasured / absent split from
+`references/token-taxonomy.md`, applied to every part of the report.
+
+## Trend
+
+Findings carry stable ids, so two runs across two commits can be compared:
+
+```
+python3 tools/trend.py baseline.json current.json
+```
+
+It reports new findings, resolved findings, count changes, and regressions
+— a regression being a resolved id that came back, or a count that grew.
+
+**The comparison is gated** on framework, adapters, owned paths, scan scope
+and token sources. Two runs that scoped differently answer different
+questions, and a diff between them reads as progress without being
+progress. The tool refuses and names the diverged input.
+
+Baselines are passed explicitly. The skill never writes state into the
+repository it audits. Commit `.token-vitals/report.json` and any past
+commit becomes a baseline.
+
+## Reproducibility metadata
+
+Required in both HTML and JSON, in the measurement section:
+
+- report schema version, and the skill and adapter version
+- framework detection evidence
+- discovered entry points and import roots
+- token sources, with classification and reachability
+- exclusions, each with its reason
+- the exact scan scope and its file count
+- the commit ref
+- the timestamp
+
+Most of this lands in `discovery` and `run` already. Listing it here makes
+it required rather than customary, and gives a follow-on agent one place to
+read the run's provenance from.
+
 ## The invariants
 
 Every rendering tier, from `full` down to `family-only`, follows the same
@@ -253,7 +427,7 @@ every orphan, every leak group, in whatever form fits. `inventory-color`,
 **"Where to start" owes the reader the few that matter, in order.** The
 `next-steps` region shows five. See "Deriving the next-steps list" above.
 
-### Truncation is always declared
+### Truncation is always declared, and never silent
 
 Whenever a section holds back any part of what the run found, it says so on
 the page, in the `truncation` slot from `references/voice.md`, and it names
@@ -261,6 +435,13 @@ where the rest lives — the `<details>` element immediately below, never a
 pointer to another file. This is the same principle behind `blocked` in
 `references/vitals.md`: silence reads as a pass, and nothing in this report
 is allowed to let silence do that job.
+
+**The HTML may collapse, and it may never hold less than the JSON.** Long
+evidence goes behind a `<details>` element, and every finding id present in
+`report.json` appears somewhere in `report.html` — collapsed is fine,
+absent is not. `tools/validate_run.py` rule 8 compares the two and fails on
+any id the HTML omits, so this stays a checked property rather than an
+intention.
 
 ## Table width and long paths
 

@@ -1,4 +1,14 @@
-schema_version: 1
+schema_version: 2
+
+# Provenance for a follow-on agent: everything needed to know what this run
+# was, and whether another run is comparable to it. Required in the JSON
+# and in the report's measurement section.
+provenance:
+  report_schema_version: 2
+  skill_version: null       # the skill's released version or commit
+  adapter_versions: {}      # adapter name -> version or commit
+  generated_at: null        # ISO 8601
+  repo_ref: null            # commit ref of the audited repository
 
 # What owns theming, and what the project actually authored. Read from
 # the repository in Stage 1, before anything below this block is graded —
@@ -75,6 +85,62 @@ declared:
 inventory:
   families: {}             # name -> {state, count, tiers: {primitive, semantic},
                            #          sources: [...], note}
+
+# The four questions the report answers before anything else. Question four
+# carries equal weight: a summary quiet about what it could not measure
+# describes a healthier system than the run established.
+executive_summary:
+  highest_impact: null      # {finding_id, statement, blast_radius}
+  affected: null            # {owned_files, components}
+  fix_first: null           # {action, file_line, finding_id}
+  confidence_split: null    # {confirmed, blocked, unmeasured, waiting_on: [...]}
+
+# Every finding safe enough to act on mechanically, ordered by priority.
+# Each entry:
+#   {id, tier, family, literal, replacement, locations: ["path:line"],
+#    occurrences, files, breadth, confidence, safe_to_automate,
+#    priority: {occurrences, files, breadth, confidence, confidence_weight,
+#               formula, score}}
+# confidence: exact static match | import-graph verified |
+#             compiled-runtime verified | manual review
+# safe_to_automate may only be true for the redundant tier at a confidence
+# other than manual review — validate_run.py rule 7.
+fix_queue: []
+
+# The same findings, grouped so an engineer can start from what they own.
+# Every finding appears in the value view and in an owner view.
+groups:
+  by_value: []              # [{key, finding_ids, occurrences, files}]
+  by_component: []          # [{name, path, finding_ids, occurrences, files, priority}]
+  by_plugin: []             # [{name, path, finding_ids, occurrences, files, priority}]
+  by_route: []              # [{name, bundle, finding_ids, occurrences, files, priority}]
+
+# primitive definition -> semantic alias -> projection -> consumer usage.
+# A lineage edge is what separates an intentional alias from a duplicate
+# definition. Record where a chain could not be completed rather than
+# inferring the missing link.
+lineage: []                 # [{token, primitive, semantic, projection,
+                            #   consumers: [...], complete: bool, note}]
+
+# entry bundle x theme/mode x token family. Every cell carries a state and
+# its evidence, so a gap in what the run could see reads as a shape.
+coverage_matrix:
+  bundles: []               # the entry bundles on the first axis
+  modes: []                 # the themes or modes on the second axis
+  families: []              # the token families on the third
+  cells: []                 # [{bundle, mode, family, state, evidence, note}]
+                            # state: measured | unmeasured | not_applicable | blocked
+
+# Filled by tools/trend.py against an explicitly passed baseline. The skill
+# never writes a baseline into the repository it audits.
+trend:
+  baseline_ref: null        # the commit the baseline came from
+  compatible: null          # false when scope, adapter or sources diverged
+  new: []
+  resolved: []
+  grew: []
+  shrank: []
+  regressions: []
 
 vitals:
   tier-integrity: { grade: null, evidence: [], note: null }

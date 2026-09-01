@@ -174,6 +174,79 @@ class TestRule6HtmlJsonParity(unittest.TestCase):
         self.assertNotIn("6-html-json-parity", rules_failed(good_doc(), None))
 
 
+class TestRule7FixQueue(unittest.TestCase):
+    def queue_doc(self, **over):
+        d = good_doc()
+        item = {"id": "a" * 12, "tier": "redundant", "literal": "#b3402f",
+                "replacement": "--danger", "locations": ["app/a.css:4"],
+                "confidence": "exact static match", "safe_to_automate": True}
+        item.update(over)
+        d["fix_queue"] = [item]
+        return d
+
+    def test_a_complete_entry_passes(self):
+        self.assertNotIn("7-fix-queue", rules_failed(self.queue_doc()))
+
+    def test_missing_replacement_fails(self):
+        self.assertIn("7-fix-queue", rules_failed(self.queue_doc(replacement=None)))
+
+    def test_missing_locations_fails(self):
+        self.assertIn("7-fix-queue", rules_failed(self.queue_doc(locations=[])))
+
+    def test_unknown_confidence_level_fails(self):
+        self.assertIn("7-fix-queue", rules_failed(self.queue_doc(confidence="pretty sure")))
+
+    def test_omitting_the_automation_flag_fails(self):
+        d = self.queue_doc()
+        del d["fix_queue"][0]["safe_to_automate"]
+        self.assertIn("7-fix-queue", rules_failed(d))
+
+    def test_near_miss_marked_automatable_fails(self):
+        """Drift needs a person to decide what was intended."""
+        self.assertIn("7-fix-queue", rules_failed(self.queue_doc(tier="near-miss")))
+
+    def test_manual_review_marked_automatable_fails(self):
+        self.assertIn("7-fix-queue", rules_failed(
+            self.queue_doc(confidence="manual review")))
+
+    def test_near_miss_not_marked_automatable_passes(self):
+        self.assertNotIn("7-fix-queue", rules_failed(
+            self.queue_doc(tier="near-miss", safe_to_automate=False)))
+
+    def test_absent_queue_skips_the_rule(self):
+        self.assertNotIn("7-fix-queue", rules_failed(good_doc()))
+
+
+class TestRule8HtmlCompleteness(unittest.TestCase):
+    def test_a_finding_missing_from_the_html_fails(self):
+        d = good_doc()
+        d["fix_queue"] = [{"id": "b" * 12, "tier": "redundant", "literal": "#fff",
+                           "replacement": "--surface", "locations": ["a.css:1"],
+                           "confidence": "exact static match", "safe_to_automate": True}]
+        self.assertIn("8-html-completeness", rules_failed(d, "<html>nothing here</html>"))
+
+    def test_a_finding_present_in_the_html_passes(self):
+        d = good_doc()
+        fid = "b" * 12
+        d["fix_queue"] = [{"id": fid, "tier": "redundant", "literal": "#fff",
+                           "replacement": "--surface", "locations": ["a.css:1"],
+                           "confidence": "exact static match", "safe_to_automate": True}]
+        html = '<tr data-finding="%s"><td>#fff</td></tr>' % fid
+        self.assertNotIn("8-html-completeness", rules_failed(d, html))
+
+    def test_collapsed_behind_details_still_counts_as_present(self):
+        d = good_doc()
+        fid = "c" * 12
+        d["fix_queue"] = [{"id": fid, "tier": "redundant", "literal": "#fff",
+                           "replacement": "--surface", "locations": ["a.css:1"],
+                           "confidence": "exact static match", "safe_to_automate": True}]
+        html = '<details><summary>more</summary><span id="%s"></span></details>' % fid
+        self.assertNotIn("8-html-completeness", rules_failed(d, html))
+
+    def test_no_html_skips_the_rule(self):
+        self.assertNotIn("8-html-completeness", rules_failed(good_doc(), None))
+
+
 class TestIndependence(unittest.TestCase):
     def test_each_rule_fails_on_its_own(self):
         """A broken doc reports every rule it breaks, rather than the first."""

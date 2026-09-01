@@ -164,6 +164,44 @@ Recording the form is what lets two runs be compared on presentation as
 well as on findings. A run that grades the same and renders differently has
 diverged, and `rendering.forms` is where that shows up.
 
+## Stage 5b — Rank, queue, and trace
+
+Before writing anything, build the four layers that sit above the raw
+findings. All of them go into both the HTML and the JSON.
+
+- **Score every finding** with `tools/findings.py`: occurrences, affected
+  owned files, breadth across components, plugins, routes and bundles, and
+  confidence in the fix. The formula is `(n + 2f + 3b) x c` and it is fixed,
+  so two runs rank identically. **Render the inputs beside the score** — an
+  opaque number cannot be argued with or re-weighted.
+- **Build the fix queue** from every finding with a canonical replacement.
+  Mark `safe_to_automate` only for the `redundant` tier at a confidence
+  other than `manual review`; drift and uncovered values always need a
+  person. Lead with exact color replacements.
+- **Group by owner** as well as by value — component, plugin, route or
+  bundle — so an engineer can start from what they maintain.
+- **Trace lineage** from primitive to semantic alias to projection to
+  consumers. A lineage edge is what separates a deliberate alias from a
+  duplicate definition; mark an untraced link as untraced rather than
+  guessing at it.
+- **Fill the coverage matrix**: entry bundle by mode by family, every cell
+  `measured`, `unmeasured`, `not_applicable` or `blocked`, with evidence.
+
+Assign every finding a stable id with `findings.finding_id()`. Ids are
+path-independent on purpose, so a rename moves counts rather than
+resolving and re-creating findings.
+
+If the user gave a baseline, run:
+
+```
+python3 tools/trend.py <baseline>/report.json .token-vitals/report.json
+```
+
+It refuses when the framework, adapters, owned paths, scan scope or token
+sources diverge. **Take the refusal.** A forced diff across incompatible
+runs reads as progress without being progress. Where no baseline was given,
+remove the `trend` region rather than filling it.
+
 ## Stage 6 — Fill the template
 
 Copy `assets/report-template.html` to `.token-vitals/report.html`, and strip
@@ -208,6 +246,15 @@ JSON for something the page itself has room to show.
       "Live report · `<repo>` @ `<short-sha>`") so a real run always
       carries the subject it describes.
 - [ ] `runhead-meta`
+- [ ] `exec-summary` — the four questions, in order: the highest-impact
+      problem, how many owned files and components it affects, what to fix
+      first with its `file:line`, and which results are confirmed against
+      which are blocked or unmeasured. The fourth carries equal weight —
+      a summary quiet about what it could not measure describes a
+      healthier system than this run established.
+- [ ] `trend` — new, resolved, count changes and regressions from
+      `tools/trend.py`. Remove this region when no baseline was given;
+      never fill it with a comparison the compatibility gate refused.
 - [ ] `vitals-grid`
 - [ ] `next-steps` — the ranked next-actions list; derive it using the
       order defined in "Deriving the next-steps list" in
@@ -219,6 +266,18 @@ JSON for something the page itself has room to show.
       `references/token-taxonomy.md`, each as `measured`, `unmeasured` or
       `absent`. A family this run could not resolve renders as unmeasured
       with what is missing, never as `0`.
+- [ ] `fix-queue` — every finding with a canonical replacement, ordered by
+      priority, each carrying its scoring inputs, its confidence level, and
+      whether the swap is safe to automate. Lead with exact color
+      replacements. Set `data-finding` on each row to the finding id, so
+      rule 8 can see it.
+- [ ] `groups` — the same findings by owning component, plugin and route or
+      bundle. Every finding in the fix queue appears here too.
+- [ ] `lineage` — primitive to semantic alias to projection to consumers.
+      Mark an untraced link as untraced rather than inferring it.
+- [ ] `coverage-matrix` — entry bundle by mode by family, every cell
+      `measured`, `unmeasured`, `not_applicable` or `blocked`, with its
+      evidence.
 - [ ] `families`
 - [ ] `leak-ranked` — the cross-tier ranking that renders at `collapsed`
       and `family-only`. It is removed at `full`, where the three
@@ -254,7 +313,7 @@ skill exists to catch.
 
 ### Validation gate — required before writing the report
 
-Run the six rules as code, rather than checking yourself against them:
+Run the eight rules as code, rather than checking yourself against them:
 
 ```
 python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html
@@ -264,8 +323,11 @@ It fails an audit that uses one presumed token file with no discovery
 evidence; inventories a source with no path to an owned production import
 root; claims complete mode coverage without resolved output for every
 audited scheme; reports zero for an unmeasured category; omits typography
-or any foundational family from the taxonomy; or truncates findings in the
-HTML while the JSON holds more.
+or any foundational family from the taxonomy; truncates findings in the
+HTML while the JSON holds more; ships a fix-queue entry with no replacement
+token, no locations, an unrecognized confidence level, or a safe-to-automate
+flag on a tier that needs a person's decision; or renders less in the HTML
+than the JSON holds, checked by finding id.
 
 A non-zero exit means the report claims more than the run established. Fix
 the run, never the assertion — and never write the report while it fails.

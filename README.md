@@ -87,6 +87,21 @@ self-contained HTML report, a JSON working set that duplicates exactly what
 the HTML shows in a machine-readable form for tooling, and a short terminal
 summary naming the one thing worth doing first.
 
+The report opens with an executive summary — the highest-impact problem,
+how many owned files and components it touches, what to fix first, and how
+many results are confirmed against blocked or unmeasured. Below that sits a
+**fix queue**: every finding with a canonical replacement, ranked by
+`(n + 2f + 3b) x c` over occurrences, affected files, breadth and confidence,
+with the inputs shown beside the score so you can re-rank on your own
+weights. Each entry says whether the swap is safe to automate, and only a
+value one of your tokens already holds ever is. Findings group by owning
+component, plugin and route as well as by value, so an engineer can start
+from what they maintain. Token lineage traces primitive to semantic alias to
+projection to consumers, which is what separates a deliberate alias from a
+duplicate definition. A coverage matrix crosses every entry bundle with
+every mode and every family, so a gap in what the run could see reads as a
+shape rather than as an absence you have to notice.
+
 See a real one: [`examples/shadcn-ui/report.html`](examples/shadcn-ui/report.html)
 (GitHub renders this as raw HTML rather than a page, so download it and open it locally).
 
@@ -98,6 +113,8 @@ time is a rule that drifts.
 
 | Tool | What it does |
 |---|---|
+| `tools/findings.py` | Stable, path-independent finding ids, and the priority score `(n + 2f + 3b) x c` over occurrences, affected owned files, breadth, and confidence in the fix |
+| `tools/trend.py` | New, resolved, count changes and regressions between two runs. Refuses when framework, adapters, owned paths, scope or token sources diverge |
 | `tools/import_graph.py` | Walks stylesheet and JS-entry imports from owned production entry points. Reports what is reachable, what is orphaned, and what resolves outside the repository. Reachability is what makes a candidate source an active one |
 | `tools/validate_run.py` | Fails an audit that uses one presumed token file with no discovery evidence, inventories an unreachable source, claims mode coverage without resolved output, reports zero for an unmeasured category, omits a foundational family, or truncates in the HTML while the JSON holds more |
 | `tools/compare_runs.py` | Diffs two runs on scope, counts, the eight grades, per-vital evidence, and rendering forms. Exits non-zero when the grades disagree |
@@ -107,7 +124,12 @@ time is a rule that drifts.
 python3 tools/import_graph.py <repo> --entry app/globals.css --json graph.json
 python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html
 python3 tools/compare_runs.py run-a/report.json run-b/report.json
+python3 tools/trend.py baseline/report.json .token-vitals/report.json
 ```
+
+Baselines are passed explicitly, so the skill never writes state into the
+repository it audits. Commit `.token-vitals/report.json` and any past commit
+becomes a baseline.
 
 ## Install
 
