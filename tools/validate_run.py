@@ -20,14 +20,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from findings import collect_ids, is_automatable  # noqa: E402
 
-TAXONOMY_TIER_ONE = [
-    "color", "typography", "spacing", "sizing", "radius", "border",
-    "elevation", "opacity", "layer", "motion", "breakpoint",
-]
-TAXONOMY_TIER_TWO = [
-    "grid", "focus", "target", "state", "icon", "aspect", "blur", "density",
-]
-FAMILIES = TAXONOMY_TIER_ONE + TAXONOMY_TIER_TWO
+from taxonomy import FAMILIES  # noqa: E402
 
 ACTIVE_CLASSES = {"canonical", "alias"}
 MEASURE_STATES = {"measured", "unmeasured", "absent"}
