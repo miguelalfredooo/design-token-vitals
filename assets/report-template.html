@@ -779,6 +779,61 @@
   .dot[data-s="gap"]  { color: var(--fail); background: var(--fail-bg); font-weight: 600; }
   .dot[data-s="none"] { color: var(--na); }
 
+  /* ---------- at a glance ---------- */
+
+  /* One strip a reader takes in without reading. Cards in the shadcn shape
+     — title, value, a mark — with segmented bars for distributions and a
+     ring for a share. Every mark carries its number. Inline SVG and CSS
+     only: the report ships no script, and rule 9 checks. */
+  .glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 0 0 36px; }
+  .gcard { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .gcard .gt { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-mute); display: flex; justify-content: space-between; gap: 8px; }
+  .gcard .gv { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .gcard .gv small { font-size: 13px; font-weight: 500; color: var(--ink-mute); letter-spacing: 0; margin-left: 4px; }
+  .gcard .gd { font-size: 12px; color: var(--ink-soft); line-height: 1.4; }
+
+  .seg { display: flex; height: 12px; border-radius: 3px; overflow: hidden; background: var(--surface-sunk); }
+  .seg i { display: block; height: 100%; }
+  .seg i[data-g="pass"], .seg i[data-k="confirmed"], .seg i[data-t="auto"]  { background: var(--pass); }
+  .seg i[data-g="attention"], .seg i[data-t="near-miss"] { background: var(--warn); }
+  .seg i[data-g="fail"], .seg i[data-t="redundant"] { background: var(--fail); }
+  .seg i[data-g="blocked"], .seg i[data-k="blocked"] { background: repeating-linear-gradient(135deg, var(--block) 0 3px, transparent 3px 6px), var(--surface-sunk); }
+  .seg i[data-g="not_applicable"], .seg i[data-k="unmeasured"], .seg i[data-t="uncovered"] { background: var(--line-strong); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
+  .legend b { font-weight: 600; color: var(--ink-soft); }
+
+  .ring { display: flex; align-items: center; gap: 12px; }
+  .ring svg { width: 52px; height: 52px; flex: none; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 6; }
+  .ring .track { stroke: var(--surface-sunk); }
+  .ring .fill { stroke: var(--pass); stroke-linecap: butt; }
+  .ring .rv { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+  .ring .rv small { font-size: 12px; color: var(--ink-mute); font-weight: 500; }
+  .gcard .gstage { font-size: 20px; color: var(--accent); font-weight: 600; }
+  .ring .rd { font-size: 11.5px; color: var(--ink-soft); margin-top: 3px; }
+
+  .ladder { display: flex; gap: 3px; }
+  .ladder i { flex: 1; height: 7px; border-radius: 2px; background: var(--surface-sunk); }
+  .ladder i.done { background: var(--pass); opacity: 0.55; }
+  .ladder i.now { background: var(--accent); }
+  .stage-line { font-size: 14.5px; line-height: 1.5; margin: 0 0 14px; padding: 12px 16px; border-left: 3px solid var(--accent); background: var(--accent-soft); }
+  .stage-line code { font-size: 13.5px; color: var(--accent); font-weight: 600; }
+
+  /* ---------- decisions ---------- */
+
+  .dec { display: flex; flex-direction: column; }
+  .dec-row { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+  .dec-row:last-child { border-bottom: none; }
+  .dec-row .what { font-size: 14px; color: var(--ink); }
+  .dec-row .moved { font-family: var(--mono); font-size: 11px; color: var(--ink-mute); margin-top: 4px; }
+  .dec-row .other { grid-column: 1 / -1; font-size: 13px; color: var(--ink-soft); padding-left: 12px; border-left: 2px solid var(--line-strong); }
+  .dec-row .vitals { font-family: var(--mono); font-size: 10.5px; color: var(--warn); background: var(--warn-bg); padding: 2px 8px; border-radius: 3px; white-space: nowrap; }
+
+  .eff { display: inline-block; min-width: 22px; text-align: center; padding: 1px 6px; border-radius: 3px; font-family: var(--mono); font-size: 11px; font-weight: 600; }
+  .eff[data-e="S"] { background: var(--pass-bg); color: var(--pass); }
+  .eff[data-e="M"] { background: var(--warn-bg); color: var(--warn); }
+  .eff[data-e="L"] { background: var(--surface-sunk); color: var(--ink-soft); }
+
   /* ---------- executive summary ---------- */
 
   .exec { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0; margin-bottom: 8px;
@@ -916,7 +971,9 @@
 
   <nav class="contents" aria-label="Report sections">
     <span class="contents-label">In this report</span>
+    <a href="#glance">At a glance</a>
     <a href="#summary">Summary</a>
+    <a href="#decisions">Decisions</a>
     <a href="#trend" data-tier="full collapsed family-only">Trend</a>
     <a href="#vitals">Vitals</a>
     <a href="#start">Where to start</a>
@@ -932,6 +989,51 @@
     <a href="#measurement">Measurement</a>
   </nav>
 
+  <section id="glance">
+    <div class="eyebrow">At a glance</div>
+    <h2>The whole run in one strip</h2>
+    <p class="lede">
+      Six marks you can read without reading: where the system stands, how the eight grades split, how much of this is confirmed against blocked or unmeasured, how leakage divides across its three tiers, how much of the fix queue a machine can do, and what was counted. Every mark carries its number. Start here, then read down for the evidence.
+    </p>
+    <!-- SLOT:at-a-glance -->
+    <div class="glance">
+      <div class="gcard">
+        <div class="gt"><span>Stage</span><span>2 of 6</span></div>
+        <div class="gv"><code class="gstage">declared</code></div>
+        <div class="ladder"><i class="done"></i><i class="now"></i><i></i><i></i><i></i><i></i></div>
+        <div class="gd">Tokens exist and ship; components go around them. Next: <code>adopted</code>.</div>
+      </div>
+      <div class="gcard">
+        <div class="gt"><span>Eight vitals</span><span>3 fail</span></div>
+        <div class="seg"><i data-g="fail" style="width:37.5%"></i><i data-g="attention" style="width:37.5%"></i><i data-g="pass" style="width:12.5%"></i><i data-g="blocked" style="width:12.5%"></i></div>
+        <div class="legend"><span><b>3</b> fail</span><span><b>3</b> attention</span><span><b>1</b> pass</span><span><b>1</b> blocked</span></div>
+      </div>
+      <div class="gcard">
+        <div class="gt"><span>Confidence</span><span>6 of 8 confirmed</span></div>
+        <div class="seg"><i data-k="confirmed" style="width:75%"></i><i data-k="blocked" style="width:12.5%"></i><i data-k="unmeasured" style="width:12.5%"></i></div>
+        <div class="legend"><span><b>6</b> confirmed</span><span><b>1</b> blocked</span><span><b>1</b> unmeasured</span></div>
+      </div>
+      <div class="gcard">
+        <div class="gt"><span>Leakage</span><span>1,645 values</span></div>
+        <div class="seg"><i data-t="redundant" style="width:52%"></i><i data-t="near-miss" style="width:17%"></i><i data-t="uncovered" style="width:31%"></i></div>
+        <div class="legend"><span><b>861</b> redundant</span><span><b>274</b> near-miss</span><span><b>510</b> uncovered</span></div>
+      </div>
+      <div class="gcard">
+        <div class="gt"><span>Fix queue</span><span>7 entries</span></div>
+        <div class="ring">
+          <svg viewBox="0 0 52 52" aria-hidden="true"><circle class="track" cx="26" cy="26" r="20"></circle><circle class="fill" cx="26" cy="26" r="20" stroke-dasharray="89.8 125.7"></circle></svg>
+          <div><div class="rv">5<small> / 7</small></div><div class="rd">safe to automate</div></div>
+        </div>
+      </div>
+      <div class="gcard">
+        <div class="gt"><span>Counted</span><span>full tier</span></div>
+        <div class="gv">53<small>tokens</small></div>
+        <div class="gd"><b>5</b> families measured · <b>14</b> absent · <b>0</b> unmeasured · <b>1,230</b> files scanned</div>
+      </div>
+    </div>
+    <!-- /SLOT:at-a-glance -->
+  </section>
+
   <section id="summary">
     <div class="eyebrow">Summary</div>
     <h2>What is worst, and what to do first</h2>
@@ -939,6 +1041,7 @@
       Four answers before anything else: the highest-impact problem, how much of your code it touches, the first move, and how many of these results are confirmed against blocked or unmeasured. Read this and you have the shape of the whole report; everything below is the evidence for it.
     </p>
     <!-- SLOT:exec-summary -->
+    <p class="stage-line"><code>declared</code> — tokens exist and ship, and components go around them in 84 files. <b>Next:</b> clear the 3 redundant leak groups, and <code>adopted</code> follows. You already satisfy the <code>layered</code> condition — the semantic layer is there and waiting.</p>
     <div class="exec">
       <div>
         <dt>Highest impact</dt>
@@ -969,6 +1072,33 @@
       </div>
     </div>
     <!-- /SLOT:exec-summary -->
+  </section>
+
+  <section id="decisions">
+    <div class="eyebrow">Decisions this run made</div>
+    <h2>The close calls, and the other reading of each</h2>
+    <p class="lede">
+      Every judgment this run flagged as one that could have gone the other way, with what it moved. A grade that rests on one of these is a grade you can overturn: if the other reading is right for your system, say so, and the next run inherits your answer instead of guessing again.
+    </p>
+    <!-- SLOT:decisions -->
+    <div class="dec">
+      <div class="dec-row">
+        <div><div class="what">Counted only named tokens as swap targets, so a value covered only by Tailwind's derived spacing scale is <code>uncovered</code> rather than <code>redundant</code>.</div><div class="moved">moved leakage from fail to attention · ~60 findings</div></div>
+        <span class="vitals">leakage</span>
+        <div class="other">The other reading: a framework's generated steps count as tokens available to authors. Under it, 205 values are redundant and leakage fails.</div>
+      </div>
+      <div class="dec-row">
+        <div><div class="what">Excluded 33 custom properties declared inside <code>@utility</code> blocks from the token count, as component-local state.</div><div class="moved">114 → 81 tokens · tier unchanged</div></div>
+        <span class="vitals">inventory</span>
+        <div class="other">The other reading: any property the token source declares is a token. Under it the count is 114 and the inventory lists utility state beside real decisions.</div>
+      </div>
+      <div class="dec-row">
+        <div><div class="what">Read <code>--sidebar-background</code> as a dead leftover from an earlier grammar rather than a third living grammar.</div><div class="moved">naming-coherence stays attention</div></div>
+        <span class="vitals">naming-coherence</span>
+        <div class="other">The other reading: it is a third grammar in use, and naming-coherence fails.</div>
+      </div>
+    </div>
+    <!-- /SLOT:decisions -->
   </section>
 
   <section id="trend">
@@ -1305,7 +1435,7 @@
     <div class="tbl-scroll">
       <table>
         <thead>
-          <tr><th>Finding</th><th>Literal</th><th>Replacement</th><th>Priority<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">(n + 2f + 3b) &times; c. Files outweigh occurrences because ten occurrences in one file is one edit. Breadth outweighs both, because a value crossing many components is a missing system decision.</span></span></th><th>Confidence</th><th>Automation<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Only a value a token already holds can be swapped without a decision. Drift and uncovered values always need a person.</span></span></th><th>First location</th></tr>
+          <tr><th>Finding</th><th>Literal</th><th>Replacement</th><th>Priority<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">(n + 2f + 3b) &times; c. Files outweigh occurrences because ten occurrences in one file is one edit. Breadth outweighs both, because a value crossing many components is a missing system decision.</span></span></th><th>Confidence</th><th>Effort<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">S is automatable under ten files. M is automatable across more, or one file needing a call. L needs a decision first. Derived from the data, never an hour estimate.</span></span></th><th>Automation<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Only a value a token already holds can be swapped without a decision. Drift and uncovered values always need a person.</span></span></th><th>First location</th></tr>
         </thead>
         <tbody>
               <tr id="f-c3b404ccdd7e" data-finding="c3b404ccdd7e">
@@ -1314,6 +1444,7 @@
                 <td><span class="tok">--brand</span></td>
                 <td><span class="prio"><b>270.75</b> <i>n84 &middot; f84 &middot; b11 &middot; c0.95</i></span></td>
                 <td><span class="conf">exact static match</span></td>
+                <td><span class="eff" data-e="M">M</span></td>
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/Link.tsx:11</span></td>
               </tr>
@@ -1323,6 +1454,7 @@
                 <td><span class="tok">--danger</span></td>
                 <td><span class="prio"><b>85.5</b> <i>n24 &middot; f24 &middot; b6 &middot; c0.95</i></span></td>
                 <td><span class="conf">exact static match</span></td>
+                <td><span class="eff" data-e="M">M</span></td>
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/Toast.tsx:19</span></td>
               </tr>
@@ -1332,6 +1464,7 @@
                 <td><span class="tok">--ok</span></td>
                 <td><span class="prio"><b>56.7</b> <i>n17 &middot; f17 &middot; b4 &middot; c0.90</i></span></td>
                 <td><span class="conf">import-graph verified</span></td>
+                <td><span class="eff" data-e="M">M</span></td>
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/status-dot.tsx:12</span></td>
               </tr>
@@ -1341,6 +1474,7 @@
                 <td><span class="tok">--space-2</span></td>
                 <td><span class="prio"><b>228.0</b> <i>n71 &middot; f71 &middot; b9 &middot; c0.95</i></span></td>
                 <td><span class="conf">exact static match</span></td>
+                <td><span class="eff" data-e="M">M</span></td>
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/Stack.tsx:29</span></td>
               </tr>
@@ -1350,6 +1484,7 @@
                 <td><span class="tok">--space-6</span></td>
                 <td><span class="prio"><b>74.1</b> <i>n21 &middot; f21 &middot; b5 &middot; c0.95</i></span></td>
                 <td><span class="conf">exact static match</span></td>
+                <td><span class="eff" data-e="M">M</span></td>
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/Section.tsx:12</span></td>
               </tr>
@@ -1359,6 +1494,7 @@
                 <td><span class="tok">--brand</span></td>
                 <td><span class="prio"><b>54.0</b> <i>n38 &middot; f38 &middot; b7 &middot; c0.40</i></span></td>
                 <td><span class="conf">manual review</span></td>
+                <td><span class="eff" data-e="L">L</span></td>
                 <td><span class="auto" data-a="no">needs a person</span></td>
                 <td><span class="path">components/Tag.tsx:44</span></td>
               </tr>
@@ -1368,6 +1504,7 @@
                 <td><span class="tok">--text-sm</span></td>
                 <td><span class="prio"><b>37.2</b> <i>n26 &middot; f26 &middot; b5 &middot; c0.40</i></span></td>
                 <td><span class="conf">manual review</span></td>
+                <td><span class="eff" data-e="L">L</span></td>
                 <td><span class="auto" data-a="no">needs a person</span></td>
                 <td><span class="path">components/Caption.tsx:8</span></td>
               </tr>

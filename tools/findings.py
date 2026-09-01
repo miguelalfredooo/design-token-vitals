@@ -72,6 +72,22 @@ def is_automatable(tier, confidence):
     return tier in AUTOMATABLE_TIERS and confidence != "manual review"
 
 
+def effort(tier, confidence, files):
+    """S, M or L — derived from what the run already holds, never hours.
+
+    S: safe to automate and under ten files. M: safe to automate across
+    more, or a single file that needs a person's call. L: needs a decision
+    before any edit — drift to reconcile, or a token to design.
+    """
+    auto = is_automatable(tier, confidence)
+    f = int(files or 0)
+    if auto and f < 10:
+        return "S"
+    if auto or f <= 1:
+        return "M"
+    return "L"
+
+
 def priority(occurrences, files, breadth, confidence):
     """priority = (n + 2f + 3b) x c — see references/report.md.
 

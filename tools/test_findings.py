@@ -10,7 +10,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from findings import (  # noqa: E402
-    collect_ids, finding_id, is_automatable, normalize_literal, priority, rank,
+    collect_ids, effort, finding_id, is_automatable, normalize_literal, priority, rank,
 )
 
 
@@ -112,6 +112,23 @@ class TestRank(unittest.TestCase):
         p = priority(5, 2, 1, "exact static match")
         items = [{"id": "b" * 12, "priority": p}, {"id": "a" * 12, "priority": p}]
         self.assertEqual([i["id"] for i in rank(items)], ["a" * 12, "b" * 12])
+
+
+class TestEffort(unittest.TestCase):
+    def test_automatable_and_small_is_s(self):
+        self.assertEqual(effort("redundant", "exact static match", 4), "S")
+
+    def test_automatable_and_wide_is_m(self):
+        self.assertEqual(effort("redundant", "exact static match", 84), "M")
+
+    def test_a_single_file_judgment_call_is_m(self):
+        self.assertEqual(effort("near-miss", "manual review", 1), "M")
+
+    def test_drift_across_files_is_l(self):
+        self.assertEqual(effort("near-miss", "manual review", 38), "L")
+
+    def test_uncovered_is_never_below_m(self):
+        self.assertIn(effort("uncovered", "exact static match", 2), ("M", "L"))
 
 
 class TestCollectIds(unittest.TestCase):
