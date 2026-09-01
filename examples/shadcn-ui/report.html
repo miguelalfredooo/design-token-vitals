@@ -661,6 +661,61 @@
     </div>
   </section>
 
+  <section>
+    <div class="eyebrow">Where to start</div>
+    <h2>The next concrete move, ranked</h2>
+    <p class="lede">
+      Eight grades and three leakage tiers are more than anyone can act on at once. These are the same findings, turned into a ranked list of moves: a check you cannot yet measure comes first, then fixes that need no judgment, then gaps that need a token decided, then drift that needs a person to call it.
+    </p>
+
+    <!-- SLOT:next-steps -->
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>Action<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is one concrete move, ordered so the earliest rows clear the most ground first — see the ranking rule in the note below.</span></span></th><th class="num">Resolves</th><th>Owner</th><th>Start here</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Add a lint rule that reads the token layer — banning bracket-arbitrary literals that match an existing utility would already have caught both redundant findings below.</td>
+            <td class="num">1 blocked check</td>
+            <td>System owner</td>
+            <td><span class="path">apps/v4/eslint.config.mjs:1</span></td>
+          </tr>
+          <tr>
+            <td>Swap the hardcoded <span class="lit">rounded-[6px]</span> for <span class="tok">rounded-sm</span> (<code>--radius-sm</code>, 6px), the utility that already matches.</td>
+            <td class="num">1 finding</td>
+            <td>Component author</td>
+            <td><span class="path">components/chart-code-viewer.tsx:40</span></td>
+          </tr>
+          <tr>
+            <td>Swap the hardcoded <span class="lit">min-w-[96px]</span> for <span class="tok">min-w-24</span> (96px), the utility that already matches.</td>
+            <td class="num">1 finding</td>
+            <td>Component author</td>
+            <td><span class="path">app/(app)/(create)/components/picker.tsx:161</span></td>
+          </tr>
+          <tr>
+            <td>Add a <code>--chart-height</code> token for the <span class="lit">h-[250px]</span> value every chart registry item already hardcodes.</td>
+            <td class="num"><span class="blast">32 files</span></td>
+            <td>System owner</td>
+            <td><span class="path">registry/new-york-v4/ui/chart.tsx:225</span></td>
+          </tr>
+          <tr>
+            <td>Add a <code>--radius-2xs</code> token for the <span class="lit">rounded-[2px]</span> value nothing in the radius scale covers.</td>
+            <td class="num"><span class="blast">4 files</span></td>
+            <td>System owner</td>
+            <td><span class="path">registry/new-york-v4/ui/tooltip.tsx:51</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="trunc">Showing the 5 highest-impact of 8 actions. The rest are in <code>report.json</code>.</div>
+
+    <div class="note">
+      <b>Ordered by class, then by how much each one clears.</b> Enforcement is blocked, so the rule that unblocks it comes first — it also happens to cover both redundant findings on this list. The two redundant swaps come next, since a utility already matches and no judgment is required. The two uncovered gaps come after that, since someone has to decide on a token before either closes. z-index and opacity have no token scale at all in this project — see Coverage above — and rank below these five; <code>rounded-[4px]</code> (1 file) is the eighth and last action, not shown here.
+    </div>
+    <!-- /SLOT:next-steps -->
+  </section>
 
   <section>
     <div class="eyebrow">Inventory</div>
