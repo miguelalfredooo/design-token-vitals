@@ -40,10 +40,13 @@ Excluded from the count, each for a stated reason:
 - **Runtime-injected properties** — `--radix-*`, `--swiper-*`, and anything
   else a library writes in at runtime. The project does not own these; they
   were never part of what it declared.
-- **Component-local properties** — a custom property declared inside a
-  component file rather than a token source. This is local state, not a
-  token, and it counts as a leak instead if a token already exists for the
-  same concept — see `references/leakage.md`.
+- **Scoped properties** — a custom property declared under anything other
+  than a theme root. Theme roots are `:root`, `html`, `[data-theme]`, a
+  scheme class such as `.dark`, `@theme`, and a mode media query. A
+  property declared inside a component rule, an `@utility` block, or a
+  `@property` registration with no theme-root declaration is local state,
+  whichever file it sits in. Two runs counted 82 and 77 on this one
+  question; the scope decides it, never the filename.
 - **Framework-default properties** — a category a framework's own default
   theme supplies without the project declaring it. These count toward
   `coverage`, which asks whether a category is available at all, but never
