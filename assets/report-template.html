@@ -7,20 +7,28 @@
   each region below with real findings. Everything else on this page is
   static chrome and ships unchanged in every report.
 
-  Seventeen regions are marked with a pair of HTML comments naming a region,
+  Eighteen regions are marked with a pair of HTML comments naming a region,
   for example a "runhead-meta" region wraps the run metadata list. The
-  seventeen region names are: doc-title, runhead-tag, runhead-meta,
+  eighteen region names are: doc-title, runhead-tag, runhead-meta,
   vitals-grid, next-steps, inventory-color, inventory-type, inventory-space,
   families, leak-redundant, leak-near-miss, leak-uncovered, modes-coverage,
-  modes-gaps, orphans, enforcement, and footer-meta. This file calls them
-  regions rather than slots to avoid colliding with the sentence slots
-  defined in references/voice.md.
+  modes-gaps, orphans, enforcement, measurement, and footer-meta. This file
+  calls them regions rather than slots to avoid colliding with the sentence
+  slots defined in references/voice.md.
 
   next-steps holds the ranked list of concrete next actions derived from
   the findings elsewhere in this report — see "Deriving the next-steps
   list" in references/report.md. It sits right after the vitals grid and
   before the architecture and inventory sections, on purpose: a reader
   should see what to do before they see the full detail behind it.
+
+  measurement holds the "How this was measured" section: the token sources
+  and count, the analysis scope and files searched, the adapters used and
+  their detection confidence, and any framework version consulted. It sits
+  at the very end of the report — after the working-set section, right
+  before the footer — on purpose: it is what lets two runs against the same
+  repository be compared and a difference between them attributed, and that
+  only matters once a reader has already seen the findings it backs up.
 
   doc-title wraps the whole title element rather than nesting its
   comments inside the element's text, unlike every other region. A title
@@ -1502,6 +1510,54 @@
         </p>
       </div>
     </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Measurement</div>
+    <h2>How this was measured</h2>
+    <p class="lede">
+      Two runs against the same repository should be able to agree, or at least explain why they don't. This is what makes that possible: the exact sources this run counted as tokens, the scope and file count it searched for leaks, the adapters it detected and how sure it was, and any framework version it had to check before grading coverage. Recorded here, a difference between two runs points at a fact instead of an argument.
+    </p>
+
+    <!-- SLOT:measurement -->
+    <div class="grid2">
+      <div class="panel">
+        <h3>Token sources</h3>
+        <p class="sub">840 tokens</p>
+        <dl class="meta">
+          <dt>source</dt><dd>tokens/color.primitive.json</dd>
+          <dt>source</dt><dd>tokens/color.semantic.json</dd>
+          <dt>source</dt><dd>tokens/color.component.json</dd>
+          <dt>+ 5 more</dt><dd>see <code>stack.token_sources</code> in the JSON</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Analysis scope</h3>
+        <p class="sub">what leakage searched</p>
+        <dl class="meta">
+          <dt>scope</dt><dd>src/**/*.{ts,tsx}</dd>
+          <dt>excluded</dt><dd>tokens/**, **/*.test.tsx, dist/**</dd>
+          <dt>files searched</dt><dd>412</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Adapters</h3>
+        <p class="sub">detection confidence</p>
+        <dl class="meta">
+          <dt>adapters</dt><dd>dtcg (web surface only)</dd>
+          <dt>detected by</dt><dd>tokens/color.primitive.json: <code>$value</code> keys</dd>
+          <dt>confidence</dt><dd>certain</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Framework versions consulted</h3>
+        <p class="sub">checked before grading coverage</p>
+        <dl class="meta">
+          <dt>none</dt><dd>all 11 categories resolved from this project's own declared tokens</dd>
+        </dl>
+      </div>
+    </div>
+    <!-- /SLOT:measurement -->
   </section>
 
   <footer>
