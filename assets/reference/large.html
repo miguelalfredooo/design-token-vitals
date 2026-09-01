@@ -281,21 +281,6 @@
   .ihelp:hover .tip,
   .ihelp:focus-within .tip { opacity: 1; visibility: visible; }
 
-  /* ---------- rating tooltip on the vital cards ---------- */
-
-  .vital { overflow: visible; }
-  .vital::before { border-radius: 4px 0 0 4px; }
-  .vital:hover, .vital:focus-within { z-index: 10; }
-
-  .grade-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 9px;
-  }
-  .grade-row .grade { margin-bottom: 0; }
-  .grade-row .ihelp { margin-left: 0; }
-
   .ihelp--end .tip { left: auto; right: -6px; }
   .ihelp--end .tip::before { left: auto; right: 10px; }
 
@@ -456,49 +441,49 @@
 
     <div class="vitals">
       <article class="vital" data-grade="pass">
-        <div class="grade-row"><span class="grade" data-g="pass">Pass</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Graded pass: all 148 component tokens resolve through a semantic alias, so nothing skips a tier. The scale is pass at zero skips, attention under 5%, fail above.</span></span></div>
+        <span class="grade" data-g="pass">Pass</span>
         <h3>Tier integrity</h3>
         <p>All three tiers are intact. Every one of your 148 component tokens resolves through a semantic alias, so nothing reaches straight for a raw palette value.</p>
       </article>
 
       <article class="vital" data-grade="fail">
-        <div class="grade-row"><span class="grade" data-g="fail">Fail</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Graded on the redundant tier — 412 values a token already covers. The scale is pass at zero, attention under 10, fail above.</span></span></div>
+        <span class="grade" data-g="fail">Fail</span>
         <h3>Leakage</h3>
         <p>1,645 hardcoded values where a token already existed. The encouraging part is how concentrated it is: the top 12 account for 61&nbsp;% of every occurrence.</p>
       </article>
 
       <article class="vital" data-grade="pass">
-        <div class="grade-row"><span class="grade" data-g="pass">Pass</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Graded pass at 11 of 11 categories. The scale is pass at 11, attention at 8 to 10, fail below 8.</span></span></div>
+        <span class="grade" data-g="pass">Pass</span>
         <h3>Coverage</h3>
         <p>All 11 categories have tokens, including motion, elevation and z-index. The four categories teams most often skip are all covered here.</p>
       </article>
 
       <article class="vital" data-grade="fail">
-        <div class="grade-row"><span class="grade" data-g="fail">Fail</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">You declare three modes and high contrast is 89% empty. Any gap in a mode you declare is a failure; a mode you never declared would be marked not applicable instead.</span></span></div>
+        <span class="grade" data-g="fail">Fail</span>
         <h3>Mode completeness</h3>
         <p>You declare a high-contrast mode but only 11&nbsp;% of it is filled in. 744 tokens fall back to their light value in a mode that promises something different.</p>
       </article>
 
       <article class="vital" data-grade="warn">
-        <div class="grade-row"><span class="grade" data-g="warn">Attention</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Graded attention at two grammars, one of them a named legacy family. The scale is pass at one, attention at two, fail at three or more.</span></span></div>
+        <span class="grade" data-g="warn">Attention</span>
         <h3>Naming coherence</h3>
         <p>One naming pattern holds across 638 tokens. The 202 tokens in <code>legacy.*</code> came before it and were never migrated.</p>
       </article>
 
       <article class="vital" data-grade="fail">
-        <div class="grade-row"><span class="grade" data-g="fail">Fail</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">9 tokens are declared in two places and two of those copies disagree. Duplication alone would be attention; a disagreement is a fail, because the value a component gets now depends on load order.</span></span></div>
+        <span class="grade" data-g="fail">Fail</span>
         <h3>Single source of truth</h3>
         <p>Style Dictionary is your source of truth, but 9 tokens are declared again in <code>tailwind.config.ts</code> — and two of those nine now disagree with it.</p>
       </article>
 
       <article class="vital" data-grade="fail">
-        <div class="grade-row"><span class="grade" data-g="fail">Fail</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Graded fail at 274 of 840 tokens unused, about 33%. The scale is pass under 2%, attention under 10%, fail above.</span></span></div>
+        <span class="grade" data-g="fail">Fail</span>
         <h3>Orphans</h3>
         <p>274 tokens are not referenced anywhere on the web surface: 202 legacy and 72 current. That is a third of the system doing nothing.</p>
       </article>
 
       <article class="vital" data-grade="pass">
-        <div class="grade-row"><span class="grade" data-g="pass">Pass</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Graded pass with three rules running in CI. The scale is pass at two or more rules, attention at one, blocked at none.</span></span></div>
+        <span class="grade" data-g="pass">Pass</span>
         <h3>Enforcement</h3>
         <p>Three rules run in CI: no raw hex, no off-scale spacing, and a check that every new token is defined in all the modes you declare.</p>
       </article>

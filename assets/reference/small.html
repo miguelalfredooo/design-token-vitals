@@ -510,21 +510,6 @@
   .ihelp:hover .tip,
   .ihelp:focus-within .tip { opacity: 1; visibility: visible; }
 
-  /* ---------- rating tooltip on the vital cards ---------- */
-
-  .vital { overflow: visible; }
-  .vital::before { border-radius: 4px 0 0 4px; }
-  .vital:hover, .vital:focus-within { z-index: 10; }
-
-  .grade-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 9px;
-  }
-  .grade-row .grade { margin-bottom: 0; }
-  .grade-row .ihelp { margin-left: 0; }
-
   .ihelp--end .tip { left: auto; right: -6px; }
   .ihelp--end .tip::before { left: auto; right: 10px; }
 
@@ -638,49 +623,49 @@
     <div class="vitals">
 
       <article class="vital" data-grade="warn">
-        <div class="grade-row"><span class="grade" data-g="warn">Attention</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Graded attention: 23 component styles skip the semantic layer, which is under 5% of them. The scale is pass at zero, attention under 5%, fail above.</span></span></div>
+        <span class="grade" data-g="warn">Attention</span>
         <h3>Tier integrity</h3>
         <p>You have a real semantic layer, but 23 component styles skip it and grab a raw palette value instead — <code>bg-neutral-800</code> where <code>--surface-raised</code> already exists.</p>
       </article>
 
       <article class="vital" data-grade="fail">
-        <div class="grade-row"><span class="grade" data-g="fail">Fail</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Graded on the redundant tier alone — 18 values a token already covers. The scale is pass at zero, attention under 10, fail above.</span></span></div>
+        <span class="grade" data-g="fail">Fail</span>
         <h3>Leakage</h3>
         <p>61 hardcoded values where a token already existed. 18 are exact matches you can swap today, 9 have drifted slightly, and 34 have no token yet. Color and motion are worst affected.</p>
       </article>
 
       <article class="vital" data-grade="warn">
-        <div class="grade-row"><span class="grade" data-g="warn">Attention</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Graded attention at 7 of 11 categories. The scale is pass at 11, attention at 8 to 10, fail below 8.</span></span></div>
+        <span class="grade" data-g="warn">Attention</span>
         <h3>Coverage</h3>
         <p>7 of 11 categories have tokens. Motion, elevation, z-index and opacity have none, so every value in those areas has to be hardcoded. That is a gap in the system, not a bad habit.</p>
       </article>
 
       <article class="vital" data-grade="fail">
-        <div class="grade-row"><span class="grade" data-g="fail">Fail</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Any gap in a mode you declare is a failure. You declare light and dark, and dark is missing 4 values. A mode you never declared would be marked not applicable.</span></span></div>
+        <span class="grade" data-g="fail">Fail</span>
         <h3>Mode completeness</h3>
         <p>4 tokens have a light value but no dark one. Nothing errors — they quietly fall back to the light value, so people in dark mode see faint, hard-to-read text.</p>
       </article>
 
       <article class="vital" data-grade="warn">
-        <div class="grade-row"><span class="grade" data-g="warn">Attention</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Graded attention at two grammars. The scale is pass at one, attention at two, fail at three or more.</span></span></div>
+        <span class="grade" data-g="warn">Attention</span>
         <h3>Naming coherence</h3>
         <p>Two naming styles live under one prefix: <code>--btn-pad-x</code> next to <code>--button-padding-inline</code>. Knowing one does not help anyone guess the other.</p>
       </article>
 
       <article class="vital" data-grade="pass">
-        <div class="grade-row"><span class="grade" data-g="pass">Pass</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Graded pass: all 214 tokens come from one file. The scale is pass at one definition site, attention if a token is duplicated but the copies agree, fail if any disagree.</span></span></div>
+        <span class="grade" data-g="pass">Pass</span>
         <h3>Single source of truth</h3>
         <p>All 214 tokens come from <code>styles/tokens.css</code>, and the Tailwind theme reads that file rather than declaring its own copies. Nothing can drift out of sync.</p>
       </article>
 
       <article class="vital" data-grade="fail">
-        <div class="grade-row"><span class="grade" data-g="fail">Fail</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Graded fail at 31 of 214 tokens unused, about 14%. The scale is pass under 2%, attention under 10%, fail above.</span></span></div>
+        <span class="grade" data-g="fail">Fail</span>
         <h3>Orphans</h3>
         <p>31 tokens are defined but nothing uses them, including a whole legacy chart palette. They are safe to delete, and removing them makes the system easier to learn.</p>
       </article>
 
       <article class="vital" data-grade="blocked">
-        <div class="grade-row"><span class="grade" data-g="blocked">Blocked</span><span class="ihelp"><button type="button" class="info" aria-label="How this rating was decided"></button><span class="tip" role="tooltip">Blocked means this check could not run, which is different from passing it. Nothing was found that reads tokens. The scale is pass at two or more rules, attention at one, blocked at none.</span></span></div>
+        <span class="grade" data-g="blocked">Blocked</span>
         <h3>Enforcement</h3>
         <p>Nothing in your lint setup or CI looks at tokens, so everything above can come back tomorrow without anyone noticing. One rule would change that.</p>
       </article>
