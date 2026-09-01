@@ -6,6 +6,11 @@ never a guess and never an average.
 
 ## What you get on the first run
 
+Before it counts anything, the skill works out what your project owns —
+which framework runs theming, and which paths in the repository this
+project actually authored versus installed — so a hardcoded value in a
+dependency or an upstream plugin is never reported as yours.
+
 Point it at a repository and it reads what your project actually declares —
 its token sources, its modes, its categories — then grades eight vitals
 against that declaration and shows its work: every finding carries at least
@@ -25,17 +30,18 @@ See a real one: [`examples/shadcn-ui/report.html`](examples/shadcn-ui/report.htm
 The skill is a directory, not a package. Copy `SKILL.md`, `references/`,
 and `assets/` into `.claude/skills/design-token-vitals/` (Claude Code) or
 the equivalent skills directory for the agent you use. There is nothing to
-build and nothing to install — the agent reads `SKILL.md` and runs the six
+build and nothing to install — the agent reads `SKILL.md` and runs the seven
 stages directly against your repository.
 
 ## How it works
 
-1. **Detect the stack** — match the repository against the CSS-vars, Tailwind, SCSS, and DTCG adapters; more than one can apply at once.
-2. **Read what the project declares** — modes, categories, and any accessibility target, taken from the repository, never assumed.
-3. **Grade the eight vitals** — each one graded against the stack and declarations from the first two stages, with at least one real `file:line` attached to every grade.
-4. **Choose the rendering tier** — the token count decides how much evidence renders inline versus rolls up into a count.
-5. **Fill the template** — the self-contained report is built by filling named slots in a fixed template, never by writing free-form HTML.
-6. **Write the outputs** — the HTML report, the JSON working set, and a terminal summary naming one next step.
+1. **Discover the codebase** — work out what owns theming, what the project actually authored, and the scope those two answers leave you with.
+2. **Detect the stack** — match the repository against the CSS-vars, Tailwind, SCSS, and DTCG adapters; more than one can apply at once.
+3. **Read what the project declares** — modes, categories, and any accessibility target, taken from the repository, never assumed.
+4. **Grade the eight vitals** — each one graded against the stack and declarations from the prior stages, with at least one real `file:line` attached to every grade.
+5. **Choose the rendering tier** — the token count decides how much evidence renders inline versus rolls up into a count.
+6. **Fill the template** — the self-contained report is built by filling named slots in a fixed template, never by writing free-form HTML.
+7. **Write the outputs** — the HTML report, the JSON working set, and a terminal summary naming one next step.
 
 ## The eight vitals
 
