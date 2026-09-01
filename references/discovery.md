@@ -67,11 +67,10 @@ exclude:
     single vendoring commit, or none at all.
 - **Any path the project marks exempt.**
 
-State the rule this serves plainly: a leak is only a finding if the reader
-can fix it. A hardcoded color in someone else's plugin is a fact about
-that plugin, not about your design system — reporting it as a finding
-about your system inflates a real, unrelated project's problem into a
-number that reads as yours.
+A leak is only a finding if you can fix it. A hardcoded color in someone
+else's plugin is a fact about that plugin rather than about your design
+system — reporting it as a finding about your system inflates a real,
+unrelated project's problem into a number that reads as yours.
 
 ## Job three — the derived scope
 
