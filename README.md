@@ -56,6 +56,7 @@ stages directly against your repository.
 - **Web only in v1.** iOS, Android, and Flutter adapters are not written yet.
 - **It grades against what your project declares.** It reads your modes and categories from your repository and grades against those — it never imposes a standard you did not choose.
 - **It measures, ranks what to do first, and stops short of changing your code.** The report tells you where to start — a ranked list of concrete actions, each with an owner and a real `file:line` — but refactoring your tokens stays your decision to make and carry out.
+- **Two runs can disagree, because a language model runs this skill.** The same repository, the same commit, the same scope can produce different grades or a different token count on two separate runs. Every report records what it measured — the token sources it counted, the analysis scope and files searched, the adapters detected and their confidence, and any framework version consulted — so a difference between two runs can be attributed to what each one actually looked at, rather than argued about.
 
 ## The honest-gaps example
 
