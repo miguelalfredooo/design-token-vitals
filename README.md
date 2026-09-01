@@ -37,7 +37,16 @@ apart to be comparable, pin the version you ran.
 
 Open work, in the order it matters:
 
-- **Reproducibility, measured twice, and it moved.** Four blind runs
+- **Reproducibility, measured three times.** Six blind runs against
+  shadcn-ui/ui at `63c1308`, in three pairs. Each pair agreed on seven of
+  eight grades and split on one word neither the prose nor a test had
+  pinned down: whether a framework's derived scale offers swap targets,
+  what a leakage "finding" counts, whether a redeclared framework name is
+  a project token. Each of those is now pinned and asked by
+  `fixtures/repo`, and each pin held on the following pair. A fourth pair
+  is the next measurement. The grades that matter have been stable across
+  all six — only `leakage` has ever moved.
+- **The earlier picture, kept for the record.** Four blind runs
   against shadcn-ui/ui at `63c1308` on 2026-09-01. The morning pair, against
   a skill of about 9,500 words, agreed on all eight grades and counted 114
   tokens both times. The afternoon pair, after the discovery stage and the
@@ -102,14 +111,31 @@ self-contained HTML report, a JSON working set that duplicates exactly what
 the HTML shows in a machine-readable form for tooling, and a short terminal
 summary naming the one thing worth doing first.
 
-The report opens with an executive summary — the highest-impact problem,
+The report opens with an **at-a-glance strip**: the maturity stage as a
+six-tick ladder, the eight grades as one segmented bar, confirmed against
+blocked and unmeasured as another, leakage's three tiers as a third, the
+automatable share of the fix queue as a ring, and the counts as tiles.
+Every mark carries its number, and it is inline SVG and CSS — the report
+ships no script.
+
+Below it, an executive summary — the highest-impact problem,
 how many owned files and components it touches, what to fix first, and how
 many results are confirmed against blocked or unmeasured. Below that sits a
 **fix queue**: every finding with a canonical replacement, ranked by
 `(n + 2f + 3b) x c` over occurrences, affected files, breadth and confidence,
 with the inputs shown beside the score so you can re-rank on your own
-weights. Each entry says whether the swap is safe to automate, and only a
-value one of your tokens already holds ever is. Findings group by owning
+weights. Each entry says whether the swap is safe to automate — and only a
+value one of your tokens already holds ever is — and carries an effort
+class, `S`, `M` or `L`, derived from that and the file count rather than
+from an invented hour estimate. Impact and effort are the two halves of
+the decision, and the queue shows both.
+
+A **stage line** names where the system is on a six-step trajectory and
+the one threshold that moves it: `declared` → clear the redundant leaks →
+`adopted`. It is derived from the eight grades, so you can check it, and
+it is never a number. A **decisions region** lists every close call the
+run made, what each one moved, and the other reading — because a grade
+that rests on a judgment is a grade you should be able to overturn. Findings group by owning
 component, plugin and route as well as by value, so an engineer can start
 from what they maintain. Token lineage traces primitive to semantic alias to
 projection to consumers, which is what separates a deliberate alias from a
@@ -133,13 +159,19 @@ time is a rule that drifts.
 | `tools/import_graph.py` | Walks stylesheet and JS-entry imports from owned production entry points. Reports what is reachable, what is orphaned, and what resolves outside the repository. Reachability is what makes a candidate source an active one |
 | `tools/validate_run.py` | Fails an audit that uses one presumed token file with no discovery evidence, inventories an unreachable source, claims mode coverage without resolved output, reports zero for an unmeasured category, omits a foundational family, or truncates in the HTML while the JSON holds more |
 | `tools/compare_runs.py` | Diffs two runs on scope, counts, the eight grades, per-vital evidence, and rendering forms. Exits non-zero when the grades disagree |
-| `tools/check_voice.py` | The copy standard for generated reports |
+| `tools/check_voice.py` | The copy standard for generated reports. Skips fenced blocks and inline code, so a document can name a banned word as data |
+| `tools/palette.py` | Checks every status color against its own tint, in all three theme blocks. WCAG AA, and the report grades others on this |
+| `tools/taxonomy.py` | The nineteen foundational families, defined once. `--check` compares the code against the reference Markdown |
+| `tools/version.py` | The skill's own version, stamped into every report as `provenance.skill_version` |
+| `tools/cli.py` | What every tool agrees on: `--json PATH`, and exit 0 nothing found / 1 something found / 2 refused |
 
 ```bash
 python3 tools/import_graph.py <repo> --entry app/globals.css --json graph.json
 python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html
 python3 tools/compare_runs.py run-a/report.json run-b/report.json
 python3 tools/trend.py baseline/report.json .token-vitals/report.json
+python3 tools/palette.py
+python3 tools/taxonomy.py --check
 ```
 
 Baselines are passed explicitly, so the skill never writes state into the
