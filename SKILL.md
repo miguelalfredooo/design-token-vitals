@@ -23,32 +23,63 @@ You are grading a codebase's design token layer against eight fixed vitals
 and reporting what you found — with evidence, never an average. Work through
 the seven stages below in order.
 
-## Stage 1 — Discover the codebase
+## Stage 1 — Framework and token-source discovery
 
-Before you count a single token, do the three jobs in
-`references/discovery.md`: work out what owns theming, work out what the
-project actually authored, and derive the scope those two answers leave
-you with. Skip this stage and every stage after it measures the wrong
-thing — a coverage grade against the wrong build step, a leakage count
-padded with code nobody here can fix, a mode check graded against a
-mechanism the project doesn't even run.
+**Required, and it runs before any inventory or grading.** Do the six jobs
+in `references/discovery.md`, in order:
+
+1. **Detect the framework and styling system** from repository evidence —
+   manifests, build config, dependency locks, asset-registration APIs,
+   stylesheet entry points, template conventions, theme and plugin
+   structure, and source extensions.
+2. **Discover every candidate token source.** CSS custom properties and
+   `@property` registrations, preprocessor variables and maps, JS and TS
+   token objects, JSON token files, and every foundational family in
+   `references/token-taxonomy.md`. Never match one filename and stop.
+3. **Build the import graph** from owned production entry points, and prove
+   reachability. Run `tools/import_graph.py`. A candidate becomes an active
+   source only when an owned entry point reaches it; anything else is
+   unverified or orphaned source material. Templates and route
+   registrations are supplemental evidence, never proof of inclusion.
+4. **Classify every source** as `canonical`, `alias`, `consumer`,
+   `generated`, or `unverified`.
+5. **Deduplicate projections** — a SCSS variable and the custom property it
+   emits are one concept with two sites — then derive the scope, excluding
+   vendor, generated, test, framework-default and third-party code unless
+   the user asks for them. State the scope and its file count.
+6. **Discover modes and find out whether they resolve.** Record
+   `discovery.resolved_modes`. Where a declared scheme has no resolved
+   output, `mode-completeness` is `blocked`.
+
+The rule underneath all six: discover sources from evidence, and prove they
+ship before grading them. Skip this stage and everything after it measures
+the wrong thing — a coverage grade against the wrong build step, a leakage
+count padded with code nobody here can fix, an inventory of a file the
+browser never receives.
 
 Record `discovery.environment`, `discovery.detected_by`,
-`discovery.confidence`, `discovery.owned_paths`, and
-`discovery.excluded_paths` (each with its reason) in
-`assets/capability-map.yml`'s schema before moving on.
+`discovery.confidence`, `discovery.evidence`, `discovery.token_sources`
+(each with its classification and `reachable_from`),
+`discovery.import_graph`, `discovery.resolved_modes`,
+`discovery.owned_paths`, and `discovery.excluded_paths` (each with its
+reason) in `assets/capability-map.yml`'s schema before moving on.
 
 If the derived scope is ambiguous — more than one app in a monorepo
 plausibly qualifies — or the environment doesn't match anything in
 `references/discovery.md`'s table, say so to the reader before continuing.
-Proceeding on a guess here is exactly the failure mode this stage exists
-to prevent.
+Where nothing matches, use `references/adapters/generic.md` rather than
+guessing at a framework.
 
 ## Stage 2 — Detect the stack
 
 Match the repository against `references/adapters/css-vars.md`,
 `references/adapters/tailwind.md`, `references/adapters/scss.md`, and
-`references/adapters/dtcg.md`, using each file's own Detection section.
+`references/adapters/dtcg.md`, using each file's own Detection section. If
+none of them matches, use `references/adapters/generic.md` — an
+unrecognized framework degrades to evidence-based discovery rather than to
+a guess. An adapter tells you where to look for entry points, imports,
+token conventions and mode behavior; **no adapter names a token file**, and
+Stage 1's discovery decides which sources are real.
 More than one adapter can apply at once — Tailwind sits on top of custom
 properties in most repositories, and both should run. The environment you
 recorded in Stage 1 narrows which adapters are even plausible — a
@@ -93,6 +124,14 @@ is required before grading — not optional. If `run.framework_versions` was
 not recorded in Stage 2 and the version cannot be determined now, grade
 `coverage` as `blocked` with a note saying so; never `pass` on an unchecked
 assumption. See `references/vitals.md`'s `coverage` vital.
+
+Inventory every foundational family in `references/token-taxonomy.md`, and
+record each as `measured`, `unmeasured`, or `absent` under
+`inventory.families`, with a count where measured and a note saying what is
+missing where unmeasured. **A family the run could not resolve is never
+reported as `0`** — zero states that the project has none, which is a claim
+this run did not establish. A family found only in an unverified source is
+`unmeasured`, because reachability decides here the same as everywhere else.
 
 Five status values only: `pass`, `attention`, `fail`, `blocked`,
 `not_applicable`. Attach at least one real `file:line` to every grade that
@@ -144,8 +183,9 @@ data once you are done is a bug, not an acceptable gap: it means the
 report ships describing a codebase that was never scanned.
 
 Every region that lists findings — `inventory-color`, `inventory-type`,
-`inventory-space`, `families`, `leak-ranked`, `leak-redundant`,
-`leak-near-miss`, `leak-uncovered`, `modes-gaps`, and `orphans` — enumerates
+`inventory-space`, `family-coverage`, `families`, `leak-ranked`,
+`leak-redundant`, `leak-near-miss`, `leak-uncovered`, `modes-gaps`, and
+`orphans` — enumerates
 what the run found, in the form you chose for it in Stage 5. When a section
 outgrows its form, move to the denser form from the table in
 `references/report.md`; showing fewer findings is the wrong answer to more
@@ -175,6 +215,10 @@ JSON for something the page itself has room to show.
 - [ ] `inventory-color`
 - [ ] `inventory-type`
 - [ ] `inventory-space`
+- [ ] `family-coverage` — every foundational family in
+      `references/token-taxonomy.md`, each as `measured`, `unmeasured` or
+      `absent`. A family this run could not resolve renders as unmeasured
+      with what is missing, never as `0`.
 - [ ] `families`
 - [ ] `leak-ranked` — the cross-tier ranking that renders at `collapsed`
       and `family-only`. It is removed at `full`, where the three
@@ -193,6 +237,10 @@ JSON for something the page itself has room to show.
       tier and the form chosen for each listing section, all read back
       from `assets/capability-map.yml`. Recording the forms here is what
       lets two runs be compared on presentation as well as on findings.
+      It also carries Stage 1's evidence: the framework-detection signals
+      and what each proved, every token source with its classification and
+      what reaches it, the import-graph roots, reachable count, orphans and
+      unresolved specs, and which declared schemes resolved.
 - [ ] `footer-meta`
 
 For a generated sentence, use the slot templates in `references/voice.md`
@@ -203,6 +251,24 @@ row's `.pip[data-s]` the same way, from the one grade value that vital
 earned for that family. A card whose stripe and chip disagree, or a pip
 that disagrees with the card it summarizes, is exactly the drift this
 skill exists to catch.
+
+### Validation gate — required before writing the report
+
+Run the six rules as code, rather than checking yourself against them:
+
+```
+python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html
+```
+
+It fails an audit that uses one presumed token file with no discovery
+evidence; inventories a source with no path to an owned production import
+root; claims complete mode coverage without resolved output for every
+audited scheme; reports zero for an unmeasured category; omits typography
+or any foundational family from the taxonomy; or truncates findings in the
+HTML while the JSON holds more.
+
+A non-zero exit means the report claims more than the run established. Fix
+the run, never the assertion — and never write the report while it fails.
 
 ### Completeness check — required before writing the report
 
