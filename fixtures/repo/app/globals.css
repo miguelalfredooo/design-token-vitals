@@ -1,5 +1,6 @@
 @import "./theme.css";
 @import "./components.css";
+@import "ui/theme.css";
 
 :root {
   --blue-500: #2563eb;

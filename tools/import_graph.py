@@ -11,6 +11,7 @@ With no --entry, it detects entry points from framework conventions and
 reports what it found and what proved it. Output is JSON on stdout:
 
     {
+      "workspace_packages": {"<name>": "<dir>"},
       "roots":      [{"path", "detected_by"}],
       "reachable":  {"<path>": {"depth", "via": [...]}},
       "unresolved": [{"from", "spec", "reason"}],
@@ -23,6 +24,7 @@ declarations that no entry point reaches. It ships nothing, so grading it
 as an active source reports a system the browser never sees.
 """
 import argparse
+import glob
 import json
 import os
 import re
@@ -94,7 +96,57 @@ def read(path):
         return ""
 
 
-def candidate_paths(spec, from_path):
+def workspace_packages(root):
+    """name -> repository-relative dir, for every workspace package.
+
+    A monorepo imports its own packages by name — "shadcn/tailwind.css" —
+    and the file lives at packages/shadcn/src/tailwind.css. Without this
+    map that import reads as external and the file reads as an orphan,
+    which is how a real run found this gap on the day the tool shipped.
+    """
+    globs = []
+    ws = os.path.join(root, "pnpm-workspace.yaml")
+    if os.path.isfile(ws):
+        for line in read(ws).splitlines():
+            m = re.match(r"""\s*-\s*['"]?([^'"#]+?)['"]?\s*$""", line)
+            if m and not m.group(1).startswith("!"):
+                globs.append(m.group(1).strip())
+    pkg = os.path.join(root, "package.json")
+    if os.path.isfile(pkg):
+        try:
+            data = json.loads(read(pkg))
+            wsf = data.get("workspaces")
+            if isinstance(wsf, dict):
+                wsf = wsf.get("packages", [])
+            globs.extend(wsf or [])
+        except ValueError:
+            pass
+    out = {}
+    for pattern in globs:
+        for d in glob.glob(os.path.join(root, pattern)):
+            pj = os.path.join(d, "package.json")
+            if os.path.isdir(d) and os.path.isfile(pj):
+                try:
+                    name = json.loads(read(pj)).get("name")
+                except ValueError:
+                    continue
+                if name:
+                    out[name] = os.path.relpath(d, root).replace(os.sep, "/")
+    return out
+
+
+def split_package_spec(spec):
+    """("@org/pkg", "rest/of/path") or ("pkg", "rest"), or (None, spec)."""
+    if spec.startswith("@"):
+        parts = spec.split("/", 2)
+        if len(parts) >= 2:
+            return "/".join(parts[:2]), (parts[2] if len(parts) == 3 else "")
+        return None, spec
+    parts = spec.split("/", 1)
+    return parts[0], (parts[1] if len(parts) == 2 else "")
+
+
+def candidate_paths(spec, from_path, packages=None):
     """Every repository-relative path a stylesheet spec could mean.
 
     Every value in and out of here is relative to the repository root.
@@ -116,6 +168,16 @@ def candidate_paths(spec, from_path):
     if spec.startswith((".", "/")):
         bases.append(os.path.normpath(os.path.join(here, spec.lstrip("/"))))
     else:
+        # A workspace package by name resolves inside that package, and a
+        # package commonly keeps its stylesheets under src/. dist/ is not
+        # tried: it is build output, ignored by the walk on purpose, and the
+        # source that produced it is what gets graded.
+        name, rest = split_package_spec(spec)
+        if packages and name in packages:
+            base = packages[name]
+            for sub in ("", "src", "styles", "css"):
+                bases.append(os.path.normpath(os.path.join(base, sub, rest)) if rest
+                             else os.path.normpath(os.path.join(base, sub, "index")))
         bases.append(os.path.normpath(os.path.join(here, spec)))
         bases.append(os.path.normpath(spec))
         for prefix in ("app/assets/stylesheets", "assets/stylesheets", "src", "styles"):
@@ -170,6 +232,7 @@ def build(root, entries=None, ignores=None):
 
     all_files = {rel.replace(os.sep, "/") for _, rel in walk_files(root, ignores)}
     style_files = {f for f in all_files if os.path.splitext(f)[1] in STYLE_EXT}
+    packages = workspace_packages(root)
 
     if entries:
         roots = [{"path": e.replace(os.sep, "/"), "detected_by": "given on the command line"}
@@ -192,7 +255,7 @@ def build(root, entries=None, ignores=None):
         text = read(os.path.join(root, current))
         for spec in imports_in(current, text):
             hit = None
-            for cand in candidate_paths(spec, current):
+            for cand in candidate_paths(spec, current, packages):
                 if cand in all_files:
                     hit = cand
                     break
@@ -208,6 +271,7 @@ def build(root, entries=None, ignores=None):
 
     orphans = sorted(style_files - set(reachable))
     return {
+        "workspace_packages": packages,
         "roots": roots,
         "reachable": {k: reachable[k] for k in sorted(reachable)},
         "unresolved": unresolved,

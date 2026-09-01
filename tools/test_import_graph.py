@@ -133,5 +133,67 @@ class TestBuild(unittest.TestCase):
         self.assertIn("app/assets/stylesheets/_tokens.scss", g["reachable"])
 
 
+class TestWorkspaceLinks(unittest.TestCase):
+    """A monorepo imports its own packages by name, and the file lives under src/."""
+
+    def make_workspace(self):
+        return make_repo({
+            "pnpm-workspace.yaml": 'packages:\n  - "packages/*"\n',
+            "packages/shadcn/package.json": '{"name": "shadcn"}',
+            "packages/shadcn/src/tailwind.css": ":root{--a:1px}",
+            # a scoped package lives at packages/tokens; the scope is in its name
+            "packages/tokens/package.json": '{"name": "@org/tokens"}',
+            "packages/tokens/src/index.css": ":root{--b:1px}",
+            "apps/web/app/globals.css": '@import "shadcn/tailwind.css";\n@import "@org/tokens";',
+        })
+
+    def test_workspace_packages_are_discovered_from_pnpm_workspace(self):
+        root = self.make_workspace()
+        pk = import_graph.workspace_packages(root)
+        self.assertEqual(pk.get("shadcn"), "packages/shadcn")
+        self.assertEqual(pk.get("@org/tokens"), "packages/tokens")
+
+    def test_bare_package_spec_resolves_into_src(self):
+        root = self.make_workspace()
+        g = import_graph.build(root, ["apps/web/app/globals.css"])
+        self.assertIn("packages/shadcn/src/tailwind.css", g["reachable"])
+
+    def test_scoped_package_spec_resolves_into_src_index(self):
+        root = self.make_workspace()
+        g = import_graph.build(root, ["apps/web/app/globals.css"])
+        self.assertIn("packages/tokens/src/index.css", g["reachable"])
+
+    def test_workspace_file_is_no_longer_an_orphan(self):
+        root = self.make_workspace()
+        g = import_graph.build(root, ["apps/web/app/globals.css"])
+        self.assertNotIn("packages/shadcn/src/tailwind.css", g["orphans"])
+        self.assertEqual(g["unresolved"], [])
+
+    def test_package_json_workspaces_field_also_counts(self):
+        root = make_repo({
+            "package.json": '{"workspaces": ["libs/*"]}',
+            "libs/theme/package.json": '{"name": "theme"}',
+            "libs/theme/theme.css": ":root{--a:1px}",
+            "src/index.css": '@import "theme/theme.css";',
+        })
+        g = import_graph.build(root, ["src/index.css"])
+        self.assertIn("libs/theme/theme.css", g["reachable"])
+
+    def test_split_package_spec(self):
+        self.assertEqual(import_graph.split_package_spec("shadcn/tailwind.css"), ("shadcn", "tailwind.css"))
+        self.assertEqual(import_graph.split_package_spec("@org/pkg/a/b.css"), ("@org/pkg", "a/b.css"))
+        self.assertEqual(import_graph.split_package_spec("@org/pkg"), ("@org/pkg", ""))
+        self.assertEqual(import_graph.split_package_spec("plain"), ("plain", ""))
+
+    def test_a_package_that_is_not_in_the_workspace_stays_unresolved(self):
+        """node_modules packages must not be guessed at."""
+        root = make_repo({
+            "pnpm-workspace.yaml": 'packages:\n  - "packages/*"\n',
+            "src/index.css": '@import "tailwindcss";',
+        })
+        g = import_graph.build(root, ["src/index.css"])
+        self.assertEqual([u["spec"] for u in g["unresolved"]], ["tailwindcss"])
+
+
 if __name__ == "__main__":
     unittest.main()
