@@ -24,11 +24,15 @@
 
   measurement holds the "How this was measured" section: the token sources
   and count, the analysis scope and files searched, the adapters used and
-  their detection confidence, and any framework version consulted. It sits
-  at the very end of the report — after the working-set section, right
-  before the footer — on purpose: it is what lets two runs against the same
-  repository be compared and a difference between them attributed, and that
-  only matters once a reader has already seen the findings it backs up.
+  their detection confidence, any framework version consulted, and —
+  starting with Stage 1 discovery — the environment the run identified,
+  what proved it, and the paths this run treated as owned versus excluded
+  and why. It sits at the very end of the report — after the working-set
+  section, right before the footer — on purpose: it is what lets two runs
+  against the same repository be compared and a difference between them
+  attributed, and that only matters once a reader has already seen the
+  findings it backs up. A reader who disagrees with what the run scoped in
+  or out finds that decision here, stated plainly enough to argue with.
 
   doc-title wraps the whole title element rather than nesting its
   comments inside the element's text, unlike every other region. A title
@@ -1554,6 +1558,30 @@
         <p class="sub">checked before grading coverage</p>
         <dl class="meta">
           <dt>none</dt><dd>all 11 categories resolved from this project's own declared tokens</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Environment</h3>
+        <p class="sub">what owns theming</p>
+        <dl class="meta">
+          <dt>environment</dt><dd>nextjs</dd>
+          <dt>detected by</dt><dd><code>next.config.mjs</code></dd>
+          <dt>confidence</dt><dd>certain</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Owned paths</h3>
+        <p class="sub">what this run graded as this project's own</p>
+        <dl class="meta">
+          <dt>owned</dt><dd>src/**</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Excluded paths</h3>
+        <p class="sub">not graded, and why</p>
+        <dl class="meta">
+          <dt>excluded</dt><dd>node_modules/ — dependency, not authored by this repository</dd>
+          <dt>excluded</dt><dd>dist/ — generated build output</dd>
         </dl>
       </div>
     </div>

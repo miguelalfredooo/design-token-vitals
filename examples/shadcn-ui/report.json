@@ -1,6 +1,17 @@
 {
   "schema_version": 1,
 
+  "discovery": {
+    "environment": "monorepo",
+    "detected_by": "not recorded (this run predates the discovery stage)",
+    "confidence": "not recorded (this run predates the discovery stage)",
+    "owned_paths": ["apps/v4"],
+    "excluded_paths": [
+      { "path": "packages/shadcn/test/fixtures/**", "reason": "CLI test fixtures, not consuming application code" },
+      { "path": "templates/**", "reason": "starter scaffolds used only to test the CLI's project scaffolding, not consuming application code" }
+    ]
+  },
+
   "run": {
     "generated_at": "2026-09-01T06:17:38Z",
     "repo_ref": "63c1308",
