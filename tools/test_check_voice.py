@@ -64,5 +64,21 @@ class TestClean(unittest.TestCase):
         self.assertEqual(findings, [])
 
 
+class TestFencedCodeBlocks(unittest.TestCase):
+    def test_banned_word_inside_fence_not_flagged(self):
+        findings = check_text("```\nSimply swap the token.\n```")
+        self.assertEqual(findings, [])
+
+    def test_british_spelling_inside_fence_not_flagged(self):
+        findings = check_text("```\nThe colour token is missing.\n```")
+        self.assertEqual(findings, [])
+
+    def test_prose_after_closed_fence_is_still_flagged(self):
+        findings = check_text("```\nSimply swap the token.\n```\nThe colour is wrong.")
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].rule, "us-english")
+        self.assertEqual(findings[0].line, 4)
+
+
 if __name__ == "__main__":
     unittest.main()

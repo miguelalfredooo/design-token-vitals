@@ -40,7 +40,13 @@ NEG_PARALLEL = re.compile(r"\b(?:is|are|was|were)\s+not\s+(?:a|an|the)\b", re.I)
 
 def check_text(text):
     findings = []
+    in_fence = False
     for i, raw in enumerate(text.split("\n"), start=1):
+        if raw.strip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
         for old, new in SPELLING:
             if old in raw:
                 findings.append(Finding(

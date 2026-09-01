@@ -23,9 +23,18 @@ and generated prose — in one voice.
 
 ## Banned
 
-`s⁠imply`, `u⁠tilize`, `u⁠tilise`, `l⁠everage`, `in o⁠rder to`, `s⁠eamlessly`, `e⁠ffortlessly`, `r⁠obust`.
+```
+simply
+utilize
+utilise
+leverage
+in order to
+seamlessly
+effortlessly
+robust
+```
 
-"S⁠imply" and "e⁠ffortlessly" tell the reader their difficulty is imaginary.
+The first and seventh entries above tell the reader their difficulty is imaginary.
 
 ## Slot templates
 
