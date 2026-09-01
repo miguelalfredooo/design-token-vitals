@@ -1,0 +1,40 @@
+schema_version: 1
+
+# What this run looked at. Every value is observed, never assumed.
+run:
+  generated_at: null        # ISO 8601
+  repo_ref: null            # git SHA, or null if not a git repo
+  token_count: null
+  family_count: null
+
+stack:
+  adapter: null             # css-vars | tailwind | scss | dtcg | unknown
+  token_sources: []         # paths that define tokens
+  detected_by: null         # what proved it — a filename, a config key
+  confidence: null          # certain | inferred | interviewed
+
+# What the project promises. Read from the repo, never guessed.
+# A mode the project does not declare is not_applicable, never a gap.
+declared:
+  modes: []                 # e.g. [light, dark]
+  categories: []            # the token categories this system claims
+  accessibility_target: null
+
+vitals:
+  tier-integrity: { grade: null, evidence: [], note: null }
+  leakage: { grade: null, evidence: [], note: null, tiers: { "redundant": 0, "near-miss": 0, "uncovered": 0 } }
+  coverage: { grade: null, evidence: [], note: null }
+  mode-completeness: { grade: null, evidence: [], note: null }
+  naming-coherence: { grade: null, evidence: [], note: null }
+  single-source: { grade: null, evidence: [], note: null }
+  orphans: { grade: null, evidence: [], note: null }
+  enforcement: { grade: null, evidence: [], note: null }
+
+# grade: pass | attention | fail | blocked | not_applicable
+# evidence: a list of "path:line" strings. A grade with an empty
+#           evidence list must be blocked, never fail.
+# note:     why, when the grade is blocked or not_applicable.
+
+rendering:
+  tier: null                # full | collapsed | family-only
+  truncated: []             # every section that showed fewer rows than it holds
