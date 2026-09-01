@@ -10,9 +10,12 @@ Point it at a repository and it reads what your project actually declares —
 its token sources, its modes, its categories — then grades eight vitals
 against that declaration and shows its work: every finding carries at least
 one real `file:line` you can open and check yourself — a clean pass or a
-blocked check carries a note instead. The output is a single
-self-contained HTML report, a JSON working set for tooling, and a short
-terminal summary naming the one thing worth doing first.
+blocked check carries a note instead. The report also ranks those findings
+into a "Where to start" plan — a short, ordered list of concrete actions,
+each with an owner and a real `file:line` — so you leave with a next move,
+not just a diagnosis. The output is a single self-contained HTML report, a
+JSON working set for tooling, and a short terminal summary naming the one
+thing worth doing first.
 
 See a real one: [`examples/shadcn-ui/report.html`](examples/shadcn-ui/report.html)
 (GitHub renders this as raw HTML rather than a page, so download it and open it locally).
@@ -52,7 +55,7 @@ stages directly against your repository.
 - **No composite score, ever.** Averaging hides the finding that matters — a system with thousands of leaked values and perfect naming would land in the middle of a blended score, burying the one thing that needed fixing first.
 - **Web only in v1.** iOS, Android, and Flutter adapters are not written yet.
 - **It grades against what your project declares.** It reads your modes and categories from your repository and grades against those — it never imposes a standard you did not choose.
-- **It measures, and stops there.** It reports what it found. Refactoring your tokens is a separate step you take with the evidence in hand.
+- **It measures, ranks what to do first, and stops short of changing your code.** The report tells you where to start — a ranked list of concrete actions, each with an owner and a real `file:line` — but refactoring your tokens stays your decision to make and carry out.
 
 ## The honest-gaps example
 
