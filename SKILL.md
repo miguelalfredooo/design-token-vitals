@@ -7,6 +7,18 @@ allowed-tools: Read, Grep, Glob, Bash, Write
 
 # Design Token Vitals
 
+> **Status: a working skill, still evolving.** This skill is in active
+> development and it is not finalized. The eight vitals, the five status
+> values, the refusal to produce a composite score, and the rule that every
+> finding carries a real `file:line` are stable. The rendering forms, the
+> discovery stage, the leakage cascade's borderline cases, and the
+> reproducibility work are still moving, so a later version can change what
+> a report looks like and how a genuinely close call gets graded. Two runs
+> on the same input have disagreed before now, which is why every report
+> records what it measured. Full status and open work: `README.md`.
+>
+> This note is context, and it changes none of the stages below.
+
 You are grading a codebase's design token layer against eight fixed vitals
 and reporting what you found — with evidence, never an average. Work through
 the seven stages below in order.
