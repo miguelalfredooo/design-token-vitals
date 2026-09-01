@@ -4,11 +4,42 @@ schema_version: 1
 # the repository in Stage 1, before anything below this block is graded —
 # see references/discovery.md.
 discovery:
-  environment: null        # discourse | nextjs | tailwind | rails-sprockets | monorepo | unknown
+  environment: null        # discourse | nextjs | tailwind | rails-sprockets | vite | monorepo | unknown
   detected_by: null        # the file or signal that proved it
   confidence: null         # certain | inferred | interviewed
+  evidence: []             # each entry: {kind, path, matched} — kind is manifest |
+                           # build-config | lockfile | asset-registration | entry-point |
+                           # template | theme-structure | extension
   owned_paths: []          # what the project authored
   excluded_paths: []       # each entry: {path, reason}
+
+  # Every candidate found in job two, after job three proved reachability
+  # and job four classified it. The token count counts concepts, so a
+  # projection pair (a SCSS variable and the custom property it emits) is
+  # one entry with both sites recorded in `sites`.
+  # Each entry:
+  #   {path, classification, reachable_from: [...], sites: [...],
+  #    alias_of: <path|null>, matched: <what identified it>}
+  # classification: canonical | alias | consumer | generated | unverified
+  # A canonical or alias source with an empty reachable_from fails
+  # validate_run.py rule 2 — it was inventoried without proof that it ships.
+  token_sources: []
+
+  # The output of tools/import_graph.py, carried into the report as
+  # evidence. Roots are the owned production entry points; orphans are
+  # stylesheets no root reaches.
+  import_graph:
+    roots: []              # each entry: {path, detected_by}
+    reachable: {}          # path -> {depth, via: [...]}
+    unresolved: []         # each entry: {from, spec, reason}
+    orphans: []            # stylesheets no owned entry point reaches
+
+  # The schemes that have resolved or compiled output this run could read.
+  # mode-completeness may only be graded pass/attention/fail when every
+  # entry in `declared.modes` appears here — otherwise it is blocked, and
+  # `blocked_reason` names the artifact that would unblock it.
+  resolved_modes: []
+  modes_blocked_reason: null
 
 # What this run looked at. Every value is observed, never assumed.
 run:
@@ -32,6 +63,18 @@ declared:
   modes: []                 # e.g. [light, dark]
   categories: []            # the token categories this system claims
   accessibility_target: null
+
+# Every foundational family in references/token-taxonomy.md, whether or not
+# this project declares it. Three states, and they are different claims:
+#   measured   — found and counted
+#   unmeasured — could not be resolved; `note` says what is missing
+#   absent     — the project declares no tokens for this family
+# An unmeasured family reported as count 0 fails validate_run.py rule 4:
+# zero states the project has none, which an unmeasured run never
+# established. A missing family fails rule 5.
+inventory:
+  families: {}             # name -> {state, count, tiers: {primitive, semantic},
+                           #          sources: [...], note}
 
 vitals:
   tier-integrity: { grade: null, evidence: [], note: null }
@@ -66,6 +109,7 @@ rendering:
     families: null          # rows | health-strip | by-namespace
 
   # Every section that held part of its findings behind a <details>, with
-  # what that remainder holds — never only how many.
+  # what that remainder holds — never only how many. A truncation rendered
+  # in the HTML and missing here fails validate_run.py rule 6.
   # Each entry: {section, shown, withheld, summary}
   truncated: []

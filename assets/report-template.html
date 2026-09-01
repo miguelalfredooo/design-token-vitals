@@ -682,6 +682,29 @@
   .dot[data-s="gap"]  { color: var(--fail); background: var(--fail-bg); font-weight: 600; }
   .dot[data-s="none"] { color: var(--na); }
 
+  /* ---------- measurement state ---------- */
+
+  /* Measured, unmeasured and absent are three different claims. An
+     unmeasured family rendered as "0" says the project has none, which is
+     the opposite of what the run established. */
+  .state {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 1px 7px; border-radius: 3px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.02em;
+  }
+  .state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .state[data-m="measured"]   { background: var(--pass-bg); color: var(--pass); }
+  .state[data-m="measured"]::before { background: var(--pass); }
+  .state[data-m="unmeasured"] { background: var(--surface-sunk); color: var(--ink-mute); }
+  .state[data-m="unmeasured"]::before {
+    background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px);
+  }
+  .state[data-m="absent"]     { background: transparent; color: var(--na); border: 1px dashed var(--line-strong); }
+  .state[data-m="absent"]::before { background: transparent; border: 1px solid var(--na); }
+
+  .fam-cov td:first-child { font-family: var(--mono); font-size: 12.5px; }
+  .fam-cov .why { color: var(--ink-mute); font-size: 12px; }
+
   /* ---------- orphans / enforcement chips ---------- */
 
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
@@ -1302,6 +1325,43 @@
       </div>
       <!-- /SLOT:inventory-space -->
     </div>
+
+    <!-- SLOT:family-coverage -->
+    <div style="margin-top:26px">
+      <h3 style="margin:0 0 6px;font-size:15px;font-weight:600;letter-spacing:-0.008em">Foundational families</h3>
+      <p class="lede">
+        Every family in the taxonomy, whether or not this project declares it. Measured, unmeasured and absent are three different answers: measured means found and counted, absent means the project declares none, and unmeasured means this run could not resolve it. A family shown as unmeasured is one the report makes no claim about.
+      </p>
+      <div class="tbl-scroll">
+        <table class="fam-cov">
+          <thead>
+            <tr><th>Family</th><th>State</th><th class="num">Tokens</th><th>Detail</th></tr>
+          </thead>
+          <tbody>
+              <tr><td>color</td><td><span class="state" data-m="measured">measured</span></td><td class="num">41</td><td class="why">primitive 12 · semantic 29</td></tr>
+              <tr><td>typography</td><td><span class="state" data-m="measured">measured</span></td><td class="num">18</td><td class="why">primitive 18 · semantic 0</td></tr>
+              <tr><td>spacing</td><td><span class="state" data-m="measured">measured</span></td><td class="num">12</td><td class="why">primitive 12 · semantic 0</td></tr>
+              <tr><td>sizing</td><td><span class="state" data-m="measured">measured</span></td><td class="num">9</td><td class="why">primitive 9 · semantic 0</td></tr>
+              <tr><td>radius</td><td><span class="state" data-m="measured">measured</span></td><td class="num">5</td><td class="why">primitive 1 · semantic 4</td></tr>
+              <tr><td>border</td><td><span class="state" data-m="measured">measured</span></td><td class="num">3</td><td class="why">primitive 3 · semantic 0</td></tr>
+              <tr><td>elevation</td><td><span class="state" data-m="measured">measured</span></td><td class="num">6</td><td class="why">primitive 6 · semantic 0</td></tr>
+              <tr><td>opacity</td><td><span class="state" data-m="absent">absent</span></td><td class="num">&mdash;</td><td class="why">This project declares no opacity tokens.</td></tr>
+              <tr><td>layer</td><td><span class="state" data-m="absent">absent</span></td><td class="num">&mdash;</td><td class="why">This project declares no z-index tokens.</td></tr>
+              <tr><td>motion</td><td><span class="state" data-m="measured">measured</span></td><td class="num">8</td><td class="why">primitive 8 · semantic 0</td></tr>
+              <tr><td>breakpoint</td><td><span class="state" data-m="measured">measured</span></td><td class="num">5</td><td class="why">primitive 5 · semantic 0</td></tr>
+              <tr><td>grid</td><td><span class="state" data-m="unmeasured">unmeasured</span></td><td class="num">&mdash;</td><td class="why">Container widths and gutters resolve in a build step this run could not execute.</td></tr>
+              <tr><td>focus</td><td><span class="state" data-m="measured">measured</span></td><td class="num">3</td><td class="why">primitive 0 · semantic 3</td></tr>
+              <tr><td>target</td><td><span class="state" data-m="absent">absent</span></td><td class="num">&mdash;</td><td class="why">No minimum target size is declared.</td></tr>
+              <tr><td>state</td><td><span class="state" data-m="measured">measured</span></td><td class="num">4</td><td class="why">primitive 0 · semantic 4</td></tr>
+              <tr><td>icon</td><td><span class="state" data-m="measured">measured</span></td><td class="num">4</td><td class="why">primitive 4 · semantic 0</td></tr>
+              <tr><td>aspect</td><td><span class="state" data-m="absent">absent</span></td><td class="num">&mdash;</td><td class="why">No named aspect ratios are declared.</td></tr>
+              <tr><td>blur</td><td><span class="state" data-m="measured">measured</span></td><td class="num">2</td><td class="why">primitive 2 · semantic 0</td></tr>
+              <tr><td>density</td><td><span class="state" data-m="absent">absent</span></td><td class="num">&mdash;</td><td class="why">No density multiplier is declared.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <!-- /SLOT:family-coverage -->
   </section>
 
   <section>
@@ -2127,6 +2187,44 @@
         <dl class="meta">
           <dt>excluded</dt><dd>node_modules/ — dependency, not authored by this repository</dd>
           <dt>excluded</dt><dd>dist/ — generated build output</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Framework detection</h3>
+        <p class="sub">what proved the environment</p>
+        <dl class="meta">
+          <dt>manifest</dt><dd><code>package.json</code>: <code>next</code>, <code>tailwindcss</code></dd>
+          <dt>build config</dt><dd><code>next.config.mjs</code></dd>
+          <dt>lockfile</dt><dd><code>pnpm-lock.yaml</code>: tailwindcss 4.3.0 for this importer</dd>
+          <dt>entry point</dt><dd><code>app/globals.css</code> — app-router global stylesheet</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Token sources</h3>
+        <p class="sub">classified, and proven reachable</p>
+        <dl class="meta">
+          <dt>canonical</dt><dd><code>app/globals.css</code> — root entry point</dd>
+          <dt>alias</dt><dd><code>app/legacy-themes.css</code> — via <code>app/globals.css</code></dd>
+          <dt>unverified</dt><dd><code>app/experiments/tokens.css</code> — no owned entry point reaches it</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Import graph</h3>
+        <p class="sub">what ships, and what does not</p>
+        <dl class="meta">
+          <dt>roots</dt><dd>1 owned production entry point</dd>
+          <dt>reachable</dt><dd>2 stylesheets</dd>
+          <dt>orphans</dt><dd>1 stylesheet no root reaches</dd>
+          <dt>unresolved</dt><dd>3 specs resolving outside this repository</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Mode resolution</h3>
+        <p class="sub">whether every scheme resolved</p>
+        <dl class="meta">
+          <dt>declared</dt><dd>light, dark</dd>
+          <dt>resolved</dt><dd>light, dark</dd>
+          <dt>graded</dt><dd>every declared scheme has resolved output</dd>
         </dl>
       </div>
       <div class="panel">

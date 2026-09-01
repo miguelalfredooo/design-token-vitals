@@ -5,16 +5,25 @@ no build step standing between the token and the browser.
 
 ## Where tokens live
 
-Look for `--*` declarations inside `:root`, `[data-theme]`, and
-`@media (prefers-color-scheme:)` blocks. Most repositories keep these in one
-file — `globals.css`, `tokens.css`, or `theme.css` — rather than spread
-across components.
+Look for `--*` declarations in any selector — `:root`, `[data-theme]`,
+`@media (prefers-color-scheme:)`, a component class — plus `@property`
+registrations. Some repositories collect these in `globals.css`,
+`tokens.css` or `theme.css`; plenty spread them across several files, and a
+system whose color, type and spacing live in three places is normal.
 
 ## Detection
 
-A `.css` file counts as your token source once it holds 20 or more `--`
-declarations inside a single `:root` block. Fewer than that, and you are
-likely looking at a handful of one-off variables rather than a system.
+This adapter applies once the repository declares custom properties at all.
+**Which files are token sources is settled by discovery, never by a
+filename or a declaration count** — see jobs two through four of
+`references/discovery.md`. Collect every file holding `--*` declarations as
+a candidate, then keep the ones reachable from an owned production entry
+point.
+
+A declaration count is a weak signal worth recording and acting on: a file
+with 20 or more `--` declarations in one block is likely canonical, and a
+file with three is likely a component-local override. Record which, and let
+reachability and classification decide.
 
 ## What a leak looks like
 

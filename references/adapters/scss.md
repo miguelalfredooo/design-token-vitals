@@ -5,15 +5,26 @@ runtime CSS.
 
 ## Where tokens live
 
-Look for `$variable` declarations, `@use` / `@forward` module members, and
-`map.get()` lookups against a token map. Most repositories collect these in
-`_variables.scss`, `_tokens.scss`, or a dedicated `tokens/` directory.
+Look for `$variable` declarations, `@use` / `@forward` module members,
+`map.get()` lookups against a token map, and `@each` loops that generate
+names from a map. Common homes are `_variables.scss`, `_tokens.scss` or a
+`tokens/` directory, and a system spread across a dozen partials is just as
+common.
 
 ## Detection
 
-A `.scss` or `.less` file counts as your token source once it holds 20 or
-more variable declarations, or once its filename matches
-`_?(tokens|variables|theme)`.
+This adapter applies once the repository declares preprocessor variables at
+all. **Which files are token sources is settled by discovery, never by a
+filename or a declaration count** — see jobs two through four of
+`references/discovery.md`. Collect every file holding variable declarations
+as a candidate, follow the `@use` and `@forward` chain with
+`tools/import_graph.py`, and keep what is reachable from an owned bundle
+root.
+
+Watch for the projection case: a partial that emits `--custom-properties`
+from its `$variables` is one token concept with two source sites, and job
+five of `references/discovery.md` collapses it. Counting both sides doubles
+the system's apparent size.
 
 ## What a leak looks like
 

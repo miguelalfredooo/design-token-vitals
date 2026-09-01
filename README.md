@@ -28,14 +28,23 @@ apart to be comparable, pin the version you ran.
 
 Open work, in the order it matters:
 
-- **Reproducibility.** Two runs on the same input have disagreed, on grades
-  and on token count. A determinism pass addressed four root causes, and
-  every report now records what it measured — sources, scope, files
-  searched, adapters, framework versions, and the rendering form chosen per
-  section — so a divergence between two runs can be attributed rather than
-  argued about. Confirmation by two fresh runs is still outstanding.
+- **Reproducibility, measured.** Two blind runs against shadcn-ui/ui at
+  `63c1308` on 2026-09-01 agreed on all eight grades and on the token count
+  (114 both times). An earlier pair disagreed on three of eight grades and
+  reported 53 against 114. The grades reproduce.
+- **What still moves between runs.** Those same two runs disagreed on
+  `files_scanned` (3,686 against 3,400) and `family_count` (13 against 24),
+  and cited largely different evidence lines under matching grades. Scope
+  and reachability now come from `tools/import_graph.py` rather than from
+  prose reasoned out fresh each run, which is aimed squarely at this.
+- **One judgment call decides a grade, and the skill does not pin it down.**
+  Counting a framework's own scales as tokens available to authors moves
+  leakage from `attention` to `fail`. Both runs chose the same way, so they
+  agreed — by agreement rather than by rule.
 - **The rendering forms are new.** The display-density work landed
-  recently and has had little use in the field.
+  recently and has had little use in the field. The two runs picked
+  different forms for the same leakage data, which is a real gap in the
+  form-choice rule.
 
 Issues and pull requests are welcome, and so is a report that came out
 wrong — a case where the skill graded something you know to be untrue is
@@ -43,10 +52,24 @@ more useful than one where it agreed with you.
 
 ## What you get on the first run
 
-Before it counts anything, the skill works out what your project owns —
-which framework runs theming, and which paths in the repository this
-project actually authored versus installed — so a hardcoded value in a
-dependency or an upstream plugin is never reported as yours.
+Before it counts anything, the skill runs a discovery stage: it detects
+your framework and styling system from repository evidence — manifests,
+build config, dependency locks, asset registration, entry points, theme and
+plugin structure — then finds every candidate token source rather than
+matching one filename, builds the stylesheet import graph from the entry
+points you actually ship, and keeps only the sources something reaches. A
+token file nothing imports gets reported as orphaned source material rather
+than counted as your system. It works out which paths this project authored
+against which it installed, so a hardcoded value in a dependency or an
+upstream plugin is never reported as yours.
+
+It searches for every foundational token family — color, typography,
+spacing, sizing, radius, border, elevation, opacity, layer, motion,
+breakpoints, grid and columns, focus, target size, state, iconography,
+aspect ratio, blur and density — and tells you which it measured, which
+your project declares nothing for, and which it could not resolve. Those
+are three different answers, and a category it could not measure never
+renders as zero.
 
 Point it at a repository and it reads what your project actually declares —
 its token sources, its modes, its categories — then grades eight vitals
@@ -66,6 +89,25 @@ summary naming the one thing worth doing first.
 
 See a real one: [`examples/shadcn-ui/report.html`](examples/shadcn-ui/report.html)
 (GitHub renders this as raw HTML rather than a page, so download it and open it locally).
+
+## The tools
+
+Four scripts ship with the skill. The first two are the audit's own
+guardrails, and they run as code because a rule the run re-derives each
+time is a rule that drifts.
+
+| Tool | What it does |
+|---|---|
+| `tools/import_graph.py` | Walks stylesheet and JS-entry imports from owned production entry points. Reports what is reachable, what is orphaned, and what resolves outside the repository. Reachability is what makes a candidate source an active one |
+| `tools/validate_run.py` | Fails an audit that uses one presumed token file with no discovery evidence, inventories an unreachable source, claims mode coverage without resolved output, reports zero for an unmeasured category, omits a foundational family, or truncates in the HTML while the JSON holds more |
+| `tools/compare_runs.py` | Diffs two runs on scope, counts, the eight grades, per-vital evidence, and rendering forms. Exits non-zero when the grades disagree |
+| `tools/check_voice.py` | The copy standard for generated reports |
+
+```bash
+python3 tools/import_graph.py <repo> --entry app/globals.css --json graph.json
+python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html
+python3 tools/compare_runs.py run-a/report.json run-b/report.json
+```
 
 ## Install
 
