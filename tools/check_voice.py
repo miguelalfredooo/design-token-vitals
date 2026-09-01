@@ -39,6 +39,18 @@ BANNED = [
 
 NEG_PARALLEL = re.compile(r"\b(?:is|are|was|were)\s+not\s+(?:a|an|the)\b", re.I)
 
+# An inline code span holds code, the same as a fenced block does. A token
+# name, a config key, or an identifier a reader has to type verbatim is not
+# prose, and policing it forces the writer to either weaken the document or
+# smuggle the word past the lint. `references/token-taxonomy.md` has to list
+# "colour" as a name to search for, because codebases spell it that way.
+INLINE_CODE = re.compile(r"`+[^`]*`+")
+
+
+def strip_inline_code(line):
+    """Blank out inline code spans, keeping the line length so columns hold."""
+    return INLINE_CODE.sub(lambda m: " " * len(m.group(0)), line)
+
 
 def _fence_skip_lines(lines):
     """Pair up fence delimiters (0-based line indices). Returns (skip, unbalanced)
@@ -75,14 +87,15 @@ def check_text(text):
             ))
         if idx in skip:
             continue
+        prose = strip_inline_code(raw)
         for old, new in SPELLING:
-            if old in raw:
+            if old in prose:
                 findings.append(Finding(
                     i, "error", "us-english",
                     "'%s' is British; use '%s'" % (old, new),
                 ))
                 break
-        low = raw.lower()
+        low = prose.lower()
         for phrase in BANNED:
             if re.search(r"\b%s\b" % re.escape(phrase), low):
                 findings.append(Finding(
@@ -90,7 +103,7 @@ def check_text(text):
                     "'%s' is on the banned list" % phrase,
                 ))
                 break
-        if NEG_PARALLEL.search(raw):
+        if NEG_PARALLEL.search(prose):
             findings.append(Finding(
                 i, "warning", "negative-parallelism",
                 "rewrite as a positive statement",

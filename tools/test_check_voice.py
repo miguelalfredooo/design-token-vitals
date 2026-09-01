@@ -97,5 +97,35 @@ class TestUnbalancedFence(unittest.TestCase):
         self.assertTrue(has_errors(findings))
 
 
+class TestInlineCode(unittest.TestCase):
+    """An inline code span holds code, and the lint leaves code alone."""
+
+    def test_british_spelling_in_inline_code_is_allowed(self):
+        text = "Look for `colour` as a name some codebases use."
+        self.assertEqual(check_text(text), [])
+
+    def test_british_spelling_in_prose_still_errors(self):
+        text = "Look for the colour tokens."
+        self.assertTrue(any(f.rule == "us-english" for f in check_text(text)))
+
+    def test_banned_word_in_inline_code_is_allowed(self):
+        text = "The `simply` key is a real config name here."
+        self.assertEqual(check_text(text), [])
+
+    def test_banned_word_in_prose_still_errors(self):
+        text = "You can simply run it."
+        self.assertTrue(any(f.rule == "banned-phrase" for f in check_text(text)))
+
+    def test_prose_after_a_code_span_is_still_checked(self):
+        text = "The `--colour-bg` token is not a robust choice."
+        rules = {f.rule for f in check_text(text)}
+        self.assertIn("banned-phrase", rules)
+
+    def test_line_numbers_survive_stripping(self):
+        text = "fine line\nanother fine line\nyou can simply do it"
+        findings = check_text(text)
+        self.assertEqual([f.line for f in findings], [3])
+
+
 if __name__ == "__main__":
     unittest.main()
