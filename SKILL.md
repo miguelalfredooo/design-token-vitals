@@ -26,6 +26,13 @@ tokens live and how modes are expressed, then record what they tell you with
 confidence `interviewed`. A wrong guess costs more than an admitted gap —
 it grades code against a system that was never there.
 
+Also record `run.scope` — the globs or directories this run analyzes — and,
+for any framework whose default theme the active adapter can draw
+categories from, `run.framework_versions` with the installed version you
+checked. Stage 3's `coverage` step depends on `framework_versions` already
+being recorded here; see the framework-default rule in
+`references/vitals.md`'s `coverage` vital and `references/adapters/tailwind.md`.
+
 ## Stage 2 — Read what the project declares
 
 Read the repository for its declared modes, categories, and accessibility
@@ -42,6 +49,13 @@ enforcement — against the stack and declarations from Stages 1 and 2. For
 leakage, classify every hardcoded value through the cascade in
 `references/leakage.md`: `redundant`, `near-miss`, then `uncovered`, in that
 order, and rank findings by the six-key total order there.
+
+For `coverage`, when the active adapter says a category can come from a
+framework's own default theme, checking that framework's installed version
+is required before grading — not optional. If `run.framework_versions` was
+not recorded in Stage 1 and the version cannot be determined now, grade
+`coverage` as `blocked` with a note saying so; never `pass` on an unchecked
+assumption. See `references/vitals.md`'s `coverage` vital.
 
 Five status values only: `pass`, `attention`, `fail`, `blocked`,
 `not_applicable`. Attach at least one real `file:line` to every grade that
@@ -70,7 +84,7 @@ Remove every element whose `data-tier` list excludes the chosen tier. A
 region that belongs to a section the chosen tier removed is gone along with
 its section — that is expected, not an omission.
 
-Work through the seventeen regions below as a checklist. Every region still
+Work through the eighteen regions below as a checklist. Every region still
 present after tier removal must be filled with real findings from this run
 — leaving every other line of the template — headings, ledes, legend, panel
 titles — unchanged. A region that still holds the template's own sample
@@ -99,6 +113,9 @@ report ships describing a codebase that was never scanned.
 - [ ] `modes-gaps`
 - [ ] `orphans`
 - [ ] `enforcement`
+- [ ] `measurement` — the token sources and count, the analysis scope and
+      files searched, the adapters used and their confidence, and any
+      framework version consulted, all read back from `assets/capability-map.yml`.
 - [ ] `footer-meta`
 
 For a generated sentence, use the slot templates in `references/voice.md`
@@ -119,7 +136,7 @@ report while one of these is still failing:
 
 - No region still holds template sample content. The tell-tale strings are
   `northwind-ds`, `acme-storefront`, `Sample report · representative
-  data`, `7f0c22ab`, `a91f4c07`.
+  data`, `7f0c22ab`, `a91f4c07`, `color.primitive.json`, `src/**/*.{ts,tsx}`.
 - Every `SLOT` region present in the file (after tier removal) has real
   content between its markers — none are empty.
 - Every vital card's `data-grade` matches its chip's `data-g`.
@@ -133,11 +150,14 @@ is the deliverable — it is what a stakeholder opens, reads, and acts on.
 
 Then print a short terminal summary that points at the report rather than
 standing in for it: the tier chosen, the count of vitals at each grade, the
-single action worth doing first from `next-steps`, and the report's path.
-Tell the user what the report itself contains, so the summary reads as a
+token count and the number of files leakage searched, the single action
+worth doing first from `next-steps`, and the report's path. Tell the user
+what the report itself contains, so the summary reads as a
 pointer, not a replacement: the eight vitals, the rendered token
 inventory, the three leakage tiers, mode coverage, orphans, enforcement,
-and the "Where to start" section ranking what to do first.
+the "Where to start" section ranking what to do first, and the "How this
+was measured" section recording what this run counted, scanned, and
+checked.
 
 ## Stop and ask
 
