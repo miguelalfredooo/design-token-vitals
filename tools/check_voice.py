@@ -15,7 +15,9 @@ class Finding(NamedTuple):
     message: str
 
 
-# British -> American. Longest first so plurals win over singulars.
+# British -> American. Invariant: no entry's British spelling may be a
+# substring of an earlier entry's British spelling, or the earlier match
+# fires first and reports the wrong replacement.
 SPELLING = [
     ("Colours", "Colors"), ("colours", "colors"),
     ("Colour", "Color"), ("colour", "color"),
