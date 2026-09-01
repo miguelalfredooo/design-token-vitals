@@ -1,3 +1,4 @@
+<!doctype html>
 <!--
   design-token-vitals report template.
 
@@ -6,13 +7,23 @@
   each region below with real findings. Everything else on this page is
   static chrome and ships unchanged in every report.
 
-  Fourteen regions are marked with a pair of HTML comments naming a region,
+  Fifteen regions are marked with a pair of HTML comments naming a region,
   for example a "runhead-meta" region wraps the run metadata list. The
-  fourteen region names are: runhead-meta, vitals-grid, inventory-color,
-  inventory-type, inventory-space, families, leak-redundant, leak-near-miss,
-  leak-uncovered, modes-coverage, modes-gaps, orphans, enforcement, and
-  footer-meta. This file calls them regions rather than slots to avoid
-  colliding with the sentence slots defined in references/voice.md.
+  fifteen region names are: doc-title, runhead-meta, vitals-grid,
+  inventory-color, inventory-type, inventory-space, families,
+  leak-redundant, leak-near-miss, leak-uncovered, modes-coverage,
+  modes-gaps, orphans, enforcement, and footer-meta. This file calls them
+  regions rather than slots to avoid colliding with the sentence slots
+  defined in references/voice.md.
+
+  doc-title wraps the whole title element rather than nesting its
+  comments inside the element's text, unlike every other region. A title
+  element is a raw-text element: a browser never parses tags or comments
+  in its content, it only reads characters up to the literal closing tag,
+  so a comment placed inside it renders as visible text in the browser
+  tab instead of disappearing. Wrapping the element from the outside
+  keeps the region mechanism working without corrupting the one thing it
+  is meant to fill in.
 
   Rendering tiers are full (under 150 tokens), collapsed (150 to 600), and
   family-only (over 600); see references/report.md. Some elements carry a
@@ -56,8 +67,22 @@
   describes a different thing entirely: whether a token has its own value
   in a given mode, silently inherits one, or the mode itself is not
   declared. That is a different signal from a vital's grade, so its values stay as they are.
+
+  The utf-8 charset meta tag in the document head below must never be
+  removed.
+  The skill writes this file to .token-vitals/report.html for a person to
+  open directly from disk, not through a host that declares its own
+  encoding, and this page contains em dashes, middle dots, curly quotes,
+  an arrow, and the Delta character in its ΔE near-miss thresholds. Without
+  a declared charset, a browser falls back to a locale default and every
+  one of those characters can render as mojibake — the ΔE values are a
+  number the report's correctness depends on, so this is not cosmetic.
 -->
-<title>Design Token Vitals</title>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- SLOT:doc-title --><title>Design Token Vitals</title><!-- /SLOT:doc-title -->
 <!--
   A locally-written report must make no network request: it describes a
   private codebase, and its own footer claims "runs locally, nothing
@@ -619,6 +644,8 @@
     .ts-row .tk { flex: none; }
   }
 </style>
+</head>
+<body>
 
 <div class="wrap">
 
@@ -1425,3 +1452,5 @@
   </footer>
 
 </div>
+</body>
+</html>
