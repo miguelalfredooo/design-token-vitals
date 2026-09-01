@@ -9,19 +9,21 @@ never a guess and never an average.
 Point it at a repository and it reads what your project actually declares —
 its token sources, its modes, its categories — then grades eight vitals
 against that declaration and shows its work: every finding carries at least
-one real `file:line` you can open and check yourself. The output is a
-single self-contained HTML report, a JSON working set for tooling, and a
-short terminal summary naming the one thing worth doing first.
+one real `file:line` you can open and check yourself — a clean pass or a
+blocked check carries a note instead. The output is a single
+self-contained HTML report, a JSON working set for tooling, and a short
+terminal summary naming the one thing worth doing first.
 
-See a real one: [`examples/shadcn-ui/report.html`](examples/shadcn-ui/report.html).
+See a real one: [`examples/shadcn-ui/report.html`](examples/shadcn-ui/report.html)
+(GitHub renders this as raw HTML rather than a page, so download it and open it locally).
 
 ## Install
 
 The skill is a directory, not a package. Copy `SKILL.md`, `references/`,
-`assets/`, and `tools/` into `.claude/skills/design-token-vitals/` (Claude
-Code) or the equivalent skills directory for the agent you use. There is
-nothing to build and nothing to install — the agent reads `SKILL.md` and
-runs the six stages directly against your repository.
+and `assets/` into `.claude/skills/design-token-vitals/` (Claude Code) or
+the equivalent skills directory for the agent you use. There is nothing to
+build and nothing to install — the agent reads `SKILL.md` and runs the six
+stages directly against your repository.
 
 ## How it works
 
