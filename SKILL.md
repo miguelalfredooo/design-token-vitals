@@ -7,17 +7,9 @@ allowed-tools: Read, Grep, Glob, Bash, Write
 
 # Design Token Vitals
 
-> **Status: a working skill, still evolving.** This skill is in active
-> development and it is not finalized. The eight vitals, the five status
-> values, the refusal to produce a composite score, and the rule that every
-> finding carries a real `file:line` are stable. The rendering forms, the
-> discovery stage, the leakage cascade's borderline cases, and the
-> reproducibility work are still moving, so a later version can change what
-> a report looks like and how a genuinely close call gets graded. Two runs
-> on the same input have disagreed before now, which is why every report
-> records what it measured. Full status and open work: `README.md`.
->
-> This note is context, and it changes none of the stages below.
+> **A working skill, still evolving.** What is stable, what is moving, and
+> the current reproducibility measurement are in `README.md`. The eight
+> principles every stage below answers to are in `PRINCIPLES.md`.
 
 You are grading a codebase's design token layer against eight fixed vitals
 and reporting what you found — with evidence, never an average. Work through
@@ -26,60 +18,23 @@ the seven stages below in order.
 ## Stage 1 — Framework and token-source discovery
 
 **Required, and it runs before any inventory or grading.** Do the six jobs
-in `references/discovery.md`, in order:
+in `references/discovery.md`, in order — detect the framework, discover
+every candidate source, build the import graph with `tools/import_graph.py`
+and prove reachability, classify every source, deduplicate projections and
+derive the scope, discover modes and whether they resolve. The rule under
+all six: discover sources from evidence, and prove they ship before grading
+them.
 
-1. **Detect the framework and styling system** from repository evidence —
-   manifests, build config, dependency locks, asset-registration APIs,
-   stylesheet entry points, template conventions, theme and plugin
-   structure, and source extensions.
-2. **Discover every candidate token source.** CSS custom properties and
-   `@property` registrations, preprocessor variables and maps, JS and TS
-   token objects, JSON token files, and every foundational family in
-   `references/token-taxonomy.md`. Never match one filename and stop.
-3. **Build the import graph** from owned production entry points, and prove
-   reachability. Run `tools/import_graph.py`. A candidate becomes an active
-   source only when an owned entry point reaches it; anything else is
-   unverified or orphaned source material. Templates and route
-   registrations are supplemental evidence, never proof of inclusion.
-4. **Classify every source** as `canonical`, `alias`, `consumer`,
-   `generated`, or `unverified`.
-5. **Deduplicate projections** — a SCSS variable and the custom property it
-   emits are one concept with two sites — then derive the scope, excluding
-   vendor, generated, test, framework-default and third-party code unless
-   the user asks for them. State the scope and its file count.
-6. **Discover modes and find out whether they resolve.** Record
-   `discovery.resolved_modes`. Where a declared scheme has no resolved
-   output, `mode-completeness` is `blocked`.
-
-The rule underneath all six: discover sources from evidence, and prove they
-ship before grading them. Skip this stage and everything after it measures
-the wrong thing — a coverage grade against the wrong build step, a leakage
-count padded with code nobody here can fix, an inventory of a file the
-browser never receives.
-
-Record `discovery.environment`, `discovery.detected_by`,
-`discovery.confidence`, `discovery.evidence`, `discovery.token_sources`
-(each with its classification and `reachable_from`),
-`discovery.import_graph`, `discovery.resolved_modes`,
-`discovery.owned_paths`, and `discovery.excluded_paths` (each with its
-reason) in `assets/capability-map.yml`'s schema before moving on.
-
-If the derived scope is ambiguous — more than one app in a monorepo
-plausibly qualifies — or the environment doesn't match anything in
-`references/discovery.md`'s table, say so to the reader before continuing.
-Where nothing matches, use `references/adapters/generic.md` rather than
-guessing at a framework.
+Record the whole `discovery` block of `assets/capability-map.yml` before
+moving on. Where the scope is ambiguous, say so to the reader rather than
+guessing; where no framework matches, use `references/adapters/generic.md`.
 
 ## Stage 2 — Detect the stack
 
 Match the repository against `references/adapters/css-vars.md`,
 `references/adapters/tailwind.md`, `references/adapters/scss.md`, and
-`references/adapters/dtcg.md`, using each file's own Detection section. If
-none of them matches, use `references/adapters/generic.md` — an
-unrecognized framework degrades to evidence-based discovery rather than to
-a guess. An adapter tells you where to look for entry points, imports,
-token conventions and mode behavior; **no adapter names a token file**, and
-Stage 1's discovery decides which sources are real.
+`references/adapters/dtcg.md`, using each file's own Detection section. An adapter says where to look; **no adapter names a token file**, and Stage
+1 decides which sources are real.
 More than one adapter can apply at once — Tailwind sits on top of custom
 properties in most repositories, and both should run. The environment you
 recorded in Stage 1 narrows which adapters are even plausible — a
@@ -187,9 +142,11 @@ findings. All of them go into both the HTML and the JSON.
 - **Fill the coverage matrix**: entry bundle by mode by family, every cell
   `measured`, `unmeasured`, `not_applicable` or `blocked`, with evidence.
 
-Assign every finding a stable id with `findings.finding_id()`. Ids are
-path-independent on purpose, so a rename moves counts rather than
-resolving and re-creating findings.
+Assign every finding a stable id with `findings.finding_id()`; ids are
+path-independent so a rename moves counts rather than re-creating findings.
+Derive the stage from `references/maturity.md`, and collect every close
+call you recorded in a `note` into `decisions` — each with what it moved
+and the other reading.
 
 If the user gave a baseline, run:
 
@@ -239,71 +196,31 @@ the remainder using the `truncation` slot in `references/voice.md` — what
 the hidden findings are, never only how many. Never point a reader at the
 JSON for something the page itself has room to show.
 
-- [ ] `doc-title` — the project name and the short commit ref, using the
-      same "`<repo>` @ `<short-sha>`" pattern as `runhead-tag`.
-- [ ] `runhead-tag` — ships reading "Sample report · representative data";
-      replace it with something that names the actual subject (for example
-      "Live report · `<repo>` @ `<short-sha>`") so a real run always
-      carries the subject it describes.
-- [ ] `runhead-meta`
-- [ ] `exec-summary` — the four questions, in order: the highest-impact
-      problem, how many owned files and components it affects, what to fix
-      first with its `file:line`, and which results are confirmed against
-      which are blocked or unmeasured. The fourth carries equal weight —
-      a summary quiet about what it could not measure describes a
-      healthier system than this run established.
-- [ ] `trend` — new, resolved, count changes and regressions from
-      `tools/trend.py`. Remove this region when no baseline was given;
-      never fill it with a comparison the compatibility gate refused.
-- [ ] `vitals-grid`
-- [ ] `next-steps` — the ranked next-actions list; derive it using the
-      order defined in "Deriving the next-steps list" in
-      `references/report.md`.
-- [ ] `inventory-color`
-- [ ] `inventory-type`
-- [ ] `inventory-space`
-- [ ] `family-coverage` — every foundational family in
-      `references/token-taxonomy.md`, each as `measured`, `unmeasured` or
-      `absent`. A family this run could not resolve renders as unmeasured
-      with what is missing, never as `0`.
-- [ ] `fix-queue` — every finding with a canonical replacement, ordered by
-      priority, each carrying its scoring inputs, its confidence level, and
-      whether the swap is safe to automate. Lead with exact color
-      replacements. Set `data-finding` on each row to the finding id, so
-      rule 8 can see it.
-- [ ] `groups` — the same findings by owning component, plugin and route or
-      bundle. Every finding in the fix queue appears here too.
-- [ ] `lineage` — primitive to semantic alias to projection to consumers.
-      Mark an untraced link as untraced rather than inferring it.
-- [ ] `coverage-matrix` — entry bundle by mode by family, every cell
-      `measured`, `unmeasured`, `not_applicable` or `blocked`, with its
-      evidence.
-- [ ] `families`
-- [ ] `leak-ranked` — the cross-tier ranking that renders at `collapsed`
-      and `family-only`. It is removed at `full`, where the three
-      per-tier regions below carry the same findings instead.
-- [ ] `leak-redundant`
-- [ ] `leak-near-miss`
-- [ ] `leak-uncovered`
-- [ ] `modes-coverage`
-- [ ] `modes-gaps`
-- [ ] `orphans`
-- [ ] `enforcement`
-- [ ] `measurement` — the token sources and count, the analysis scope and
-      files searched, the adapters used and their confidence, any
-      framework version consulted, the environment, what proved it,
-      and the owned and excluded paths from Stage 1, and the rendering
-      tier and the form chosen for each listing section, all read back
-      from `assets/capability-map.yml`. Recording the forms here is what
-      lets two runs be compared on presentation as well as on findings.
-      It also carries Stage 1's evidence: the framework-detection signals
-      and what each proved, every token source with its classification and
-      what reaches it, the import-graph roots, reachable count, orphans and
-      unresolved specs, and which declared schemes resolved.
+- [ ] `doc-title`, `runhead-tag`, `runhead-meta` — the subject, never
+      "Sample report · representative data"
+- [ ] `at-a-glance` — the strip above the summary; every mark carries its
+      number
+- [ ] `exec-summary` — the stage line, then the four questions
+- [ ] `decisions` — every close call, with what it moved and the other
+      reading
+- [ ] `trend` — remove when no baseline was given; never fill it with a
+      comparison the gate refused
+- [ ] `vitals-grid`, `next-steps` (five, in the documented order)
+- [ ] `fix-queue` — priority inputs beside the score, confidence, effort,
+      `safe_to_automate`, `data-finding` on every row
+- [ ] `groups`, `lineage`, `coverage-matrix`
+- [ ] `inventory-color`, `inventory-type`, `inventory-space`,
+      `family-coverage` — every taxonomy family as measured, unmeasured or
+      absent; never `0` for unmeasured
+- [ ] `families`, `leak-ranked`, `leak-redundant`, `leak-near-miss`,
+      `leak-uncovered`, `modes-coverage`, `modes-gaps`, `orphans`,
+      `enforcement`
+- [ ] `measurement` — everything in `provenance` and `discovery`, the
+      rendering tier and forms, read back from the capability map
 - [ ] `footer-meta`
 
-For a generated sentence, use the slot templates in `references/voice.md`
-verbatim, filling only the named placeholders. For a vital card, set its
+For a generated sentence, use the slot templates in
+`references/voice.md` verbatim, filling only the named placeholders. For a vital card, set its
 `data-grade` attribute and its nested chip's `data-g` attribute from one
 grade value, in one place — never compute them separately. Set a family
 row's `.pip[data-s]` the same way, from the one grade value that vital
@@ -364,16 +281,19 @@ in the JSON: render every listing region in the form its volume calls for
 (`references/report.md`), so a reader who never opens the JSON still sees
 everything the run found, directly or one `<details>` away.
 
-Then print a short terminal summary that points at the report rather than
-standing in for it: the tier chosen, the count of vitals at each grade, the
-token count and the number of files leakage searched, the single action
-worth doing first from `next-steps`, and the report's path. Tell the user
-what the report itself contains, so the summary reads as a
-pointer, not a replacement: the eight vitals, the rendered token
-inventory, the three leakage tiers, mode coverage, orphans, enforcement,
-the "Where to start" section ranking what to do first, and the "How this
-was measured" section recording what this run counted, scanned, and
-checked.
+Stamp `provenance.skill_version` from `python3 tools/version.py` before
+writing. Then print five lines and stop:
+
+```
+<worst vital> <grade> — <one sentence on what it found>
+start: <the first fix-queue action, with its file:line>
+stage: <stage> → <next stage> after <the threshold>
+<n> confirmed · <n> blocked (<which>) · <n> unmeasured (<which>)
+<path to report.html>
+```
+
+The worst thing, the first move, the stage, the confidence split, the
+path. The report is the deliverable; the summary points at it.
 
 ## Stop and ask
 
