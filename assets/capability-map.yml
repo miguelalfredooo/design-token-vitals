@@ -1,5 +1,15 @@
 schema_version: 1
 
+# What owns theming, and what the project actually authored. Read from
+# the repository in Stage 1, before anything below this block is graded —
+# see references/discovery.md.
+discovery:
+  environment: null        # discourse | nextjs | tailwind | rails-sprockets | monorepo | unknown
+  detected_by: null        # the file or signal that proved it
+  confidence: null         # certain | inferred | interviewed
+  owned_paths: []          # what the project authored
+  excluded_paths: []       # each entry: {path, reason}
+
 # What this run looked at. Every value is observed, never assumed.
 run:
   generated_at: null        # ISO 8601
