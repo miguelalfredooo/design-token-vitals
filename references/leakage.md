@@ -103,12 +103,16 @@ for revisiting it. An undeclared exception is still a finding: the absence
 of an owner and a date is what tells you nobody has actually decided this
 value should stay hardcoded.
 
-Never grade three kinds of value, declared or not:
+Never grade four kinds of value, declared or not:
 
 - A `1px` hairline.
 - An optical nudge — a value chosen to correct how something looks rather
   than to express a design decision.
 - A value inside a file your repository has marked exempt.
+- A literal inside a selector that matches markup you do not control — for
+  example `[stroke='#ccc']` targeting a charting library's DOM. The literal
+  has to match a string that library emits, so tokenizing it would break
+  the match.
 
 ## Ranking
 

@@ -86,7 +86,12 @@ the gap does not error at build time, it falls back to the other mode's
 value and ships wrong.
 
 **Signal:** the set difference across mode blocks, computed per declared
-mode.
+mode, scoped to tokens whose meaning is appearance-dependent — color,
+elevation, and anything else whose correct value changes with the mode.
+Geometry, spacing, typography metrics, and timing sit out of scope by
+default, since a token like `--radius` can legitimately hold one value
+across every mode. A token that stays deliberately constant across modes
+is a design decision, not a gap.
 
 **Grading:** `pass` at 0 gaps; `fail` at any gap in a declared mode;
 `not_applicable` for a mode you have not declared, so an undeclared mode is

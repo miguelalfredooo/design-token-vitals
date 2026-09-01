@@ -7,10 +7,10 @@
   each region below with real findings. Everything else on this page is
   static chrome and ships unchanged in every report.
 
-  Fifteen regions are marked with a pair of HTML comments naming a region,
+  Sixteen regions are marked with a pair of HTML comments naming a region,
   for example a "runhead-meta" region wraps the run metadata list. The
-  fifteen region names are: doc-title, runhead-meta, vitals-grid,
-  inventory-color, inventory-type, inventory-space, families,
+  sixteen region names are: doc-title, runhead-tag, runhead-meta,
+  vitals-grid, inventory-color, inventory-type, inventory-space, families,
   leak-redundant, leak-near-miss, leak-uncovered, modes-coverage,
   modes-gaps, orphans, enforcement, and footer-meta. This file calls them
   regions rather than slots to avoid colliding with the sentence slots
@@ -652,7 +652,7 @@
   <header class="runhead">
     <div>
       <h1>Design Token Vitals</h1>
-      <span class="sampletag">Sample report · representative data</span>
+      <!-- SLOT:runhead-tag --><span class="sampletag">Sample report · representative data</span><!-- /SLOT:runhead-tag -->
     </div>
     <!-- SLOT:runhead-meta -->
     <dl class="meta">

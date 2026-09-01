@@ -58,22 +58,29 @@ Count the tokens the stack detected and choose the tier from
 
 ## Stage 5 — Fill the template
 
-Copy `assets/report-template.html` to `.token-vitals/report.html`. Remove
-every element whose `data-tier` list excludes the chosen tier. Replace the
-contents of each `<!-- SLOT:name --> … <!-- /SLOT:name -->` region with real
-findings, leaving every other line of the template — headings, ledes,
-legend, panel titles — unchanged. One exception: the `.sampletag` span next
-to the `<h1>` ships reading "Sample report · representative data" and sits
-outside every named region, but it must never survive into a real run —
-replace its text with something that names the actual subject (for example
-"Live report · `<repo>` @ `<short-sha>`") even though it has no `SLOT`
-comment of its own.
+Copy `assets/report-template.html` to `.token-vitals/report.html`, and strip
+the leading `<!-- … -->` instruction comment at the top of the copy — it
+tells a contributor how to fill the template, and a finished report goes to
+a stakeholder instead. Leave that comment in place in the template itself.
+
+Remove every element whose `data-tier` list excludes the chosen tier.
+Replace the contents of each `<!-- SLOT:name --> … <!-- /SLOT:name -->`
+region with real findings, leaving every other line of the template —
+headings, ledes, legend, panel titles — unchanged. Fill `doc-title` with
+the project name and the short commit ref, using the same "`<repo>` @
+`<short-sha>`" pattern as `runhead-tag`. The `runhead-tag` region ships
+reading "Sample report · representative data"; replace it with something
+that names the actual subject (for example "Live report · `<repo>` @
+`<short-sha>`") so a real run always carries the subject it describes.
 
 For a generated sentence, use the slot templates in `references/voice.md`
 verbatim, filling only the named placeholders. For a vital card, set its
 `data-grade` attribute and its nested chip's `data-g` attribute from one
-grade value, in one place — never compute them separately. A card whose
-stripe and chip disagree is exactly the drift this skill exists to catch.
+grade value, in one place — never compute them separately. Set a family
+row's `.pip[data-s]` the same way, from the one grade value that vital
+earned for that family. A card whose stripe and chip disagree, or a pip
+that disagrees with the card it summarizes, is exactly the drift this
+skill exists to catch.
 
 ## Stage 6 — Write the outputs
 

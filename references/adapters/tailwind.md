@@ -18,6 +18,12 @@ two layers.
 A `tailwind.config.*` file, or an `@import "tailwindcss"` / `@theme` block
 inside a CSS file, tells you this is the adapter to run.
 
+A category absent from the project's own theme can still come from
+Tailwind's own default theme — for example `z-*` and `opacity-*` utilities
+ship with a built-in scale even when a project never overrides one. Before
+grading `coverage` as missing a category, check the installed version's
+default theme and record the version you checked.
+
 ## What a leak looks like
 
 A bracket-arbitrary value carrying a raw measurement or color:
