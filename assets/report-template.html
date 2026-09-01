@@ -7,14 +7,20 @@
   each region below with real findings. Everything else on this page is
   static chrome and ships unchanged in every report.
 
-  Sixteen regions are marked with a pair of HTML comments naming a region,
+  Seventeen regions are marked with a pair of HTML comments naming a region,
   for example a "runhead-meta" region wraps the run metadata list. The
-  sixteen region names are: doc-title, runhead-tag, runhead-meta,
-  vitals-grid, inventory-color, inventory-type, inventory-space, families,
-  leak-redundant, leak-near-miss, leak-uncovered, modes-coverage,
+  seventeen region names are: doc-title, runhead-tag, runhead-meta,
+  vitals-grid, next-steps, inventory-color, inventory-type, inventory-space,
+  families, leak-redundant, leak-near-miss, leak-uncovered, modes-coverage,
   modes-gaps, orphans, enforcement, and footer-meta. This file calls them
   regions rather than slots to avoid colliding with the sentence slots
   defined in references/voice.md.
+
+  next-steps holds the ranked list of concrete next actions derived from
+  the findings elsewhere in this report — see "Deriving the next-steps
+  list" in references/report.md. It sits right after the vitals grid and
+  before the architecture and inventory sections, on purpose: a reader
+  should see what to do before they see the full detail behind it.
 
   doc-title wraps the whole title element rather than nesting its
   comments inside the element's text, unlike every other region. A title
@@ -739,6 +745,62 @@
       <span><b>Blocked</b> — could not check this one</span>
       <span><b>N/A</b> — does not apply to your setup</span>
     </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Where to start</div>
+    <h2>The next concrete move, ranked</h2>
+    <p class="lede">
+      Eight grades and three leakage tiers are more than anyone can act on at once. These are the same findings, turned into a ranked list of moves: a check you cannot yet measure comes first, then fixes that need no judgment, then gaps that need a token decided, then drift that needs a person to call it.
+    </p>
+
+    <!-- SLOT:next-steps -->
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>Action<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is one concrete move, ordered so the earliest rows clear the most ground first — see the ranking rule in the note below.</span></span></th><th class="num">Resolves</th><th>Owner</th><th>Start here</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Swap the hardcoded <span class="lit">#0F8A83</span> for <span class="tok">color.semantic.brand.base</span>, the token that already holds it.</td>
+            <td class="num"><span class="blast">84 files</span></td>
+            <td>Component author</td>
+            <td><span class="path">components/Link.tsx:11</span></td>
+          </tr>
+          <tr>
+            <td>Swap the hardcoded <span class="lit">8px</span> for <span class="tok">size.space.2</span>, the token that already holds it.</td>
+            <td class="num"><span class="blast">71 files</span></td>
+            <td>Component author</td>
+            <td><span class="path">components/Stack.tsx:29</span></td>
+          </tr>
+          <tr>
+            <td>Add a <span class="tok">motion.ease.emphasized</span> token for the easing curve every drawer and dialog already uses.</td>
+            <td class="num"><span class="blast">112 files</span></td>
+            <td>System owner</td>
+            <td><span class="path">components/Drawer.tsx:57</span></td>
+          </tr>
+          <tr>
+            <td>Add a <span class="tok">layer.modal</span> z-index token for the value every modal already hardcodes.</td>
+            <td class="num"><span class="blast">47 files</span></td>
+            <td>System owner</td>
+            <td><span class="path">components/Modal.tsx:19</span></td>
+          </tr>
+          <tr>
+            <td>Decide whether <span class="lit">#0C7A8E</span> is a deliberate variant of <span class="tok">--brand</span> or drift to reconcile with it.</td>
+            <td class="num"><span class="blast">38 files</span></td>
+            <td>Design</td>
+            <td><span class="path">app/marketing/hero.tsx:19</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="trunc">Showing the 5 highest-impact of 7 actions. The rest are in <code>.token-vitals/report.json</code>.</div>
+
+    <div class="note">
+      <b>Ordered by class, then by how much each one clears.</b> A blocked check comes first — you cannot improve what you cannot measure. Mechanical fixes come next, since a token already exists and no judgment is required. Gaps that need a new token decided come after that, and drift that needs a person's call comes last.
+    </div>
+    <!-- /SLOT:next-steps -->
   </section>
 
   <section data-tier="collapsed family-only">

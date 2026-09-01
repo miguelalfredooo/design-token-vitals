@@ -76,6 +76,38 @@ produces enough of to matter:
   close to certain, and once it happens your system carries two names for
   one decision with no way to tell which one is current.
 
+## Deriving the next-steps list
+
+Eight grades and three leakage tiers are more than most readers can turn
+into a plan on their own. The `next-steps` region orders the findings
+already in the report into a concrete list of actions, so two runs against
+the same repository always produce the same plan.
+
+Order by class first, then by blast radius descending within each class:
+
+1. **Unblock measurement.** Any vital graded `blocked` comes first — you
+   cannot improve what you cannot measure. For `enforcement` specifically,
+   a single rule both unblocks the check and stops every other finding in
+   the report from regressing, so a `blocked` enforcement grade earns the
+   first action even when another vital's raw finding count is larger.
+2. **Mechanical fixes.** `redundant` leaks from `references/leakage.md` —
+   a token already holds the value, so no judgment is required, only a
+   swap. Rank these by blast radius, highest first.
+3. **System gaps.** `uncovered` leaks and any category missing from
+   `coverage`. Someone has to decide on a token here, and that one
+   decision typically unblocks many findings at once.
+4. **Judgment calls.** `near-miss` drift and naming-coherence
+   reconciliation. These need a person to decide what was intended, so
+   they carry the least certainty and sort last.
+
+Cap the rendered list at five actions. When more actions exist than that,
+declare the truncation the same way every other truncated section does:
+"Showing the 5 highest-impact of `<n>` actions" — never a silent cut.
+
+An action must carry a real `file:line`, the same evidence rule as every
+other finding in this report. An action with no reachable instance to
+point at does not appear on the list.
+
 ## The two invariants
 
 Every rendering tier, from `full` down to `family-only`, follows the same
