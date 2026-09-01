@@ -90,13 +90,28 @@ point at when nothing was found, or when the check could not run. A vital
 with a count and no reachable instance is `blocked`, never `fail` —
 silence is not evidence.
 
-## Stage 5 — Choose the rendering tier
+## Stage 5 — Choose the rendering tier and the form per section
 
 Count the tokens the stack detected and choose the tier from
 `references/report.md`: under 150 tokens is `full`; 150 to 600 inclusive is
 `collapsed`; over 600 is `family-only`. A count of exactly 150 is
 `collapsed`; a count of exactly 600 is `collapsed`. Record the tier in
 `assets/capability-map.yml`'s `rendering.tier`.
+
+Then choose a rendering form for each listing section, from the form table
+in "Change the mark, don't cut the data" (`references/report.md`). The
+input is that section's own finding count, not the token total: a repo can
+land in `collapsed` on token count and still have a leakage section large
+enough to need the densest form. Record one form per section under
+`rendering.forms` — `color`, `typography`, `spacing`, `leaks`, `orphans`,
+`modes`, `families` — using the value names in that table's columns:
+`rows`, `swatches`, `ramps`, `specimens`, `bars`, `grouped`,
+`distribution`, `chips`, `by-family`, `matrix`, `coverage-bar`,
+`health-strip`, `by-namespace`.
+
+Recording the form is what lets two runs be compared on presentation as
+well as on findings. A run that grades the same and renders differently has
+diverged, and `rendering.forms` is where that shows up.
 
 ## Stage 6 — Fill the template
 
@@ -117,13 +132,22 @@ data once you are done is a bug, not an acceptable gap: it means the
 report ships describing a codebase that was never scanned.
 
 Every region that lists findings — `inventory-color`, `inventory-type`,
-`inventory-space`, `families`, `leak-redundant`, `leak-near-miss`,
-`leak-uncovered`, `modes-gaps`, `orphans`, and `next-steps` — follows the
-40-row rule in `references/report.md`: render every row up to 40, and past
-that, the first 40 plus a `<details>` element holding the remainder on the
-same page. Never truncate a section that has 40 or fewer findings, and
-never point a reader at the JSON for something the page itself has room to
-show.
+`inventory-space`, `families`, `leak-ranked`, `leak-redundant`,
+`leak-near-miss`, `leak-uncovered`, `modes-gaps`, and `orphans` — enumerates
+what the run found, in the form you chose for it in Stage 5. When a section
+outgrows its form, move to the denser form from the table in
+`references/report.md`; showing fewer findings is the wrong answer to more
+data. The template carries markup for every form, so this is a choice of
+which block to keep, never a rewrite.
+
+`next-steps` is the one exception, and it goes the other way: it shows five
+ranked actions, because its value comes from what it leaves out.
+
+Where a section exceeds even its densest form, a `<details>` element on the
+same page holds the tail, and the truncation line above it characterizes
+the remainder using the `truncation` slot in `references/voice.md` — what
+the hidden findings are, never only how many. Never point a reader at the
+JSON for something the page itself has room to show.
 
 - [ ] `doc-title` — the project name and the short commit ref, using the
       same "`<repo>` @ `<short-sha>`" pattern as `runhead-tag`.
@@ -140,6 +164,9 @@ show.
 - [ ] `inventory-type`
 - [ ] `inventory-space`
 - [ ] `families`
+- [ ] `leak-ranked` — the cross-tier ranking that renders at `collapsed`
+      and `family-only`. It is removed at `full`, where the three
+      per-tier regions below carry the same findings instead.
 - [ ] `leak-redundant`
 - [ ] `leak-near-miss`
 - [ ] `leak-uncovered`
@@ -149,9 +176,11 @@ show.
 - [ ] `enforcement`
 - [ ] `measurement` — the token sources and count, the analysis scope and
       files searched, the adapters used and their confidence, any
-      framework version consulted, and the environment, what proved it,
-      and the owned and excluded paths from Stage 1, all read back from
-      `assets/capability-map.yml`.
+      framework version consulted, the environment, what proved it,
+      and the owned and excluded paths from Stage 1, and the rendering
+      tier and the form chosen for each listing section, all read back
+      from `assets/capability-map.yml`. Recording the forms here is what
+      lets two runs be compared on presentation as well as on findings.
 - [ ] `footer-meta`
 
 For a generated sentence, use the slot templates in `references/voice.md`
@@ -172,7 +201,12 @@ report while one of these is still failing:
 
 - No region still holds template sample content. The tell-tale strings are
   `northwind-ds`, `acme-storefront`, `Sample report · representative
-  data`, `7f0c22ab`, `a91f4c07`, `color.primitive.json`, `src/**/*.{ts,tsx}`.
+  data`, `7f0c22ab`, `a91f4c07`, `color.primitive.json`, `src/**/*.{ts,tsx}`,
+  `color.semantic.brand.base`, `motion.ease.emphasized`, and `1,645`.
+- Every truncation line names what the remainder holds, not only how many
+  it holds.
+- `rendering.forms` records one form per listing section, and each form
+  named there matches the block actually left in the file.
 - Every `SLOT` region present in the file (after tier removal) has real
   content between its markers — none are empty.
 - Every vital card's `data-grade` matches its chip's `data-g`.
@@ -186,9 +220,9 @@ is the deliverable — it is what a stakeholder opens, reads, and acts on. The
 JSON is a machine-readable duplicate of exactly what the HTML shows, plus
 the full detail behind every `<details>` disclosure in it — see "The JSON
 duplicates the report" in `references/report.md`. No finding may exist only
-in the JSON: apply the 40-row rule (`references/report.md`) to every listing
-region so a reader who never opens the JSON still sees everything the run
-found, directly or one `<details>` away.
+in the JSON: render every listing region in the form its volume calls for
+(`references/report.md`), so a reader who never opens the JSON still sees
+everything the run found, directly or one `<details>` away.
 
 Then print a short terminal summary that points at the report rather than
 standing in for it: the tier chosen, the count of vitals at each grade, the

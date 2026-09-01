@@ -51,4 +51,21 @@ vitals:
 
 rendering:
   tier: null                # full | collapsed | family-only
-  truncated: []             # every section that showed fewer rows than it holds
+
+  # The mark each listing section was rendered with, chosen in Stage 5 from
+  # that section's own finding count — see the form table in
+  # references/report.md. Recorded so two runs can be compared on
+  # presentation as well as on findings.
+  forms:
+    color: null             # rows | swatches | ramps
+    typography: null        # rows | specimens
+    spacing: null           # rows | bars
+    leaks: null             # rows | grouped | distribution
+    orphans: null           # rows | chips | by-family
+    modes: null             # matrix | coverage-bar
+    families: null          # rows | health-strip | by-namespace
+
+  # Every section that held part of its findings behind a <details>, with
+  # what that remainder holds — never only how many.
+  # Each entry: {section, shown, withheld, summary}
+  truncated: []

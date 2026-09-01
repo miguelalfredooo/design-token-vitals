@@ -18,9 +18,11 @@ one real `file:line` you can open and check yourself — a clean pass or a
 blocked check carries a note instead. The report also ranks those findings
 into a "Where to start" plan — a short, ordered list of concrete actions,
 each with an owner and a real `file:line` — so you leave with a next move,
-not just a diagnosis. The report shows every finding it produced, up to 40
-per section, with anything past that behind a `<details>` element on the
-same page rather than filed away in another file. The output is a single
+not just a diagnosis. The report shows every finding it
+produced: when a section outgrows a table it changes to a denser mark —
+colors to swatches, leaks to ranked bars — rather than to a shorter list,
+and the tail of a very large section sits behind a `<details>` element on
+the same page rather than filed away in another file. The output is a single
 self-contained HTML report, a JSON working set that duplicates exactly what
 the HTML shows in a machine-readable form for tooling, and a short terminal
 summary naming the one thing worth doing first.
