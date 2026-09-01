@@ -1003,6 +1003,51 @@
     </div>
   </section>
 
+  <section>
+    <div class="eyebrow">Measurement</div>
+    <h2>How this was measured</h2>
+    <p class="lede">
+      Two runs against the same repository should be able to agree, or at least explain why they don't. This is what makes that possible: the exact sources this run counted as tokens, the scope and file count it searched for leaks, the adapters it detected and how sure it was, and any framework version it had to check before grading coverage. Recorded here, a difference between two runs points at a fact instead of an argument.
+    </p>
+
+    <!-- SLOT:measurement -->
+    <div class="grid2">
+      <div class="panel">
+        <h3>Token sources</h3>
+        <p class="sub">53 tokens</p>
+        <dl class="meta">
+          <dt>source</dt><dd>apps/v4/app/globals.css</dd>
+          <dt>source</dt><dd>apps/v4/app/legacy-themes.css</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Analysis scope</h3>
+        <p class="sub">what leakage searched</p>
+        <dl class="meta">
+          <dt>scope</dt><dd>apps/v4</dd>
+          <dt>files searched</dt><dd>not recorded (this run predates the measurement contract)</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Adapters</h3>
+        <p class="sub">detection confidence</p>
+        <dl class="meta">
+          <dt>adapters</dt><dd>tailwind + css-vars</dd>
+          <dt>detected by</dt><dd>apps/v4/app/globals.css: <code>@theme inline</code> block wrapping a <code>:root</code> block with 41 <code>--</code> declarations</dd>
+          <dt>confidence</dt><dd>certain</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Framework versions consulted</h3>
+        <p class="sub">checked before grading coverage</p>
+        <dl class="meta">
+          <dt>tailwindcss</dt><dd>4.3.3</dd>
+        </dl>
+      </div>
+    </div>
+    <!-- /SLOT:measurement -->
+  </section>
+
   <footer>
     <span>design-token-vitals</span>
     <!-- SLOT:footer-meta -->

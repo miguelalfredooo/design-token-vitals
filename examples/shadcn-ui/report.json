@@ -5,7 +5,10 @@
     "generated_at": "2026-09-01T06:17:38Z",
     "repo_ref": "63c1308",
     "token_count": 53,
-    "family_count": 5
+    "family_count": 5,
+    "files_scanned": "not recorded (this run predates the measurement contract)",
+    "scope": ["apps/v4"],
+    "framework_versions": { "tailwindcss": "4.3.3" }
   },
 
   "stack": {
