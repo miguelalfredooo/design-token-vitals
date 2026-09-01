@@ -80,5 +80,22 @@ class TestFencedCodeBlocks(unittest.TestCase):
         self.assertEqual(findings[0].line, 4)
 
 
+class TestUnbalancedFence(unittest.TestCase):
+    def test_prose_after_unclosed_fence_is_still_flagged(self):
+        findings = check_text("```\nsome code\nThe colour is wrong.")
+        us_findings = [f for f in findings if f.rule == "us-english"]
+        self.assertEqual(len(us_findings), 1)
+        self.assertEqual(us_findings[0].line, 3)
+
+    def test_unclosed_fence_reports_unbalanced_fence_error(self):
+        from check_voice import has_errors
+        findings = check_text("```\nsome code\nThe colour is wrong.")
+        fence_findings = [f for f in findings if f.rule == "unbalanced-fence"]
+        self.assertEqual(len(fence_findings), 1)
+        self.assertEqual(fence_findings[0].level, "error")
+        self.assertEqual(fence_findings[0].line, 1)
+        self.assertTrue(has_errors(findings))
+
+
 if __name__ == "__main__":
     unittest.main()

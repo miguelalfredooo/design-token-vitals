@@ -38,14 +38,40 @@ BANNED = [
 NEG_PARALLEL = re.compile(r"\b(?:is|are|was|were)\s+not\s+(?:a|an|the)\b", re.I)
 
 
+def _fence_skip_lines(lines):
+    """Pair up fence delimiters (0-based line indices). Returns (skip, unbalanced)
+    where skip is the set of 0-based indices to exclude from checks (both the
+    delimiter lines and everything strictly between a matched pair), and
+    unbalanced is the 0-based index of a trailing unmatched delimiter, or
+    None if every fence closes.
+    """
+    fence_lines = [i for i, line in enumerate(lines) if line.strip().startswith("```")]
+    skip = set()
+    pending_open = None
+    for idx in fence_lines:
+        if pending_open is None:
+            pending_open = idx
+        else:
+            skip.update(range(pending_open, idx + 1))
+            pending_open = None
+    unbalanced = pending_open
+    if unbalanced is not None:
+        skip.add(unbalanced)
+    return skip, unbalanced
+
+
 def check_text(text):
     findings = []
-    in_fence = False
-    for i, raw in enumerate(text.split("\n"), start=1):
-        if raw.strip().startswith("```"):
-            in_fence = not in_fence
-            continue
-        if in_fence:
+    lines = text.split("\n")
+    skip, unbalanced = _fence_skip_lines(lines)
+    for i, raw in enumerate(lines, start=1):
+        idx = i - 1
+        if idx == unbalanced:
+            findings.append(Finding(
+                i, "error", "unbalanced-fence",
+                "fence opened here never closes",
+            ))
+        if idx in skip:
             continue
         for old, new in SPELLING:
             if old in raw:
