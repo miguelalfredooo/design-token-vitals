@@ -28,19 +28,25 @@ apart to be comparable, pin the version you ran.
 
 Open work, in the order it matters:
 
-- **Reproducibility, measured.** Two blind runs against shadcn-ui/ui at
-  `63c1308` on 2026-09-01 agreed on all eight grades and on the token count
-  (114 both times). An earlier pair disagreed on three of eight grades and
-  reported 53 against 114. The grades reproduce.
-- **What still moves between runs.** Those same two runs disagreed on
-  `files_scanned` (3,686 against 3,400) and `family_count` (13 against 24),
-  and cited largely different evidence lines under matching grades. Scope
-  and reachability now come from `tools/import_graph.py` rather than from
-  prose reasoned out fresh each run, which is aimed squarely at this.
-- **One judgment call decides a grade, and the skill does not pin it down.**
-  Counting a framework's own scales as tokens available to authors moves
-  leakage from `attention` to `fail`. Both runs chose the same way, so they
-  agreed — by agreement rather than by rule.
+- **Reproducibility, measured twice, and it moved.** Four blind runs
+  against shadcn-ui/ui at `63c1308` on 2026-09-01. The morning pair, against
+  a skill of about 9,500 words, agreed on all eight grades and counted 114
+  tokens both times. The afternoon pair, after the discovery stage and the
+  actionable-report layer had grown the skill to about 14,600 words, agreed
+  on seven of eight and counted 82 and 77. The one that split was
+  `leakage`, on a decision both runs named as their closest call: whether a
+  framework's own spacing scale counts as tokens available to authors.
+  Neither the grade nor the count is stable yet, and this line will change
+  again when that is fixed.
+- **What caused it, as far as the evidence goes.** The skill has no written
+  rule for the framework-scale question, and no written rule for which
+  utility-local custom properties count as tokens. Two careful runs read
+  each differently. Both rules are being pinned in prose and exercised in
+  `fixtures/repo`, and the pair gets re-run before that merges.
+- **What still moves between runs even when the grades agree.**
+  `files_scanned`, `family_count`, and the specific evidence lines cited
+  under matching grades. Scope and reachability now come from
+  `tools/import_graph.py` rather than prose, which is aimed at this.
 - **The rendering forms are new.** The display-density work landed
   recently and has had little use in the field. The two runs picked
   different forms for the same leakage data, which is a real gap in the
