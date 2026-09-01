@@ -15,6 +15,26 @@ token for that exact concept and the code went around it anyway. Tiering
 separates those two situations so you can act on the first without wading
 through the second.
 
+## Where to search
+
+Search the project's own UI source files inside the declared analysis
+scope — the globs or directories the run recorded before scanning. Exclude:
+
+- **The token source files themselves.** A declaration is a definition,
+  not a leak — see "What counts as a token" in `references/vitals.md` for
+  what a token source is.
+- **Test files, fixtures, and snapshots.** They exercise behavior; they do
+  not ship it.
+- **Generated or build output, and vendored or `node_modules` code.**
+  Nobody edits these by hand, so a finding there has no fix owner.
+- **Any path the project has declared exempt.**
+
+Record the number of files searched and the scope glob in the report —
+`run.files_scanned` and `run.scope` in `assets/capability-map.yml`. A run
+reporting zero leaks must still report how many files it searched: zero
+findings from an unstated scope proves nothing, and a reader has no way to
+tell "nothing wrong" from "nothing looked."
+
 ## Classifying a finding
 
 Classify a finding with an ordered cascade. Evaluate the three tiers in this
@@ -58,10 +78,24 @@ A near miss only counts as a finding when it clears a stated threshold — not
   looking at the screen can see the gap, only a tool comparing the numbers
   can.
 - **Dimension:** compute the absolute distance to the nearest scale step.
-  Flag values **2px or less** from a step, and only where the step itself is
-  **4px or larger** — a scale stepping by 2px would flag nearly every value
-  near it, so the threshold only applies once your scale's own granularity
-  makes a 2px gap meaningful.
+  Flag a value that sits **2px or less** from a step, but only where
+  **adjacent steps in that scale are themselves spaced 4px or more apart**.
+  The comparison is between neighboring steps in the scale — never between
+  the step's own numeric value and 4px. Where steps sit closer together
+  than 4px, a 2px difference identifies a different step, not drift, so
+  the value is uncovered or exact, never near-miss, on a scale that tight.
+
+  Worked examples:
+  - Scale `4, 8, 12, 16` (adjacent steps are 4px apart, so the threshold
+    applies). A literal `13px` sits 1px from the `12px` step, well within
+    the 2px threshold, so — absent an exact match elsewhere — it is
+    `near-miss` against `12px`.
+  - Scale `2, 4, 6, 8` (adjacent steps are only 2px apart, so the threshold
+    does **not** apply). A literal `5px` sits 1px from both `4px` and
+    `6px`; on this scale that gap is the normal distance between
+    legitimate steps, not drift. `5px` falls through to `uncovered` — it
+    does not exactly match a step, and near-miss cannot fire on a scale
+    this tight.
 - **Duration:** flag a literal **within 50ms** of a motion token.
 
 When a value sits within the near-miss threshold of more than one token in
