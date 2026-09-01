@@ -36,8 +36,9 @@ carry meaning.
 **Signal:** the count of component styles that reference a primitive-tier
 token or a literal value where a semantic token already covers that case.
 
-**Grading:** `pass` at 0 such references; `attention` when they are under 5%
-of component styles; `fail` above that.
+**Grading:** `pass` when zero component styles skip the semantic layer;
+`attention` from one skip up to and including 5% of component styles;
+`fail` above 5%.
 
 **Evidence:** at least one real `file:line` where a component style reaches
 past the semantic tier — for example `bg-neutral-800` in a component that
@@ -54,8 +55,8 @@ redundant (an exact match to an existing token), near miss (close to a
 token without matching it), and uncovered (no token exists yet).
 
 **Grading:** driven by the redundant tier, since that is the count you can
-act on immediately: `pass` at 0 redundant findings; `attention` under 10;
-`fail` above 10.
+act on immediately: `pass` at zero redundant findings; `attention` from 1
+to 10 inclusive; `fail` at 11 or more.
 
 **Evidence:** at least one real `file:line` per tier reported. A vital with
 a count and no reachable instance is graded `blocked`, never `fail`.
@@ -139,8 +140,8 @@ is, and they are safe to delete once you can see they are unused.
 
 **Signal:** defined tokens minus referenced tokens.
 
-**Grading:** `pass` under 2% orphaned; `attention` under 10%; `fail` above
-10%.
+**Grading:** `pass` below 2% orphaned; `attention` from 2% up to and
+including 10%; `fail` above 10%.
 
 **Evidence:** at least one real `file:line` where the orphaned token is
 defined. A vital with a count and no reachable instance is graded
