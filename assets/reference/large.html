@@ -1,5 +1,4 @@
 <title>Token Vitals at Scale</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap">
 <style>
   :root {
     --ground: #FBFBFC;
@@ -133,8 +132,8 @@
   .vital::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; }
   .vital[data-grade="pass"]::before { background: var(--pass); }
   .vital[data-grade="fail"]::before { background: var(--fail); }
-  .vital[data-grade="warn"]::before { background: var(--warn); }
-  .vital[data-grade="na"]::before   { background: var(--line-strong); }
+  .vital[data-grade="attention"]::before { background: var(--warn); }
+  .vital[data-grade="not_applicable"]::before   { background: var(--line-strong); }
   .vital[data-grade="blocked"]::before {
     background: repeating-linear-gradient(135deg, var(--block) 0 3px, transparent 3px 6px);
   }
@@ -153,10 +152,10 @@
   .grade[data-g="pass"]::before { background: var(--pass); }
   .grade[data-g="fail"] { color: var(--fail); background: var(--fail-bg); }
   .grade[data-g="fail"]::before { background: var(--fail); }
-  .grade[data-g="warn"] { color: var(--warn); background: var(--warn-bg); }
-  .grade[data-g="warn"]::before { background: var(--warn); }
-  .grade[data-g="na"] { color: var(--na); background: var(--na-bg); }
-  .grade[data-g="na"]::before { background: transparent; border: 1px dashed var(--na); }
+  .grade[data-g="attention"] { color: var(--warn); background: var(--warn-bg); }
+  .grade[data-g="attention"]::before { background: var(--warn); }
+  .grade[data-g="not_applicable"] { color: var(--na); background: var(--na-bg); }
+  .grade[data-g="not_applicable"]::before { background: transparent; border: 1px dashed var(--na); }
   .grade[data-g="blocked"] { color: var(--block); background: var(--block-bg); }
   .grade[data-g="blocked"]::before {
     background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px);
@@ -197,10 +196,10 @@
     width: 9px; height: 16px; border-radius: 1px; flex: none;
     background: var(--line-strong);
   }
-  .pip[data-s="ok"]   { background: var(--pass); }
-  .pip[data-s="warn"] { background: var(--warn); }
-  .pip[data-s="bad"]  { background: var(--fail); }
-  .pip[data-s="na"]   { background: transparent; border: 1px dashed var(--line-strong); }
+  .pip[data-s="pass"]   { background: var(--pass); }
+  .pip[data-s="attention"] { background: var(--warn); }
+  .pip[data-s="fail"]  { background: var(--fail); }
+  .pip[data-s="not_applicable"]   { background: transparent; border: 1px dashed var(--line-strong); }
   .pip[data-s="blocked"] {
     background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px);
   }
@@ -464,8 +463,8 @@
         <p>You declare a high-contrast mode but only 11&nbsp;% of it is filled in. 744 tokens fall back to their light value in a mode that promises something different.</p>
       </article>
 
-      <article class="vital" data-grade="warn">
-        <span class="grade" data-g="warn">Attention</span>
+      <article class="vital" data-grade="attention">
+        <span class="grade" data-g="attention">Attention</span>
         <h3>Naming coherence</h3>
         <p>One naming pattern holds across 638 tokens. The 202 tokens in <code>legacy.*</code> came before it and were never migrated.</p>
       </article>
@@ -515,9 +514,9 @@
             <td>color.primitive.*</td>
             <td class="num">120</td><td class="num">4</td><td class="num">0</td><td class="num">—</td>
             <td><div class="health">
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="ok"></span>
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="ok"></span>
-              <span class="pip" data-s="warn"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
+              <span class="pip" data-s="attention"></span>
             </div></td>
             <td><span class="path">tokens/color.primitive.json</span></td>
           </tr>
@@ -525,9 +524,9 @@
             <td>color.semantic.*</td>
             <td class="num">86</td><td class="num">2</td><td class="num">78</td><td class="num">412</td>
             <td><div class="health">
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="bad"></span>
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="bad"></span>
-              <span class="pip" data-s="ok"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="fail"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="fail"></span>
+              <span class="pip" data-s="pass"></span>
             </div></td>
             <td><span class="path">components/Banner.tsx:41</span></td>
           </tr>
@@ -535,9 +534,9 @@
             <td>color.component.*</td>
             <td class="num">148</td><td class="num">31</td><td class="num">134</td><td class="num">96</td>
             <td><div class="health">
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="warn"></span>
-              <span class="pip" data-s="bad"></span><span class="pip" data-s="bad"></span>
-              <span class="pip" data-s="ok"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="attention"></span>
+              <span class="pip" data-s="fail"></span><span class="pip" data-s="fail"></span>
+              <span class="pip" data-s="pass"></span>
             </div></td>
             <td><span class="path">components/Button.tsx:18</span></td>
           </tr>
@@ -545,9 +544,9 @@
             <td>typography.*</td>
             <td class="num">74</td><td class="num">6</td><td class="num">62</td><td class="num">188</td>
             <td><div class="health">
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="warn"></span>
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="bad"></span>
-              <span class="pip" data-s="ok"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="attention"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="fail"></span>
+              <span class="pip" data-s="pass"></span>
             </div></td>
             <td><span class="path">components/Heading.tsx:9</span></td>
           </tr>
@@ -555,9 +554,9 @@
             <td>size.*</td>
             <td class="num">52</td><td class="num">9</td><td class="num">0</td><td class="num">241</td>
             <td><div class="health">
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="warn"></span>
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="ok"></span>
-              <span class="pip" data-s="bad"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="attention"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
+              <span class="pip" data-s="fail"></span>
             </div></td>
             <td><span class="path">components/Avatar.tsx:22</span></td>
           </tr>
@@ -565,9 +564,9 @@
             <td>motion.*</td>
             <td class="num">28</td><td class="num">1</td><td class="num">0</td><td class="num">173</td>
             <td><div class="health">
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="ok"></span>
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="ok"></span>
-              <span class="pip" data-s="bad"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
+              <span class="pip" data-s="fail"></span>
             </div></td>
             <td><span class="path">components/Drawer.tsx:57</span></td>
           </tr>
@@ -575,9 +574,9 @@
             <td>elevation.*</td>
             <td class="num">22</td><td class="num">3</td><td class="num">18</td><td class="num">147</td>
             <td><div class="health">
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="warn"></span>
-              <span class="pip" data-s="ok"></span><span class="pip" data-s="bad"></span>
-              <span class="pip" data-s="bad"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="attention"></span>
+              <span class="pip" data-s="pass"></span><span class="pip" data-s="fail"></span>
+              <span class="pip" data-s="fail"></span>
             </div></td>
             <td><span class="path">components/Popover.tsx:33</span></td>
           </tr>
@@ -585,9 +584,9 @@
             <td>legacy.*</td>
             <td class="num">202</td><td class="num">202</td><td class="num">—</td><td class="num">0</td>
             <td><div class="health">
-              <span class="pip" data-s="na"></span><span class="pip" data-s="bad"></span>
-              <span class="pip" data-s="na"></span><span class="pip" data-s="na"></span>
-              <span class="pip" data-s="warn"></span>
+              <span class="pip" data-s="not_applicable"></span><span class="pip" data-s="fail"></span>
+              <span class="pip" data-s="not_applicable"></span><span class="pip" data-s="not_applicable"></span>
+              <span class="pip" data-s="attention"></span>
             </div></td>
             <td><span class="path">tokens/legacy.json:1</span></td>
           </tr>

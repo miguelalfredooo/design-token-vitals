@@ -92,8 +92,9 @@
   (ui-sans-serif / system-ui / -apple-system / "Segoe UI" and
   ui-monospace / SFMono-Regular / Menlo), so the page still uses IBM Plex
   for anyone who already has it installed, and degrades cleanly for
-  everyone else, offline or in a sandbox. assets/reference/*.html keep
-  the Google Fonts link — they are hosted pages, a different context.
+  everyone else, offline or in a sandbox. assets/reference/*.html carry
+  the same footer claim and the same fallback stacks, so they do not load
+  the Google Fonts link either.
 -->
 <style>
   :root {
@@ -830,7 +831,7 @@
             <td><div class="health">
               <span class="pip" data-s="not_applicable"></span><span class="pip" data-s="fail"></span>
               <span class="pip" data-s="not_applicable"></span><span class="pip" data-s="not_applicable"></span>
-              <span class="pip" data-s="attention"></span>
+              <span class="pip" data-s="blocked"></span>
             </div></td>
             <td><span class="path">tokens/legacy.json:1</span></td>
           </tr>
