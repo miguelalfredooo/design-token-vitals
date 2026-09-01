@@ -41,16 +41,18 @@ never where a finding lives and nowhere else.
 ## The JSON duplicates the report
 
 Nothing in a run's findings exists only in `.token-vitals/report.json`.
-Every finding the run produced is in the HTML report too — directly, if the
-section is under the 40-row rule's cap, or behind a `<details>` element if
-it is not. A reader who never opens the JSON still sees everything the run
-found; the JSON exists so a codemod or a triage script can consume the same
-findings without parsing HTML, not because the HTML left anything out.
+Every finding the run produced is in the HTML report too — rendered in
+whatever form fits its volume, or, for the tail of a very large section,
+behind a `<details>` element. A reader who never opens the JSON still sees
+everything the run found; the JSON exists so a codemod or a triage script
+can consume the same findings without parsing HTML, not because the HTML
+left anything out.
 
 This replaces an older framing of the two outputs — "the HTML is the
 diagnosis, the JSON is the working set" — that read as license to move
-content out of the report rather than disclose it inline. The JSON is a
-duplicate with extra machine-readability, not a second, fuller destination.
+content out of the report rather than render it. The JSON is a duplicate
+with extra machine-readability, and the report is where every finding
+already lives.
 
 ## The inventory always renders
 
@@ -61,8 +63,8 @@ them — at `full`, `collapsed`, and `family-only` alike:
   through `blue-900` — render the ramp as one strip instead of ten separate
   chips; that compression is what a ramp rendering is for. A token that
   belongs to no ramp gets its own swatch. Every color token appears
-  somewhere on the page, subject to the 40-row rule below, with the
-  remainder disclosed in a `<details>` element.
+  somewhere on the page, in whichever of those forms its volume calls
+  for — see "Change the mark, don't cut the data" below.
 - **Typography** renders as the scale itself: each step set at its real
   size, next to its token name.
 - **Spacing and size** render as bars drawn to width, each one labeled with
@@ -90,9 +92,9 @@ evidence renders inline versus rolls up into a count.
 
 | Tokens | Tier ID | Treatment |
 |---|---|---|
-| Under 150 | `full` | Everything rendered |
-| 150 to 600 inclusive | `collapsed` | Families collapsed by default, exceptions expanded, tables under the 40-row rule |
-| Over 600 | `family-only` | Family rows only, palette as ramps, modes as an exception report, tables under the 40-row rule |
+| Under 150 | `full` | Everything rendered in its sparse form: rows, labeled swatches, the whole mode matrix |
+| 150 to 600 inclusive | `collapsed` | Families collapsed by default, exceptions expanded, listings in their dense form |
+| Over 600 | `family-only` | Family rows only, palette as ramps, modes as an exception report, listings in their densest form |
 
 `full` is what a small system earns: every color as its own swatch, every
 leakage finding as its own row, the whole mode matrix laid out top to
@@ -147,55 +149,149 @@ Order by class first, then by blast radius descending within each class:
    reconciliation. These need a person to decide what was intended, so
    they carry the least certainty and sort last.
 
-Show every action up to 40, ranked in the order above. Past 40, apply the
-40-row rule below: render the first 40 and put the remainder in a
-`<details>` element right after the table, declaring the truncation the
-same way every other truncated section does — "Showing the 40
-highest-impact of `<n>` actions" — never a silent cut.
+Show five actions. This is the one section in the report where a small
+fixed number is correct, because its value comes from what it leaves out:
+forty actions is a backlog, and five is a plan. Every finding behind those
+five is still in the report — in the inventory, the leakage tiers, and the
+mode and orphan sections, all of which enumerate. This section ranks, and
+ranking past the point a reader will act costs them the ordering they came
+for.
+
+Where fewer than five actions exist, show what there is. Never pad the
+list to reach five.
 
 An action must carry a real `file:line`, the same evidence rule as every
 other finding in this report. An action with no reachable instance to
 point at does not appear on the list.
 
-## The two invariants
+## The invariants
 
 Every rendering tier, from `full` down to `family-only`, follows the same
-two rules. They are what keeps a summarized report honest instead of just
-shorter.
+rules. They are what keeps a dense report honest instead of merely shorter.
 
 ### Aggregate the count, never the evidence
 
-A family row, a truncated table, and a "see all" details block can each
-roll many findings into one number. None of them may roll away the
-evidence: every rolled-up finding still shows at least one real `file:line`
-you can open. A finding that cannot point at code is an opinion.
+A family row, a grouped leak row, and a `<details>` disclosure can each roll
+many findings into one number. None of them may roll away the evidence:
+every rolled-up finding still shows at least one real `file:line` you can
+open. A finding that cannot point at code is an opinion.
 
-### The 40-row rule
+### Change the mark, don't cut the data
 
-Every section that lists findings — leakage's three tiers, orphans, mode
-gaps, duplicates, outliers, the family table, the color inventory, the
-next-steps plan, and any other row-based table this report produces —
-shows every row up to 40. Past 40, render the first 40 by the section's own
-ranking or ordering, and put the remainder in a `<details>` element on the
-same page: closed by default, its `<summary>` naming the count, open and
-the rest is right there. The remainder is one disclosure away, never in
-another file.
+When a section outgrows its form, move to a denser form. Do not show fewer
+findings.
 
-A summary that withholds what would have fit on the page costs the reader
-a second tool for no reason. Truncation exists to stop a genuine wall of
-noise from swamping the page — a codebase with 1,645 leaked values needs
-it. Twenty-four leak groups, seventeen orphan names, or seven next-steps do
-not: a reader takes in 24 rows in about the time it takes to scroll past
-them, so a cap tuned for the 1,645-finding case has no business firing on
-the 24-row one. Where a section below refers to "the 40-row rule," this is
-the rule it means.
+Two hundred colors as table rows is unreadable. The same two hundred as
+swatches in a grid is one screen and completely readable. Too many rows was
+never a problem about quantity — it was a problem about using a low-density
+mark for the data. A rule that says "when there is more data, show less of
+it" hands a designer a summary of a summary, and the thing they opened the
+report to see is the part it dropped.
+
+Pick the form from the volume:
+
+| Data | Sparse form | Dense form | Denser still |
+|---|---|---|---|
+| Color | rows | swatch grid (~300) | ramps (~1000) |
+| Typography | rows | specimens set at real size (~40) | — |
+| Spacing and size | rows | bars drawn to width (~60) | — |
+| Leaks | rows | grouped by token, count as a bar (~200 groups) | distribution plus outliers |
+| Orphans | rows | inline chip list (~300) | grouped by family |
+| Mode gaps | matrix | coverage bar plus exception list | — |
+| Families | rows | rows with a health strip (~60) | grouped by namespace depth |
+
+The capacities are guidance for choosing a form. They are never a cap on
+what the reader sees. `assets/report-template.html` carries markup for
+every form in this table; the fill stage picks one per section and records
+the choice in `rendering.forms`.
+
+Disclosure is the last resort. When a section exceeds even its densest
+form, a `<details>` element holds the tail — the small, low-blast-radius
+remainder — and never the majority.
+
+### Compress what is systematic, enumerate what is exceptional
+
+This is what makes the compression lossless.
+
+If 190 of your 208 colors form ordered ramps and 18 do not, the ramps
+compress to a dozen strips without losing anything, because the ramp's
+structure is the information. The 18 outliers get enumerated one by one,
+because each is a separate fact that compresses into nothing.
+
+The same split applies everywhere. A spacing scale that follows a ratio
+renders as a sequence, and the one step that breaks the ratio gets called
+out. A leak found in 84 files is one row with a count; 84 leaks each found
+once are 84 facts.
+
+Systematic data has a compact visual form. Exceptions never do.
+
+### Characterize whatever you do not show
+
+`Showing 40 of 1,645` says nothing about the 1,605. Describe the hidden set
+instead:
+
+> The remaining 1,605 are single-file occurrences of these 12 values.
+
+That tells the reader the shape of what they are missing and whether they
+need to look. Counts stay prominent even when instances do not fit, and a
+distribution — how many findings touch how many files — shows the shape
+when the instances cannot.
+
+The slot template for this line lives in `references/voice.md` under
+`truncation`. Fill its `{summary}` slot with a real characterization of the
+remainder, never with a restatement of the count.
+
+### Inventory enumerates; the plan curates
+
+These are different jobs and they take opposite rules.
+
+**Inventory sections owe the reader everything.** Every color, every step,
+every orphan, every leak group, in whatever form fits. `inventory-color`,
+`inventory-type`, `inventory-space`, `families`, the three leakage tiers,
+`modes-gaps`, and `orphans` all enumerate.
+
+**"Where to start" owes the reader the few that matter, in order.** The
+`next-steps` region shows five. See "Deriving the next-steps list" above.
 
 ### Truncation is always declared
 
-Whenever a section shows fewer rows than the 40-row rule above capped it
-to, it says so in the same line: `Showing 40 of 247`. This is the same
-principle behind `blocked` in `references/vitals.md`: silence reads as a
-pass, and nothing in this report is allowed to let silence do that job. A
-truncated section always names where the rest lives: the `<details>`
-element immediately below the truncation line — never a pointer to another
-file.
+Whenever a section holds back any part of what the run found, it says so on
+the page, in the `truncation` slot from `references/voice.md`, and it names
+where the rest lives — the `<details>` element immediately below, never a
+pointer to another file. This is the same principle behind `blocked` in
+`references/vitals.md`: silence reads as a pass, and nothing in this report
+is allowed to let silence do that job.
+
+## Table width and long paths
+
+A report that scrolls sideways on every table is unreadable on the machine
+it gets opened on, and the cause is usually the same two declarations:
+
+- a fixed `min-width` on the table, which forces a width regardless of
+  content
+- `white-space: nowrap` on `.path`, which stops the widest column from ever
+  wrapping
+
+Together they fit a 44-character path during development and overflow on an
+88-character one in the field. Neither declaration is in
+`assets/report-template.html` any more. A table sizes to its container, and
+a path wraps.
+
+**Elide the shared prefix.** Every row in a leak table tends to begin with
+the same directory. Show that prefix once above the table, in a
+`<p class="prefix">`, and render each row as its distinctive tail:
+
+```
+plugins/raptive-layout-and-styles/assets/stylesheets/
+  common/share-community-feed-cta.scss:4
+  common/fkb-c-topic.scss:270
+```
+
+That is compress-what-is-systematic applied to paths, and it makes the
+table narrower and more readable at once rather than trading one for the
+other. Apply it where a shared prefix actually exists across the rows —
+with three rows sharing a short directory there is nothing systematic to
+compress, and the prefix line costs more than it saves.
+
+Where you want a wrap to land on a separator rather than mid-segment, emit
+`<wbr>` after each `/` in the path.

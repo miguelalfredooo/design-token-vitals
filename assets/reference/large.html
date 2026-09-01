@@ -189,7 +189,6 @@
   tr:last-child td { border-bottom: none; }
   .num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; padding-right: 18px; }
 
-  .fam { min-width: 720px; }
   .fam td:first-child { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
   .fam .health { display: flex; gap: 4px; align-items: center; }
   .pip {
@@ -205,7 +204,17 @@
   }
 
   code, .path { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
-  .path { white-space: nowrap; }
+  /* A path is the widest thing in most tables. Let it wrap rather than force
+     the table wider than its container. */
+  .path { overflow-wrap: anywhere; word-break: break-word; }
+
+  /* The directory every row in a table shares, shown once above it. */
+  .prefix {
+    margin: 0 0 8px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute);
+    overflow-wrap: anywhere; word-break: break-word;
+  }
+  .prefix b { color: var(--ink-soft); font-weight: 500; }
 
   .lit { font-family: var(--mono); font-size: 12px; padding: 1px 5px; border-radius: 3px; background: var(--fail-bg); color: var(--fail); }
   .tok { font-family: var(--mono); font-size: 12px; padding: 1px 5px; border-radius: 3px; background: var(--pass-bg); color: var(--pass); }
@@ -344,6 +353,31 @@
     background: repeating-linear-gradient(135deg, var(--line-strong) 0 3px, transparent 3px 6px);
   }
   .cov-row .n { flex: 0 0 132px; text-align: right; font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
+
+  /* ---------- grouped leaks (dense form) ---------- */
+
+  /* One row per token or literal, with its occurrence count drawn to width.
+     This is the form a leakage tier takes once it outgrows a table: the
+     ranking reads as a shape, and every group keeps its own count. */
+  .gleaks { display: flex; flex-direction: column; gap: 5px; }
+  .g-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 3px 0;
+  }
+  .g-row .lit, .g-row .tok { flex: 0 0 auto; }
+  .g-row .gbar {
+    flex: 1 1 120px; min-width: 90px; height: 10px; border-radius: 2px;
+    background: var(--surface-sunk); overflow: hidden;
+  }
+  .g-row .gbar i { display: block; height: 100%; background: var(--fail); opacity: 0.72; }
+  .g-row[data-t="near-miss"] .gbar i { background: var(--warn); }
+  .g-row[data-t="uncovered"] .gbar i { background: var(--na); opacity: 0.55; }
+  .g-row .n {
+    flex: 0 0 78px; text-align: right;
+    font-family: var(--mono); font-size: 11px; color: var(--ink-mute);
+    font-variant-numeric: tabular-nums;
+  }
+  .g-row .path { flex: 1 1 130px; min-width: 108px; text-align: right; font-size: 11px; color: var(--ink-mute); }
 
   /* ---------- details ---------- */
 
@@ -1057,101 +1091,28 @@
       <b>The top 12 findings account for 61&nbsp;% of all 1,645 occurrences.</b> At this size the distribution is the real finding: a handful of missing tokens create most of the mess, so fixing twelve things clears roughly two-thirds of it.
     </div>
 
-    <div class="tbl-scroll">
-      <table>
-        <thead>
-            <tr><th>Tier<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is one finding, sorted by how much of your codebase it touches. Which tier it sits in tells you who can fix it.</span></span></th><th>Literal<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The hardcoded value as written in the code.</span></span></th><th>Token<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The token this should use — or, for uncovered values, a suggested name.</span></span></th><th>Blast radius<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">How many files this touches. Fixing the high numbers first clears the most ground for the least work.</span></span></th><th>Representative location<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">One real place this appears, so you can see the pattern before committing to a sweep.</span></span></th></tr>
-          </thead>
-        <tbody>
-          <tr>
-            <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
-            <td><code>#0F8A83</code></td>
-            <td><span class="tok">color.semantic.brand.base</span></td>
-            <td><span class="blast">84 files</span></td>
-            <td><span class="path">components/Link.tsx:11</span></td>
-          </tr>
-          <tr>
-            <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
-            <td><code>8px</code></td>
-            <td><span class="tok">size.space.2</span></td>
-            <td><span class="blast">71 files</span></td>
-            <td><span class="path">components/Stack.tsx:29</span></td>
-          </tr>
-          <tr>
-            <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
-            <td><code>#0F8B84</code></td>
-            <td><span class="tok">color.semantic.brand.base</span></td>
-            <td><span class="blast">38 files</span></td>
-            <td><span class="path">components/Tag.tsx:44</span></td>
-          </tr>
-          <tr>
-            <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
-            <td><code>13px</code></td>
-            <td><span class="tok">typography.size.sm · 14px</span></td>
-            <td><span class="blast">26 files</span></td>
-            <td><span class="path">components/Caption.tsx:8</span></td>
-          </tr>
-          <tr>
-            <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
-            <td><code>cubic-bezier(.2,0,0,1)</code></td>
-            <td><span class="tok">motion.ease.emphasized</span></td>
-            <td><span class="blast">112 files</span></td>
-            <td><span class="path">components/Drawer.tsx:57</span></td>
-          </tr>
-          <tr>
-            <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
-            <td><code>z-index: 1400</code></td>
-            <td><span class="tok">layer.modal</span></td>
-            <td><span class="blast">47 files</span></td>
-            <td><span class="path">components/Modal.tsx:19</span></td>
-          </tr>
-          <tr>
-            <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
-            <td><code>#B3402F</code></td>
-            <td><span class="tok">color.semantic.danger.strong</span></td>
-            <td><span class="blast">24 files</span></td>
-            <td><span class="path">components/Toast.tsx:19</span></td>
-          </tr>
-          <tr>
-            <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
-            <td><code>24px</code></td>
-            <td><span class="tok">size.space.6</span></td>
-            <td><span class="blast">21 files</span></td>
-            <td><span class="path">components/Section.tsx:12</span></td>
-          </tr>
-          <tr>
-            <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
-            <td><code>#1D4FDD</code></td>
-            <td><span class="tok">color.semantic.link.base</span></td>
-            <td><span class="blast">19 files</span></td>
-            <td><span class="path">components/Anchor.tsx:33</span></td>
-          </tr>
-          <tr>
-            <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
-            <td><code>0 2px 6px rgba(0,0,0,.1)</code></td>
-            <td><span class="tok">elevation.card.shadow</span></td>
-            <td><span class="blast">17 files</span></td>
-            <td><span class="path">components/Card.tsx:8</span></td>
-          </tr>
-          <tr>
-            <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
-            <td><code>opacity: .64</code></td>
-            <td><span class="tok">opacity.disabled</span></td>
-            <td><span class="blast">15 files</span></td>
-            <td><span class="path">components/Button.tsx:88</span></td>
-          </tr>
-          <tr>
-            <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
-            <td><code>6px</code></td>
-            <td><span class="tok">size.radius.md · 8px</span></td>
-            <td><span class="blast">13 files</span></td>
-            <td><span class="path">components/Chip.tsx:5</span></td>
-          </tr>
-        </tbody>
-      </table>
+    <p class="lede" style="margin:0 0 14px">
+      A table of 1,645 rows stops being readable long before it stops being complete, so each group draws its occurrence count to width instead. The ranking is the same one, and the bar makes the drop-off visible: a handful of groups carry most of the pile.
+    </p>
+
+    <p class="prefix">Every location below sits under <b>components/</b></p>
+
+    <div class="gleaks">
+        <div class="g-row" data-t="redundant"><span class="lit">#0F8A83</span><span class="tok">color.semantic.brand.base</span><span class="gbar"><i style="width:100%"></i></span><span class="n">84 files</span><span class="path">Link.tsx:11</span></div>
+        <div class="g-row" data-t="redundant"><span class="lit">8px</span><span class="tok">size.space.2</span><span class="gbar"><i style="width:85%"></i></span><span class="n">71 files</span><span class="path">Stack.tsx:29</span></div>
+        <div class="g-row" data-t="near-miss"><span class="lit">#0F8B84</span><span class="tok">color.semantic.brand.base</span><span class="gbar"><i style="width:45%"></i></span><span class="n">38 files</span><span class="path">Tag.tsx:44</span></div>
+        <div class="g-row" data-t="near-miss"><span class="lit">13px</span><span class="tok">typography.size.sm · 14px</span><span class="gbar"><i style="width:31%"></i></span><span class="n">26 files</span><span class="path">Caption.tsx:8</span></div>
+        <div class="g-row" data-t="uncovered"><span class="lit">cubic-bezier(.2,0,0,1)</span><span class="tok">motion.ease.emphasized</span><span class="gbar"><i style="width:133%"></i></span><span class="n">112 files</span><span class="path">Drawer.tsx:57</span></div>
+        <div class="g-row" data-t="uncovered"><span class="lit">z-index: 1400</span><span class="tok">layer.modal</span><span class="gbar"><i style="width:56%"></i></span><span class="n">47 files</span><span class="path">Modal.tsx:19</span></div>
+        <div class="g-row" data-t="redundant"><span class="lit">#B3402F</span><span class="tok">color.semantic.danger.strong</span><span class="gbar"><i style="width:29%"></i></span><span class="n">24 files</span><span class="path">Toast.tsx:19</span></div>
+        <div class="g-row" data-t="redundant"><span class="lit">24px</span><span class="tok">size.space.6</span><span class="gbar"><i style="width:25%"></i></span><span class="n">21 files</span><span class="path">Section.tsx:12</span></div>
+        <div class="g-row" data-t="near-miss"><span class="lit">#1D4FDD</span><span class="tok">color.semantic.link.base</span><span class="gbar"><i style="width:23%"></i></span><span class="n">19 files</span><span class="path">Anchor.tsx:33</span></div>
+        <div class="g-row" data-t="uncovered"><span class="lit">0 2px 6px rgba(0,0,0,.1)</span><span class="tok">elevation.card.shadow</span><span class="gbar"><i style="width:20%"></i></span><span class="n">17 files</span><span class="path">Card.tsx:8</span></div>
+        <div class="g-row" data-t="uncovered"><span class="lit">opacity: .64</span><span class="tok">opacity.disabled</span><span class="gbar"><i style="width:18%"></i></span><span class="n">15 files</span><span class="path">Button.tsx:88</span></div>
+        <div class="g-row" data-t="near-miss"><span class="lit">6px</span><span class="tok">size.radius.md · 8px</span><span class="gbar"><i style="width:15%"></i></span><span class="n">13 files</span><span class="path">Chip.tsx:5</span></div>
     </div>
 
-    <div class="trunc">Showing 12 of 1,645, ranked by files affected.</div>
+    <div class="trunc">Showing the 12 largest groups, with the next 8 one click below. The other 1,625 occurrences are values used in a single file each.</div>
 
     <details>
       <summary>Show the next 8, ranked the same way</summary>
@@ -1251,7 +1212,7 @@
         <h3>This page</h3>
         <p class="sub">what to fix</p>
         <p style="margin:0;font-size:13.5px;color:var(--ink-soft)">
-          Eight graded checks, your architecture, and every finding this run produced — up to 40 rows per section, with anything past that one click away in a <code>&lt;details&gt;</code> right on the page. Nothing here is trimmed away to another file.
+          Eight graded checks, your architecture, and every finding this run produced. A section that outgrows a table changes its mark rather than its length — colors become swatches, leaks become ranked bars — so nothing here is trimmed away to another file.
         </p>
       </div>
       <div class="panel">

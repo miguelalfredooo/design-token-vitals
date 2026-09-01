@@ -300,7 +300,7 @@
 
   .tbl-scroll { overflow-x: auto; }
 
-  table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th {
     padding: 7px 12px 7px 0; text-align: left;
     font-family: var(--mono); font-size: 10.5px; font-weight: 500;
@@ -313,7 +313,6 @@
 
   /* ---------- family table ---------- */
 
-  .fam { min-width: 720px; }
   .fam td:first-child { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
   .fam .health { display: flex; gap: 4px; align-items: center; }
   .pip {
@@ -329,7 +328,18 @@
   }
 
   code, .path { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
-  .path { white-space: nowrap; }
+  /* A path is the widest thing in most tables. Let it wrap rather than force
+     the table wider than its container. Emit <wbr> after each "/" when you
+     want the break to land on a separator instead of mid-segment. */
+  .path { overflow-wrap: anywhere; word-break: break-word; }
+
+  /* The directory every row in a table shares, shown once above it. */
+  .prefix {
+    margin: 0 0 8px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute);
+    overflow-wrap: anywhere; word-break: break-word;
+  }
+  .prefix b { color: var(--ink-soft); font-weight: 500; }
 
   .lit { font-family: var(--mono); font-size: 12px; padding: 1px 5px; border-radius: 3px; background: var(--fail-bg); color: var(--fail); }
   .tok { font-family: var(--mono); font-size: 12px; padding: 1px 5px; border-radius: 3px; background: var(--pass-bg); color: var(--pass); }
@@ -553,6 +563,14 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Denser cells for a palette in the hundreds. The name stays; the value
+     moves to the title attribute, because at this size the color is the
+     information and the hex string is the lookup. */
+  .swatches[data-dense] { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+  .swatches[data-dense] .sw i { height: 30px; }
+  .swatches[data-dense] .sw b { font-size: 9.5px; }
+  .swatches[data-dense] .sw span { display: none; }
+
   .typescale { display: flex; flex-direction: column; gap: 11px; }
   .ts-row { display: flex; align-items: baseline; gap: 14px; }
   .ts-row .tk {
@@ -624,9 +642,33 @@
     color: var(--ink-mute);
   }
 
+  /* ---------- grouped leaks (dense form) ---------- */
+
+  /* One row per token or literal, with its occurrence count drawn to width.
+     This is the form a leakage tier takes once it outgrows a table: the
+     ranking reads as a shape, and every group keeps its own count. */
+  .gleaks { display: flex; flex-direction: column; gap: 5px; }
+  .g-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 3px 0;
+  }
+  .g-row .lit, .g-row .tok { flex: 0 0 auto; }
+  .g-row .gbar {
+    flex: 1 1 120px; min-width: 90px; height: 10px; border-radius: 2px;
+    background: var(--surface-sunk); overflow: hidden;
+  }
+  .g-row .gbar i { display: block; height: 100%; background: var(--fail); opacity: 0.72; }
+  .g-row[data-t="near-miss"] .gbar i { background: var(--warn); }
+  .g-row[data-t="uncovered"] .gbar i { background: var(--na); opacity: 0.55; }
+  .g-row .n {
+    flex: 0 0 78px; text-align: right;
+    font-family: var(--mono); font-size: 11px; color: var(--ink-mute);
+    font-variant-numeric: tabular-nums;
+  }
+  .g-row .path { flex: 1 1 130px; min-width: 108px; text-align: right; font-size: 11px; color: var(--ink-mute); }
+
   /* ---------- mode matrix (full-tier rendering) ---------- */
 
-  .matrix { min-width: 520px; }
   .matrix th.mode { text-align: center; width: 92px; }
   .matrix td.cell { text-align: center; padding: 0; }
   .matrix .dot {
@@ -786,6 +828,12 @@
             <td><span class="path">components/Stack.tsx:29</span></td>
           </tr>
           <tr>
+            <td>Swap the hardcoded <span class="lit">14px</span> for <span class="tok">typography.size.sm</span>, the token that already holds it.</td>
+            <td class="num"><span class="blast">52 files</span></td>
+            <td>Component author</td>
+            <td><span class="path">components/Label.tsx:6</span></td>
+          </tr>
+          <tr>
             <td>Add a <span class="tok">motion.ease.emphasized</span> token for the easing curve every drawer and dialog already uses.</td>
             <td class="num"><span class="blast">112 files</span></td>
             <td>System owner</td>
@@ -797,30 +845,12 @@
             <td>System owner</td>
             <td><span class="path">components/Modal.tsx:19</span></td>
           </tr>
-          <tr>
-            <td>Decide whether <span class="lit">#0C7A8E</span> is a deliberate variant of <span class="tok">--brand</span> or drift to reconcile with it.</td>
-            <td class="num"><span class="blast">38 files</span></td>
-            <td>Design</td>
-            <td><span class="path">app/marketing/hero.tsx:19</span></td>
-          </tr>
-          <tr>
-            <td>Swap the hardcoded <span class="lit">14px</span> for <span class="tok">typography.size.sm</span>, the token that already holds it.</td>
-            <td class="num"><span class="blast">52 files</span></td>
-            <td>Component author</td>
-            <td><span class="path">components/Label.tsx:6</span></td>
-          </tr>
-          <tr>
-            <td>Decide whether <span class="lit">13px</span> in captions is a deliberate override of <span class="tok">typography.size.sm</span> or drift to reconcile with it.</td>
-            <td class="num"><span class="blast">21 files</span></td>
-            <td>Design</td>
-            <td><span class="path">components/Caption.tsx:8</span></td>
-          </tr>
-        </tbody>
+            </tbody>
       </table>
     </div>
 
     <div class="note">
-      <b>Ordered by class, then by how much each one clears.</b> A blocked check comes first — you cannot improve what you cannot measure. Mechanical fixes come next, since a token already exists and no judgment is required. Gaps that need a new token decided come after that, and drift that needs a person's call comes last.
+      <b>Ordered by class, then by how much each one clears.</b> A blocked check comes first — you cannot improve what you cannot measure. Mechanical fixes come next, since a token already exists and no judgment is required. Gaps that need a new token decided come after that, and drift that needs a person's call comes last. The list stops at five on purpose: every other finding is enumerated in the sections below, and this one is worth reading because of what it leaves out.
     </div>
     <!-- /SLOT:next-steps -->
   </section>
@@ -997,7 +1027,7 @@
     </p>
 
     <!-- SLOT:inventory-color -->
-    <div class="panel" data-tier="full collapsed">
+    <div class="panel" data-tier="full">
       <h3>Semantic color</h3>
       <p class="sub">14 tokens · 2 modes</p>
       <div class="swatches">
@@ -1009,6 +1039,70 @@
         <div class="sw"><i style="background:#3E7C4F"></i><b>--ok</b><span>#3E7C4F</span></div>
         <div class="sw"><i style="background:#B3402F"></i><b>--danger</b><span>#B3402F</span></div>
         <div class="sw"><i style="background:#9A6B12"></i><b>--warning</b><span>#9A6B12</span></div>
+      </div>
+    </div>
+
+
+    <div class="panel" data-tier="collapsed">
+      <h3>Color</h3>
+      <p class="sub">208 tokens · 2 modes · 5 ramps and 8 that belong to none</p>
+      <p class="lede" style="margin:0 0 14px">
+        A palette this size fills a screen as labeled swatches and stays readable, so every color is here rather than a chosen few. Hover a swatch for its value.
+      </p>
+      <div class="swatches" data-dense>
+          <div class="sw"><i style="background:#F8F9FA" title="#F8F9FA"></i><b>--neutral-50</b><span>#F8F9FA</span></div>
+          <div class="sw"><i style="background:#E9ECEF" title="#E9ECEF"></i><b>--neutral-100</b><span>#E9ECEF</span></div>
+          <div class="sw"><i style="background:#DEE2E6" title="#DEE2E6"></i><b>--neutral-200</b><span>#DEE2E6</span></div>
+          <div class="sw"><i style="background:#CED4DA" title="#CED4DA"></i><b>--neutral-300</b><span>#CED4DA</span></div>
+          <div class="sw"><i style="background:#ADB5BD" title="#ADB5BD"></i><b>--neutral-400</b><span>#ADB5BD</span></div>
+          <div class="sw"><i style="background:#868E96" title="#868E96"></i><b>--neutral-500</b><span>#868E96</span></div>
+          <div class="sw"><i style="background:#495057" title="#495057"></i><b>--neutral-600</b><span>#495057</span></div>
+          <div class="sw"><i style="background:#343A40" title="#343A40"></i><b>--neutral-700</b><span>#343A40</span></div>
+          <div class="sw"><i style="background:#212529" title="#212529"></i><b>--neutral-800</b><span>#212529</span></div>
+          <div class="sw"><i style="background:#0B0D0E" title="#0B0D0E"></i><b>--neutral-900</b><span>#0B0D0E</span></div>
+          <div class="sw"><i style="background:#E7F1FF" title="#E7F1FF"></i><b>--blue-50</b><span>#E7F1FF</span></div>
+          <div class="sw"><i style="background:#C7DEFF" title="#C7DEFF"></i><b>--blue-100</b><span>#C7DEFF</span></div>
+          <div class="sw"><i style="background:#9DC4FF" title="#9DC4FF"></i><b>--blue-200</b><span>#9DC4FF</span></div>
+          <div class="sw"><i style="background:#6BA4FF" title="#6BA4FF"></i><b>--blue-300</b><span>#6BA4FF</span></div>
+          <div class="sw"><i style="background:#3C82F6" title="#3C82F6"></i><b>--blue-400</b><span>#3C82F6</span></div>
+          <div class="sw"><i style="background:#2563EB" title="#2563EB"></i><b>--blue-500</b><span>#2563EB</span></div>
+          <div class="sw"><i style="background:#1D4ED8" title="#1D4ED8"></i><b>--blue-600</b><span>#1D4ED8</span></div>
+          <div class="sw"><i style="background:#1E40AF" title="#1E40AF"></i><b>--blue-700</b><span>#1E40AF</span></div>
+          <div class="sw"><i style="background:#1E3A8A" title="#1E3A8A"></i><b>--blue-800</b><span>#1E3A8A</span></div>
+          <div class="sw"><i style="background:#172554" title="#172554"></i><b>--blue-900</b><span>#172554</span></div>
+          <div class="sw"><i style="background:#E0F5F4" title="#E0F5F4"></i><b>--teal-50</b><span>#E0F5F4</span></div>
+          <div class="sw"><i style="background:#B8E9E6" title="#B8E9E6"></i><b>--teal-100</b><span>#B8E9E6</span></div>
+          <div class="sw"><i style="background:#85D8D3" title="#85D8D3"></i><b>--teal-200</b><span>#85D8D3</span></div>
+          <div class="sw"><i style="background:#4FC3BC" title="#4FC3BC"></i><b>--teal-300</b><span>#4FC3BC</span></div>
+          <div class="sw"><i style="background:#26A69F" title="#26A69F"></i><b>--teal-400</b><span>#26A69F</span></div>
+          <div class="sw"><i style="background:#0F8A83" title="#0F8A83"></i><b>--teal-500</b><span>#0F8A83</span></div>
+          <div class="sw"><i style="background:#0B6E68" title="#0B6E68"></i><b>--teal-600</b><span>#0B6E68</span></div>
+          <div class="sw"><i style="background:#0A5751" title="#0A5751"></i><b>--teal-700</b><span>#0A5751</span></div>
+          <div class="sw"><i style="background:#08423E" title="#08423E"></i><b>--teal-800</b><span>#08423E</span></div>
+          <div class="sw"><i style="background:#052E2B" title="#052E2B"></i><b>--teal-900</b><span>#052E2B</span></div>
+          <div class="sw"><i style="background:#E8F5E9" title="#E8F5E9"></i><b>--green-50</b><span>#E8F5E9</span></div>
+          <div class="sw"><i style="background:#C8E6C9" title="#C8E6C9"></i><b>--green-100</b><span>#C8E6C9</span></div>
+          <div class="sw"><i style="background:#A5D6A7" title="#A5D6A7"></i><b>--green-200</b><span>#A5D6A7</span></div>
+          <div class="sw"><i style="background:#81C784" title="#81C784"></i><b>--green-300</b><span>#81C784</span></div>
+          <div class="sw"><i style="background:#66BB6A" title="#66BB6A"></i><b>--green-400</b><span>#66BB6A</span></div>
+          <div class="sw"><i style="background:#4CAF50" title="#4CAF50"></i><b>--green-500</b><span>#4CAF50</span></div>
+          <div class="sw"><i style="background:#3E8E41" title="#3E8E41"></i><b>--green-600</b><span>#3E8E41</span></div>
+          <div class="sw"><i style="background:#2E7D32" title="#2E7D32"></i><b>--green-700</b><span>#2E7D32</span></div>
+          <div class="sw"><i style="background:#1B5E20" title="#1B5E20"></i><b>--green-800</b><span>#1B5E20</span></div>
+          <div class="sw"><i style="background:#0D3D12" title="#0D3D12"></i><b>--green-900</b><span>#0D3D12</span></div>
+          <div class="sw"><i style="background:#FDECEA" title="#FDECEA"></i><b>--red-50</b><span>#FDECEA</span></div>
+          <div class="sw"><i style="background:#F9C9C4" title="#F9C9C4"></i><b>--red-100</b><span>#F9C9C4</span></div>
+          <div class="sw"><i style="background:#F3A69D" title="#F3A69D"></i><b>--red-200</b><span>#F3A69D</span></div>
+          <div class="sw"><i style="background:#EA7C70" title="#EA7C70"></i><b>--red-300</b><span>#EA7C70</span></div>
+          <div class="sw"><i style="background:#DE5245" title="#DE5245"></i><b>--red-400</b><span>#DE5245</span></div>
+          <div class="sw"><i style="background:#C93B2E" title="#C93B2E"></i><b>--red-500</b><span>#C93B2E</span></div>
+          <div class="sw"><i style="background:#B3402F" title="#B3402F"></i><b>--red-600</b><span>#B3402F</span></div>
+          <div class="sw"><i style="background:#8E2A20" title="#8E2A20"></i><b>--red-700</b><span>#8E2A20</span></div>
+          <div class="sw"><i style="background:#6B1E17" title="#6B1E17"></i><b>--red-800</b><span>#6B1E17</span></div>
+          <div class="sw"><i style="background:#48120D" title="#48120D"></i><b>--red-900</b><span>#48120D</span></div>
+      </div>
+      <div class="note" style="margin-top:16px">
+        <b>Eight colors belong to no ramp.</b> They were added by hand outside whatever generated the rest of the palette, and they are the ones worth looking at: <code>--brand</code>, <code>--brand-hover</code>, <code>--focus-ring</code>, <code>--overlay</code>, <code>--chart-pos</code>, <code>--chart-neg</code>, <code>--code-bg</code>, <code>--selection</code>.
       </div>
     </div>
 
@@ -1217,6 +1311,7 @@
       Not every hardcoded value is a mistake — a 1px hairline rarely needs a token. What matters is when your system already had an answer and the code went around it. These are sorted into three groups, because each one needs a different fix from a different person.
     </p>
 
+    <!-- SLOT:leak-ranked -->
     <div data-tier="collapsed family-only">
       <h3 style="margin:0 0 6px;font-size:15px;font-weight:600;letter-spacing:-0.008em">Ranked by how much they touch</h3>
       <p class="lede">
@@ -1226,6 +1321,9 @@
       <div class="note" style="margin-top:0;margin-bottom:22px">
         <b>The top 12 findings account for 61&nbsp;% of all 1,645 occurrences.</b> At this size the distribution is the real finding: a handful of missing tokens create most of the mess, so fixing twelve things clears roughly two-thirds of it.
       </div>
+
+      <div data-tier="collapsed">
+        <p class="prefix">Every location below sits under <b>components/</b></p>
 
       <div class="tbl-scroll">
         <table>
@@ -1238,90 +1336,90 @@
               <td><code>#0F8A83</code></td>
               <td><span class="tok">color.semantic.brand.base</span></td>
               <td><span class="blast">84 files</span></td>
-              <td><span class="path">components/Link.tsx:11</span></td>
+              <td><span class="path">Link.tsx:11</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
               <td><code>8px</code></td>
               <td><span class="tok">size.space.2</span></td>
               <td><span class="blast">71 files</span></td>
-              <td><span class="path">components/Stack.tsx:29</span></td>
+              <td><span class="path">Stack.tsx:29</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
               <td><code>#0F8B84</code></td>
               <td><span class="tok">color.semantic.brand.base</span></td>
               <td><span class="blast">38 files</span></td>
-              <td><span class="path">components/Tag.tsx:44</span></td>
+              <td><span class="path">Tag.tsx:44</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
               <td><code>13px</code></td>
               <td><span class="tok">typography.size.sm · 14px</span></td>
               <td><span class="blast">26 files</span></td>
-              <td><span class="path">components/Caption.tsx:8</span></td>
+              <td><span class="path">Caption.tsx:8</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
               <td><code>cubic-bezier(.2,0,0,1)</code></td>
               <td><span class="tok">motion.ease.emphasized</span></td>
               <td><span class="blast">112 files</span></td>
-              <td><span class="path">components/Drawer.tsx:57</span></td>
+              <td><span class="path">Drawer.tsx:57</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
               <td><code>z-index: 1400</code></td>
               <td><span class="tok">layer.modal</span></td>
               <td><span class="blast">47 files</span></td>
-              <td><span class="path">components/Modal.tsx:19</span></td>
+              <td><span class="path">Modal.tsx:19</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
               <td><code>#B3402F</code></td>
               <td><span class="tok">color.semantic.danger.strong</span></td>
               <td><span class="blast">24 files</span></td>
-              <td><span class="path">components/Toast.tsx:19</span></td>
+              <td><span class="path">Toast.tsx:19</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
               <td><code>24px</code></td>
               <td><span class="tok">size.space.6</span></td>
               <td><span class="blast">21 files</span></td>
-              <td><span class="path">components/Section.tsx:12</span></td>
+              <td><span class="path">Section.tsx:12</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
               <td><code>#1D4FDD</code></td>
               <td><span class="tok">color.semantic.link.base</span></td>
               <td><span class="blast">19 files</span></td>
-              <td><span class="path">components/Anchor.tsx:33</span></td>
+              <td><span class="path">Anchor.tsx:33</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
               <td><code>0 2px 6px rgba(0,0,0,.1)</code></td>
               <td><span class="tok">elevation.card.shadow</span></td>
               <td><span class="blast">17 files</span></td>
-              <td><span class="path">components/Card.tsx:8</span></td>
+              <td><span class="path">Card.tsx:8</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
               <td><code>opacity: .64</code></td>
               <td><span class="tok">opacity.disabled</span></td>
               <td><span class="blast">15 files</span></td>
-              <td><span class="path">components/Button.tsx:88</span></td>
+              <td><span class="path">Button.tsx:88</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
               <td><code>6px</code></td>
               <td><span class="tok">size.radius.md · 8px</span></td>
               <td><span class="blast">13 files</span></td>
-              <td><span class="path">components/Chip.tsx:5</span></td>
+              <td><span class="path">Chip.tsx:5</span></td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div class="trunc">Showing 12 of 1,645, ranked by files affected.</div>
+      <div class="trunc">Showing the 12 largest groups, with the next 8 one click below. The other 47 groups are single-file occurrences of 47 further values.</div>
 
       <details>
         <summary>Show the next 8, ranked the same way</summary>
@@ -1337,62 +1435,99 @@
               <td><code>#0B7285</code></td>
               <td><span class="tok">color.semantic.brand.base</span></td>
               <td><span class="blast">11 files</span></td>
-              <td><span class="path">components/NavLink.tsx:22</span></td>
+              <td><span class="path">NavLink.tsx:22</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
               <td><code>12px</code></td>
               <td><span class="tok">size.space.3</span></td>
               <td><span class="blast">10 files</span></td>
-              <td><span class="path">components/ListItem.tsx:14</span></td>
+              <td><span class="path">ListItem.tsx:14</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
               <td><code>#495060</code></td>
               <td><span class="tok">color.semantic.text.soft · #4A4D5C</span></td>
               <td><span class="blast">9 files</span></td>
-              <td><span class="path">components/Meta.tsx:7</span></td>
+              <td><span class="path">Meta.tsx:7</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
               <td><code>250ms cubic-bezier(.4,0,.2,1)</code></td>
               <td><span class="tok">motion.ease.standard</span></td>
               <td><span class="blast">8 files</span></td>
-              <td><span class="path">components/Accordion.tsx:41</span></td>
+              <td><span class="path">Accordion.tsx:41</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
               <td><code>z-index: 40</code></td>
               <td><span class="tok">layer.dropdown</span></td>
               <td><span class="blast">7 files</span></td>
-              <td><span class="path">components/Select.tsx:9</span></td>
+              <td><span class="path">Select.tsx:9</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
               <td><code>15px</code></td>
               <td><span class="tok">typography.size.sm · 14px</span></td>
               <td><span class="blast">6 files</span></td>
-              <td><span class="path">components/Helper.tsx:3</span></td>
+              <td><span class="path">Helper.tsx:3</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
               <td><code>#9A6B12</code></td>
               <td><span class="tok">color.semantic.warning.base</span></td>
               <td><span class="blast">5 files</span></td>
-              <td><span class="path">components/Banner.tsx:52</span></td>
+              <td><span class="path">Banner.tsx:52</span></td>
             </tr>
             <tr>
               <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
               <td><code>1px solid rgba(0,0,0,.08)</code></td>
               <td><span class="tok">border.subtle.hairline</span></td>
               <td><span class="blast">4 files</span></td>
-              <td><span class="path">components/Divider.tsx:2</span></td>
+              <td><span class="path">Divider.tsx:2</span></td>
             </tr>
               </tbody>
             </table>
           </div>
         </div>
       </details>
+      </div>
+
+
+      <div data-tier="family-only">
+        <p class="lede" style="margin:0 0 14px">
+          At this size a table of rows stops being readable, so each group draws its occurrence count to width instead. The ranking is the same one, and the bar makes the drop-off visible: a handful of groups carry most of the pile.
+        </p>
+
+        <p class="prefix">Every location below sits under <b>components/</b></p>
+
+        <div class="gleaks">
+          <div class="g-row" data-t="uncovered"><span class="lit">cubic-bezier(.2,0,0,1)</span><span class="tok">motion.ease.emphasized</span><span class="gbar"><i style="width:100%"></i></span><span class="n">112 files</span><span class="path">Drawer.tsx:57</span></div>
+          <div class="g-row" data-t="redundant"><span class="lit">#0F8A83</span><span class="tok">color.semantic.brand.base</span><span class="gbar"><i style="width:75%"></i></span><span class="n">84 files</span><span class="path">Link.tsx:11</span></div>
+          <div class="g-row" data-t="redundant"><span class="lit">8px</span><span class="tok">size.space.2</span><span class="gbar"><i style="width:63%"></i></span><span class="n">71 files</span><span class="path">Stack.tsx:29</span></div>
+          <div class="g-row" data-t="uncovered"><span class="lit">z-index: 1400</span><span class="tok">layer.modal</span><span class="gbar"><i style="width:42%"></i></span><span class="n">47 files</span><span class="path">Modal.tsx:19</span></div>
+          <div class="g-row" data-t="near-miss"><span class="lit">#0F8B84</span><span class="tok">color.semantic.brand.base</span><span class="gbar"><i style="width:34%"></i></span><span class="n">38 files</span><span class="path">Tag.tsx:44</span></div>
+          <div class="g-row" data-t="near-miss"><span class="lit">13px</span><span class="tok">typography.size.sm · 14px</span><span class="gbar"><i style="width:23%"></i></span><span class="n">26 files</span><span class="path">Caption.tsx:8</span></div>
+          <div class="g-row" data-t="redundant"><span class="lit">#B3402F</span><span class="tok">color.semantic.danger.strong</span><span class="gbar"><i style="width:21%"></i></span><span class="n">24 files</span><span class="path">Toast.tsx:19</span></div>
+          <div class="g-row" data-t="redundant"><span class="lit">24px</span><span class="tok">size.space.6</span><span class="gbar"><i style="width:19%"></i></span><span class="n">21 files</span><span class="path">Section.tsx:12</span></div>
+          <div class="g-row" data-t="near-miss"><span class="lit">#1D4FDD</span><span class="tok">color.semantic.link.base</span><span class="gbar"><i style="width:17%"></i></span><span class="n">19 files</span><span class="path">Anchor.tsx:33</span></div>
+          <div class="g-row" data-t="uncovered"><span class="lit">0 2px 6px rgba(0,0,0,.1)</span><span class="tok">elevation.card.shadow</span><span class="gbar"><i style="width:15%"></i></span><span class="n">17 files</span><span class="path">Card.tsx:8</span></div>
+          <div class="g-row" data-t="uncovered"><span class="lit">opacity: .64</span><span class="tok">opacity.disabled</span><span class="gbar"><i style="width:13%"></i></span><span class="n">15 files</span><span class="path">Button.tsx:88</span></div>
+          <div class="g-row" data-t="near-miss"><span class="lit">6px</span><span class="tok">size.radius.md · 8px</span><span class="gbar"><i style="width:12%"></i></span><span class="n">13 files</span><span class="path">Chip.tsx:5</span></div>
+          <div class="g-row" data-t="redundant"><span class="lit">#0B7285</span><span class="tok">color.semantic.brand.base</span><span class="gbar"><i style="width:10%"></i></span><span class="n">11 files</span><span class="path">NavLink.tsx:22</span></div>
+          <div class="g-row" data-t="redundant"><span class="lit">12px</span><span class="tok">size.space.3</span><span class="gbar"><i style="width:9%"></i></span><span class="n">10 files</span><span class="path">Field.tsx:41</span></div>
+          <div class="g-row" data-t="uncovered"><span class="lit">1px solid rgba(0,0,0,.08)</span><span class="tok">border.subtle.hairline</span><span class="gbar"><i style="width:4%"></i></span><span class="n">4 files</span><span class="path">Divider.tsx:2</span></div>
+        </div>
+
+        <div class="trunc">Showing the 15 largest groups. The other 1,630 occurrences spread across 47 further values, none of them reaching four files.</div>
+
+        <details>
+          <summary>Show the remaining 47 groups</summary>
+          <div class="details-body">
+            <p class="lede" style="margin:12px 0 0">Fill this with the tail of the ranking, in the same grouped form. Every group keeps its own count and one real location, so nothing here loses its evidence.</p>
+          </div>
+        </details>
+      </div>
 
       <details>
         <summary>See totals for each group</summary>
@@ -1412,6 +1547,7 @@
         </div>
       </details>
     </div>
+    <!-- /SLOT:leak-ranked -->
 
     <div data-tier="full">
       <div class="tier">
@@ -1912,7 +2048,7 @@
         <h3>This page</h3>
         <p class="sub">what to fix</p>
         <p style="margin:0;font-size:13.5px;color:var(--ink-soft)">
-          Eight graded checks, your architecture, and every finding this run produced — up to 40 rows per section, with anything past that one click away in a <code>&lt;details&gt;</code> right on the page. Nothing here is trimmed away to another file.
+          Eight graded checks, your architecture, and every finding this run produced. A section that outgrows a table changes its mark rather than its length — colors become swatches, leaks become ranked bars — so nothing here is trimmed away to another file.
         </p>
       </div>
       <div class="panel">
@@ -1991,6 +2127,20 @@
         <dl class="meta">
           <dt>excluded</dt><dd>node_modules/ — dependency, not authored by this repository</dd>
           <dt>excluded</dt><dd>dist/ — generated build output</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>How this was rendered</h3>
+        <p class="sub">the mark chosen for each listing, by its own volume</p>
+        <dl class="meta">
+          <dt>tier</dt><dd>family-only (840 tokens)</dd>
+          <dt>color</dt><dd>ramps</dd>
+          <dt>typography</dt><dd>specimens</dd>
+          <dt>spacing</dt><dd>bars</dd>
+          <dt>leaks</dt><dd>grouped</dd>
+          <dt>orphans</dt><dd>chips</dd>
+          <dt>modes</dt><dd>coverage-bar</dd>
+          <dt>families</dt><dd>health-strip</dd>
         </dl>
       </div>
     </div>
