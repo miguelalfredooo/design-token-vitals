@@ -98,6 +98,15 @@ necessity rather than by oversight.
 typography, space, size, radius, border, elevation, motion, z-index,
 opacity, breakpoint.
 
+**Framework defaults are part of the count, and checking them is
+mandatory.** When the active adapter says a category can come from a
+framework's own default theme rather than the project's own declaration —
+see `references/adapters/tailwind.md` — checking the installed version of
+that framework is a precondition for grading `coverage` at all, not an
+optional extra step. If the installed version cannot be determined,
+`coverage` is `blocked` with a note saying so; it is never graded `pass` on
+an unchecked assumption that a default theme covers a category.
+
 **Grading:** `pass` at 11 of 11 categories present; `attention` at 8–10;
 `fail` below 8.
 

@@ -20,9 +20,13 @@ inside a CSS file, tells you this is the adapter to run.
 
 A category absent from the project's own theme can still come from
 Tailwind's own default theme — for example `z-*` and `opacity-*` utilities
-ship with a built-in scale even when a project never overrides one. Before
-grading `coverage` as missing a category, check the installed version's
-default theme and record the version you checked.
+ship with a built-in scale even when a project never overrides one. Checking
+the installed version's default theme is required before grading `coverage`
+as missing that category, never an optional extra step — see the
+framework-default rule in `references/vitals.md`'s `coverage` vital. Record
+the exact version you checked in the report, in `run.framework_versions`
+(`assets/capability-map.yml`) — a `coverage` grade that depends on an
+unrecorded version is not something a second run can reproduce or check.
 
 ## What a leak looks like
 
