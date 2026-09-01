@@ -28,6 +28,31 @@ Each vital below has four parts: **Catches** (what it looks for), **Signal**
 (what gets counted), **Grading** (the thresholds that produce a verdict),
 and **Evidence** (the real instance backing that verdict).
 
+## What counts as a token
+
+A token is one distinct custom-property name declared in the project's own
+token sources. Count names, not declarations: a name declared once in
+`:root` and again in a `.dark` block is one token with two mode values, not
+two tokens.
+
+Excluded from the count, each for a stated reason:
+
+- **Runtime-injected properties** — `--radix-*`, `--swiper-*`, and anything
+  else a library writes in at runtime. The project does not own these; they
+  were never part of what it declared.
+- **Component-local properties** — a custom property declared inside a
+  component file rather than a token source. This is local state, not a
+  token, and it counts as a leak instead if a token already exists for the
+  same concept — see `references/leakage.md`.
+- **Framework-default properties** — a category a framework's own default
+  theme supplies without the project declaring it. These count toward
+  `coverage`, which asks whether a category is available at all, but never
+  toward `token_count`, which asks what the project itself declares.
+
+Record the count and the source files it came from — `run.token_count` and
+`stack.token_sources` in `assets/capability-map.yml` — so two runs against
+the same repository can be compared directly instead of argued about.
+
 ## tier-integrity
 
 **Catches:** components reaching past your semantic layer to grab a
