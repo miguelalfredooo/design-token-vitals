@@ -1,0 +1,8 @@
+# The fixture deliberately contains a node_modules/ and a dist/ directory,
+# because proving the run excludes them is what they are for. A global or
+# user gitignore excludes both by default, so re-include them here — the
+# directory has to be re-included before anything inside it can be.
+!node_modules/
+!node_modules/**
+!dist/
+!dist/**

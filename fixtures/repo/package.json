@@ -1,0 +1,5 @@
+{
+  "name": "fixture-app",
+  "private": true,
+  "dependencies": { "next": "16.0.0", "sass": "1.80.0" }
+}
