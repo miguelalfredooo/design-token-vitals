@@ -96,7 +96,8 @@
     ],
     "scoped_properties_not_counted": [
       "--panel-gap"
-    ]
+    ],
+    "_spacing_note": "--spacing is declared in @theme and again under .theme-compact, a scheme class. One name, two roots, counted once. A run reporting 22 counted the override as a second token."
   },
   "inventory_families": {
     "measured": [
@@ -185,7 +186,10 @@
         "why": "Only Tailwind's derived scale (--spacing x 5) covers 20px. A derived scale is one token, the multiplier, and a step generated from it has no name to swap to. A run classifying this redundant has counted framework steps as named tokens."
       }
     ],
-    "_scope_note": "Leaks come from owned reachable consumer files only. node_modules/pkg/theme.css holds #2563eb and 8px and must never appear; dist/bundle.css holds #2563eb and must never appear."
+    "_scope_note": "Leaks come from owned reachable consumer files only. node_modules/pkg/theme.css holds #2563eb and 8px and must never appear; dist/bundle.css holds #2563eb and must never appear.",
+    "redundant_findings": 3,
+    "redundant_occurrences": 4,
+    "_grading_note": "Three findings (distinct literal-to-token pairs), four occurrences (8px appears in two files). leakage grades on findings: 3 is attention. A run grading on occurrences reads the same data as 4, still attention here, and as fail on a larger codebase \u2014 which is how two runs split on shadcn."
   },
   "fix_queue": {
     "entries": 3,
@@ -198,7 +202,8 @@
     "orphans": "attention",
     "_orphans_note": "exactly one: --unused-legacy-accent",
     "enforcement": "blocked",
-    "_enforcement_note": "no lint config and no CI in the fixture"
+    "_enforcement_note": "no lint config and no CI in the fixture",
+    "leakage": "attention"
   },
   "validation": {
     "expected": "all eight rules pass"

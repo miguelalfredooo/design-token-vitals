@@ -23,6 +23,10 @@
   --unused-legacy-accent: #ff00ff;
 }
 
+.theme-compact {
+  --spacing: 0.125rem;
+}
+
 .dark {
   --blue-500: #3b82f6;
   --blue-600: #60a5fa;

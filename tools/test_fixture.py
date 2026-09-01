@@ -184,6 +184,19 @@ class TestTokenAccounting(unittest.TestCase):
         uncovered = [l["literal"] for l in EXPECTED["leaks"]["uncovered"]]
         self.assertIn("20px", uncovered)
 
+    def test_a_name_at_two_theme_roots_counts_once(self):
+        """--spacing sits in @theme and again under .theme-compact. One token."""
+        text = read("app/globals.css")
+        self.assertEqual(text.count("--spacing:"), 2)
+        self.assertEqual(sum(1 for t in declared_tokens() if t == "--spacing"), 1)
+
+    def test_leakage_grades_on_findings_and_reports_occurrences(self):
+        """8px is one finding in two files: the grade reads 3, the blast radius reads 4."""
+        red = EXPECTED["leaks"]["redundant"]
+        self.assertEqual(len(red), EXPECTED["leaks"]["redundant_findings"])
+        self.assertEqual(sum(len(r["files"]) for r in red), EXPECTED["leaks"]["redundant_occurrences"])
+        self.assertEqual(EXPECTED["vitals"]["leakage"], "attention")
+
     def test_the_unreachable_source_holds_real_declarations(self):
         """An empty decoy would prove nothing about reachability."""
         self.assertEqual(len(DECL.findall(read("app/orphan-tokens.css"))), 3)
