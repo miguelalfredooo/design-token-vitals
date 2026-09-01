@@ -705,14 +705,30 @@
             <td>System owner</td>
             <td><span class="path">registry/new-york-v4/ui/tooltip.tsx:51</span></td>
           </tr>
+          <tr>
+            <td>Add a <code>z-index</code> token scale — Tailwind v4 has no <code>--z-*</code> theme scale, so <span class="lit">z-50</span> and its neighbors compile to fixed values with no variable to reach for instead.</td>
+            <td class="num">1 missing category</td>
+            <td>System owner</td>
+            <td><span class="path">registry/new-york-v4/ui/alert-dialog.tsx:39</span></td>
+          </tr>
+          <tr>
+            <td>Add an <code>opacity</code> token scale — Tailwind v4 has no <code>--opacity-*</code> theme scale, so <span class="lit">opacity-50</span> and its neighbors compile to fixed values with no variable to reach for instead.</td>
+            <td class="num">1 missing category</td>
+            <td>System owner</td>
+            <td><span class="path">registry/new-york-v4/ui/accordion.tsx:38</span></td>
+          </tr>
+          <tr>
+            <td>Add a token for the <span class="lit">rounded-[4px]</span> value nothing in the radius scale covers.</td>
+            <td class="num"><span class="blast">1 file</span></td>
+            <td>System owner</td>
+            <td><span class="path">registry/new-york-v4/ui/checkbox.tsx:17</span></td>
+          </tr>
         </tbody>
       </table>
     </div>
 
-    <div class="trunc">Showing the 5 highest-impact of 8 actions. The rest are in <code>report.json</code>.</div>
-
     <div class="note">
-      <b>Ordered by class, then by how much each one clears.</b> Enforcement is blocked, so the rule that unblocks it comes first — it also happens to cover both redundant findings on this list. The two redundant swaps come next, since a utility already matches and no judgment is required. The two uncovered gaps come after that, since someone has to decide on a token before either closes. z-index and opacity have no token scale at all in this project — see Coverage above — and rank below these five; <code>rounded-[4px]</code> (1 file) is the eighth and last action, not shown here.
+      <b>Ordered by class, then by how much each one clears.</b> Enforcement is blocked, so the rule that unblocks it comes first — it also happens to cover both redundant findings on this list. The two redundant swaps come next, since a utility already matches and no judgment is required. The remaining five are system gaps, ranked by how much each clears: the two uncovered dimension values with a real blast radius, then the two missing category scales (z-index, opacity — see Coverage above), then <code>rounded-[4px]</code> (1 file), the smallest of the three uncovered findings.
     </div>
     <!-- /SLOT:next-steps -->
   </section>
@@ -727,7 +743,7 @@
     <!-- SLOT:inventory-color -->
     <div class="panel" data-tier="full collapsed">
       <h3>Semantic color (light mode)</h3>
-      <p class="sub">14 of 34 color tokens shown · 2 modes</p>
+      <p class="sub">34 of 34 color tokens shown · 2 modes</p>
       <div class="swatches">
         <div class="sw"><i style="background:oklch(1 0 0)"></i><b>--background</b><span>oklch(1 0 0)</span></div>
         <div class="sw"><i style="background:oklch(0% 0 0)"></i><b>--foreground</b><span>oklch(0% 0 0)</span></div>
@@ -743,9 +759,29 @@
         <div class="sw"><i style="background:oklch(80.9% 0.105 251.813)"></i><b>--chart-1</b><span>via var(--color-blue-300)</span></div>
         <div class="sw"><i style="background:oklch(0.985 0 0)"></i><b>--sidebar</b><span>oklch(0.985 0 0)</span></div>
         <div class="sw"><i style="background:oklch(0.98 0 0)"></i><b>--surface</b><span>oklch(0.98 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.922 0 0)"></i><b>--input</b><span>oklch(0.922 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0% 0 0)"></i><b>--surface-foreground</b><span>via var(--foreground)</span></div>
+        <div class="sw"><i style="background:oklch(0% 0 0)"></i><b>--card-foreground</b><span>oklch(0% 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0% 0 0)"></i><b>--popover-foreground</b><span>oklch(0% 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.985 0 0)"></i><b>--primary-foreground</b><span>oklch(0.985 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.205 0 0)"></i><b>--secondary-foreground</b><span>oklch(0.205 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.556 0 0)"></i><b>--muted-foreground</b><span>oklch(0.556 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.205 0 0)"></i><b>--accent-foreground</b><span>oklch(0.205 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.97 0.01 17)"></i><b>--destructive-foreground</b><span>oklch(0.97 0.01 17)</span></div>
+        <div class="sw"><i style="background:oklch(62.3% 0.214 259.815)"></i><b>--chart-2</b><span>via var(--color-blue-500)</span></div>
+        <div class="sw"><i style="background:oklch(54.6% 0.245 262.881)"></i><b>--chart-3</b><span>via var(--color-blue-600)</span></div>
+        <div class="sw"><i style="background:oklch(48.8% 0.243 264.376)"></i><b>--chart-4</b><span>via var(--color-blue-700)</span></div>
+        <div class="sw"><i style="background:oklch(42.4% 0.199 265.638)"></i><b>--chart-5</b><span>via var(--color-blue-800)</span></div>
+        <div class="sw"><i style="background:oklch(0% 0 0)"></i><b>--sidebar-foreground</b><span>oklch(0% 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.205 0 0)"></i><b>--sidebar-primary</b><span>oklch(0.205 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.985 0 0)"></i><b>--sidebar-primary-foreground</b><span>oklch(0.985 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.97 0 0)"></i><b>--sidebar-accent</b><span>oklch(0.97 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.205 0 0)"></i><b>--sidebar-accent-foreground</b><span>oklch(0.205 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.922 0 0)"></i><b>--sidebar-border</b><span>oklch(0.922 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.708 0 0)"></i><b>--sidebar-ring</b><span>oklch(0.708 0 0)</span></div>
       </div>
       <div class="note" style="margin-top:16px">
-        <b>34 color-bearing tokens exist; 14 representative ones are shown here.</b> The full set — including every <code>-foreground</code> pairing, the 5-step chart palette, and the 8 sidebar tokens — is in <code>report.json</code>.
+        <b>34 color-bearing tokens, all shown above.</b> These are light-mode values — see Mode completeness below for how they compare against <code>.dark</code>.
       </div>
     </div>
 
@@ -808,7 +844,7 @@
         <div class="tbl-scroll">
           <table>
             <thead>
-              <tr><th>Literal<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is a hardcoded value that one of your tokens already holds. Swapping it in is a safe, mechanical change.</span></span></th><th>Should be<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The token that already holds this exact value — what the code should reference instead.</span></span></th><th>Category<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Which part of the system this value belongs to. Color matters most, because it is what breaks theming.</span></span></th><th>Location<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The first place this appears. There may be more; the full list lives in the JSON sidecar.</span></span></th></tr>
+              <tr><th>Literal<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is a hardcoded value that one of your tokens already holds. Swapping it in is a safe, mechanical change.</span></span></th><th>Should be<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The token that already holds this exact value — what the code should reference instead.</span></span></th><th>Category<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Which part of the system this value belongs to. Color matters most, because it is what breaks theming.</span></span></th><th>Location<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The first place this appears. Every occurrence of this value is listed in the JSON working set too.</span></span></th></tr>
             </thead>
             <tbody>
               <tr>
@@ -990,14 +1026,14 @@
         <h3>This page</h3>
         <p class="sub">what to fix</p>
         <p style="margin:0;font-size:13.5px;color:var(--ink-soft)">
-          Eight graded checks, your architecture, and the evidence that matters most. Short enough to read in one sitting and to attach to a pull request. Past about 600 tokens it stops trying to list everything.
+          Eight graded checks, your architecture, and every finding this run produced. Short enough to read in one sitting and to attach to a pull request.
         </p>
       </div>
       <div class="panel">
         <h3><code>.token-vitals/report.json</code></h3>
-        <p class="sub">where all of it is</p>
+        <p class="sub">the same findings, machine-readable</p>
         <p style="margin:0;font-size:13.5px;color:var(--ink-soft)">
-          All findings, orphans and mode gaps, with every occurrence and location. This is what you would point a codemod or a triage session at. The page tells you what is wrong; this file tells you everywhere it is.
+          All findings, orphans and mode gaps, with every occurrence and location — a duplicate of exactly what this page shows, in a shape a codemod or a triage script can consume without parsing HTML.
         </p>
       </div>
     </div>
