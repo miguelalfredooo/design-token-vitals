@@ -40,9 +40,27 @@
   same value, from one source, whenever a region is filled in. A card whose
   stripe and chip disagree is exactly the kind of drift this skill exists
   to catch, and must never ship.
+
+  data-grade and data-g use the skill's own five status values, verbatim:
+  pass, attention, fail, blocked, not_applicable (see references/vitals.md,
+  assets/capability-map.yml, and SKILL.md). Do not reintroduce "warn" or
+  "na" here — those were an earlier, second vocabulary for the same five
+  values, and this skill grades other codebases on exactly that kind of
+  naming drift.
 -->
 <title>Design Token Vitals</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap">
+<!--
+  A locally-written report must make no network request: it describes a
+  private codebase, and its own footer claims "runs locally, nothing
+  leaves your machine." A Google Fonts stylesheet link for IBM Plex used
+  to sit here; it was removed on purpose. Do not restore it. The --sans and
+  --mono custom properties below already carry real fallback stacks
+  (ui-sans-serif / system-ui / -apple-system / "Segoe UI" and
+  ui-monospace / SFMono-Regular / Menlo), so the page still uses IBM Plex
+  for anyone who already has it installed, and degrades cleanly for
+  everyone else, offline or in a sandbox. assets/reference/*.html keep
+  the Google Fonts link — they are hosted pages, a different context.
+-->
 <style>
   :root {
     --ground: #FBFBFC;
@@ -174,8 +192,8 @@
   .vital::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; }
   .vital[data-grade="pass"]::before { background: var(--pass); }
   .vital[data-grade="fail"]::before { background: var(--fail); }
-  .vital[data-grade="warn"]::before { background: var(--warn); }
-  .vital[data-grade="na"]::before   { background: var(--line-strong); }
+  .vital[data-grade="attention"]::before { background: var(--warn); }
+  .vital[data-grade="not_applicable"]::before   { background: var(--line-strong); }
   .vital[data-grade="blocked"]::before {
     background: repeating-linear-gradient(135deg, var(--block) 0 3px, transparent 3px 6px);
   }
@@ -194,10 +212,10 @@
   .grade[data-g="pass"]::before { background: var(--pass); }
   .grade[data-g="fail"] { color: var(--fail); background: var(--fail-bg); }
   .grade[data-g="fail"]::before { background: var(--fail); }
-  .grade[data-g="warn"] { color: var(--warn); background: var(--warn-bg); }
-  .grade[data-g="warn"]::before { background: var(--warn); }
-  .grade[data-g="na"] { color: var(--na); background: var(--na-bg); }
-  .grade[data-g="na"]::before { background: transparent; border: 1px dashed var(--na); }
+  .grade[data-g="attention"] { color: var(--warn); background: var(--warn-bg); }
+  .grade[data-g="attention"]::before { background: var(--warn); }
+  .grade[data-g="not_applicable"] { color: var(--na); background: var(--na-bg); }
+  .grade[data-g="not_applicable"]::before { background: transparent; border: 1px dashed var(--na); }
   .grade[data-g="blocked"] { color: var(--block); background: var(--block-bg); }
   .grade[data-g="blocked"]::before {
     background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px);
@@ -651,8 +669,8 @@
         <p>You declare a high-contrast mode but only 11&nbsp;% of it is filled in. 744 tokens fall back to their light value in a mode that promises something different.</p>
       </article>
 
-      <article class="vital" data-grade="warn">
-        <span class="grade" data-g="warn">Attention</span>
+      <article class="vital" data-grade="attention">
+        <span class="grade" data-g="attention">Attention</span>
         <h3>Naming coherence</h3>
         <p>One naming pattern holds across 638 tokens. The 202 tokens in <code>legacy.*</code> came before it and were never migrated.</p>
       </article>
