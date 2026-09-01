@@ -32,7 +32,7 @@ SCSS_VAR = re.compile(r"^\$([a-z0-9-]+)\s*:", re.M)
 
 # The sources that define tokens, from expected.json's classification.
 DEFINING = ["app/globals.css", "app/theme.css", "styles/_primitives.scss"]
-CONSUMING = ["app/components.css"]
+CONSUMING = ["app/components.css", "packages/ui/src/theme.css"]
 
 
 def read(rel):
@@ -84,6 +84,12 @@ class TestImportGraph(unittest.TestCase):
     def test_the_scss_partial_is_reached_through_its_entry(self):
         via = self.graph["reachable"]["styles/_primitives.scss"]["via"]
         self.assertIn("styles/main.scss", via)
+
+    def test_a_workspace_package_resolves_by_name(self):
+        """globals.css imports "ui/theme.css"; the file is packages/ui/src/theme.css."""
+        self.assertIn("packages/ui/src/theme.css", self.graph["reachable"])
+        self.assertEqual(self.graph["workspace_packages"], {"ui": "packages/ui"})
+        self.assertEqual(self.graph["unresolved"], [])
 
     def test_excluded_directories_contribute_nothing(self):
         joined = " ".join(self.graph["reachable"]) + " ".join(self.graph["orphans"])

@@ -15,13 +15,15 @@ different questions, and diffing them produces a number that looks like
 progress and is not. This refuses instead, and says which input diverged.
 Pass --force to diff anyway, clearly labeled.
 
-Exit status is 1 on a regression, 2 when the two runs are incompatible.
+Exit status is 1 on a regression, 2 when the two runs are incompatible —
+see tools/cli.py.
 """
 import argparse
 import json
 import sys
 
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
+from cli import EXIT_FINDING, EXIT_OK, EXIT_REFUSED, add_json_flag, emit_json  # noqa: E402
 from findings import collect_ids  # noqa: E402
 
 
@@ -138,7 +140,7 @@ def main(argv):
     ap.add_argument("current")
     ap.add_argument("--force", action="store_true",
                     help="diff incompatible runs anyway, clearly labeled")
-    ap.add_argument("--json", dest="out")
+    add_json_flag(ap)
     args = ap.parse_args(argv)
 
     with open(args.baseline, encoding="utf-8") as fh:
@@ -156,15 +158,13 @@ def main(argv):
             print("    current:  %s" % json.dumps(p["current"]))
         print("\nRe-run the baseline under the current scope, or pass --force to")
         print("diff anyway with the divergence on record.")
-        return 2
+        return EXIT_REFUSED
 
     result = diff(base, cur)
     if problems:
         result["incompatible"] = problems
 
-    if args.out:
-        with open(args.out, "w", encoding="utf-8") as fh:
-            json.dump(result, fh, indent=2, sort_keys=True)
+    emit_json(args.json_out, result)
 
     if problems:
         print("WARNING: forced across an incompatible baseline — %d input(s) diverged\n"
@@ -182,7 +182,7 @@ def main(argv):
     if missing:
         print("\n%d id(s) appear in the current report outside any finding entry" % len(missing))
 
-    return 1 if result["regressions"] else 0
+    return EXIT_FINDING if result["regressions"] else EXIT_OK
 
 
 if __name__ == "__main__":

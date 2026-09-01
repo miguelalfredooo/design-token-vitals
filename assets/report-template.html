@@ -123,19 +123,19 @@
     --line-strong: #CDCFD8;
     --ink: #15161C;
     --ink-soft: #4A4D5C;
-    --ink-mute: #767A8B;
+    --ink-mute: #696C7B;
     --accent: #1F5F6B;
     --accent-soft: #E4F0F2;
 
-    --pass: #3E7C4F;
+    --pass: #397248;
     --pass-bg: #EAF2EB;
     --fail: #B3402F;
     --fail-bg: #FAEBE8;
-    --warn: #9A6B12;
+    --warn: #895F10;
     --warn-bg: #FAF1DF;
     --block: #5B5B7A;
     --block-bg: #EEEEF3;
-    --na: #767A8B;
+    --na: #646776;
     --na-bg: #F2F3F5;
 
     --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -506,6 +506,103 @@
     summary::before { transition: none; }
   }
 
+  /* ---------- contents rail ---------- */
+
+  /* Twenty-six regions in one scroll had no way to reach any of them. On a
+     wide viewport this sits beside the report; below that it becomes a row
+     of chips at the top. Every section carries an id, and every fix-queue
+     row carries its finding id as an anchor, so a finding can be linked
+     from a ticket. */
+  .contents {
+    display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center;
+    margin: 0 0 32px; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  .contents-label {
+    flex: 0 0 100%; margin-bottom: 4px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-mute);
+  }
+  .contents a {
+    padding: 4px 10px; border-radius: 3px; border: 1px solid var(--line);
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); text-decoration: none; background: var(--surface);
+  }
+  .contents a:hover { color: var(--accent); border-color: var(--accent); }
+  .contents a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (min-width: 1320px) {
+    .contents {
+      position: fixed; top: 32px; left: calc(50% - 640px - 200px); width: 170px;
+      flex-direction: column; align-items: stretch; gap: 2px; margin: 0; padding: 0; border: none;
+    }
+    .contents-label { margin: 0 0 8px; }
+    .contents a { border: none; background: transparent; padding: 5px 8px; border-left: 2px solid transparent; border-radius: 0; }
+    .contents a:hover { border-left-color: var(--accent); background: var(--surface); }
+  }
+  section[id] { scroll-margin-top: 24px; }
+  tr[id] { scroll-margin-top: 80px; }
+  tr[id]:target td { background: var(--accent-soft); }
+
+  /* ---------- print ---------- */
+
+  /* The docs say this file gets attached to CI and forwarded by email.
+     Definitions that live in hover tooltips do not print, and neither
+     does anything behind a scroll container. CSS cannot open a closed
+     <details> — its content is hidden inside the element's own shadow
+     tree — so those stay closed on paper; the summary line still prints
+     with its count. */
+  @media print {
+    body { background: #fff; color: #000; }
+    .contents, .ihelp .info { display: none; }
+    .tip {
+      position: static; opacity: 1; visibility: visible; display: block;
+      max-width: none; margin: 4px 0 0; padding: 0; box-shadow: none;
+      background: transparent; color: #333; font-size: 10px; line-height: 1.35;
+      text-transform: none; letter-spacing: 0; font-weight: 400;
+    }
+    .tip::before { display: none; }
+    th { white-space: normal; vertical-align: top; }
+    .tbl-scroll { overflow: visible; }
+    table { font-size: 11px; }
+    section { break-inside: avoid-page; page-break-inside: avoid; }
+    section + section { break-before: auto; }
+    h2 { break-after: avoid; }
+    details { border: 1px solid #bbb; }
+    summary::before { display: none; }
+    a { color: inherit; text-decoration: none; }
+    .sw i, .ramp i, .out i, .pair i, .cell, .c, .pip, .track i, .gbar i, .bar-row i {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+  }
+
+  /* ---------- spacing scale ---------- */
+
+  /* The template's own vertical rhythm, as a scale rather than as inline
+     margins. A tool that grades codebases on their token discipline had
+     sixty layout decisions hardcoded in its own markup before this. */
+  .stack-8  { margin-top: 8px; }
+  .stack-12 { margin-top: 12px; }
+  .stack-14 { margin-top: 14px; }
+  .stack-16 { margin-top: 16px; }
+  .stack-26 { margin-top: 26px; }
+  .flush    { margin-top: 0; }
+  .below-6  { margin-bottom: 6px; }
+  .below-14 { margin-bottom: 14px; }
+  .below-22 { margin-bottom: 22px; }
+
+  /* tier labels: .lit already carries the redundant tint by default */
+  .tier-near-miss { background: var(--warn-bg); color: var(--warn); }
+  .tier-uncovered { background: var(--na-bg); color: var(--na); }
+
+  /* a compact outlier chip holding one 16px swatch */
+  .out--mini { padding: 2px 8px 2px 4px; }
+  .out--mini i { width: 16px; height: 16px; }
+
+  /* an empty pair cell, for a near-miss with no partner rendered */
+  .pair i.empty { background: var(--surface-sunk); }
+
+  /* inline subheads and secondary copy inside a section */
+  .subhead { margin: 0 0 6px; font-size: 15px; font-weight: 600; letter-spacing: -0.008em; }
+  .p-soft  { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+  .p-mute  { margin-top: 8px; font-size: 12.5px; color: var(--ink-mute); }
+
   /* ---------- panels & notes ---------- */
 
   .panel {
@@ -817,7 +914,25 @@
     <!-- /SLOT:runhead-meta -->
   </header>
 
-  <section>
+  <nav class="contents" aria-label="Report sections">
+    <span class="contents-label">In this report</span>
+    <a href="#summary">Summary</a>
+    <a href="#trend" data-tier="full collapsed family-only">Trend</a>
+    <a href="#vitals">Vitals</a>
+    <a href="#start">Where to start</a>
+    <a href="#architecture" data-tier="collapsed family-only">Architecture</a>
+    <a href="#fix-queue">Fix queue</a>
+    <a href="#ownership">Ownership</a>
+    <a href="#lineage">Lineage</a>
+    <a href="#inventory">Inventory</a>
+    <a href="#coverage">Coverage</a>
+    <a href="#leakage">Leakage</a>
+    <a href="#modes">Modes</a>
+    <a href="#orphans">Orphans</a>
+    <a href="#measurement">Measurement</a>
+  </nav>
+
+  <section id="summary">
     <div class="eyebrow">Summary</div>
     <h2>What is worst, and what to do first</h2>
     <!-- SLOT:exec-summary -->
@@ -843,7 +958,7 @@
             <span class="block">1 blocked</span>
             <span class="unk">1 unmeasured</span>
           </div>
-          <div style="margin-top:8px;font-size:12.5px;color:var(--ink-mute)">
+          <div class="p-mute">
             <b>enforcement</b> is blocked: nothing in lint or CI reads the token layer, so there is no artifact to grade.
             <b>grid</b> is unmeasured: container widths resolve in a build step this run could not execute.
           </div>
@@ -853,14 +968,14 @@
     <!-- /SLOT:exec-summary -->
   </section>
 
-  <section>
+  <section id="trend">
     <div class="eyebrow">Trend</div>
     <h2>What moved since the last run</h2>
     <p class="lede">
       Findings carry stable ids, so two runs across two commits can be compared. A comparison only runs when the framework, adapters, owned paths, scan scope and token sources match — two runs that scoped differently answer different questions, and a diff between them would read as progress without being progress.
     </p>
     <!-- SLOT:trend -->
-    <div class="split" style="margin-bottom:14px">
+    <div class="split below-14">
       <span class="ok">12 resolved</span>
       <span class="unk">3 new</span>
       <span class="block">1 regression</span>
@@ -877,13 +992,13 @@
         </tbody>
       </table>
     </div>
-    <div class="note" style="margin-top:16px">
+    <div class="note stack-16">
       <b>Compared against <code>a91f4c07</code>.</b> Same framework, adapters, owned paths, scope and token sources, so the two runs are measuring the same thing and the movement above is real.
     </div>
     <!-- /SLOT:trend -->
   </section>
 
-  <section>
+  <section id="vitals">
     <div class="eyebrow">The eight vitals</div>
     <h2>Eight checks on your token system</h2>
     <p class="lede">
@@ -958,7 +1073,7 @@
     </div>
   </section>
 
-  <section>
+  <section id="start">
     <div class="eyebrow">Where to start</div>
     <h2>The next concrete move, ranked</h2>
     <p class="lede">
@@ -1012,7 +1127,7 @@
     <!-- /SLOT:next-steps -->
   </section>
 
-  <section data-tier="collapsed family-only">
+  <section id="architecture" data-tier="collapsed family-only">
     <div class="eyebrow">Architecture</div>
     <h2>Your system, grouped the way you built it</h2>
     <p class="lede">
@@ -1177,7 +1292,7 @@
   </section>
 
 
-  <section>
+  <section id="fix-queue">
     <div class="eyebrow">Fix queue</div>
     <h2>What a person or an agent can act on now</h2>
     <p class="lede">
@@ -1190,7 +1305,7 @@
           <tr><th>Finding</th><th>Literal</th><th>Replacement</th><th>Priority<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">(n + 2f + 3b) &times; c. Files outweigh occurrences because ten occurrences in one file is one edit. Breadth outweighs both, because a value crossing many components is a missing system decision.</span></span></th><th>Confidence</th><th>Automation<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Only a value a token already holds can be swapped without a decision. Drift and uncovered values always need a person.</span></span></th><th>First location</th></tr>
         </thead>
         <tbody>
-              <tr data-finding="c3b404ccdd7e">
+              <tr id="f-c3b404ccdd7e" data-finding="c3b404ccdd7e">
                 <td><code>c3b404ccdd7e</code></td>
                 <td><span class="lit">#0F8A83</span></td>
                 <td><span class="tok">--brand</span></td>
@@ -1199,7 +1314,7 @@
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/Link.tsx:11</span></td>
               </tr>
-              <tr data-finding="4ccda3abfece">
+              <tr id="f-4ccda3abfece" data-finding="4ccda3abfece">
                 <td><code>4ccda3abfece</code></td>
                 <td><span class="lit">#B3402F</span></td>
                 <td><span class="tok">--danger</span></td>
@@ -1208,7 +1323,7 @@
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/Toast.tsx:19</span></td>
               </tr>
-              <tr data-finding="e9b395923232">
+              <tr id="f-e9b395923232" data-finding="e9b395923232">
                 <td><code>e9b395923232</code></td>
                 <td><span class="lit">#3E7C4F</span></td>
                 <td><span class="tok">--ok</span></td>
@@ -1217,7 +1332,7 @@
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/status-dot.tsx:12</span></td>
               </tr>
-              <tr data-finding="938b90223b1e">
+              <tr id="f-938b90223b1e" data-finding="938b90223b1e">
                 <td><code>938b90223b1e</code></td>
                 <td><span class="lit">8px</span></td>
                 <td><span class="tok">--space-2</span></td>
@@ -1226,7 +1341,7 @@
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/Stack.tsx:29</span></td>
               </tr>
-              <tr data-finding="bac392391fab">
+              <tr id="f-bac392391fab" data-finding="bac392391fab">
                 <td><code>bac392391fab</code></td>
                 <td><span class="lit">24px</span></td>
                 <td><span class="tok">--space-6</span></td>
@@ -1235,7 +1350,7 @@
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/Section.tsx:12</span></td>
               </tr>
-              <tr data-finding="34883b1bd180">
+              <tr id="f-34883b1bd180" data-finding="34883b1bd180">
                 <td><code>34883b1bd180</code></td>
                 <td><span class="lit">#0F8B84</span></td>
                 <td><span class="tok">--brand</span></td>
@@ -1244,7 +1359,7 @@
                 <td><span class="auto" data-a="no">needs a person</span></td>
                 <td><span class="path">components/Tag.tsx:44</span></td>
               </tr>
-              <tr data-finding="bb8650af35d0">
+              <tr id="f-bb8650af35d0" data-finding="bb8650af35d0">
                 <td><code>bb8650af35d0</code></td>
                 <td><span class="lit">13px</span></td>
                 <td><span class="tok">--text-sm</span></td>
@@ -1256,13 +1371,13 @@
         </tbody>
       </table>
     </div>
-    <div class="note" style="margin-top:16px">
+    <div class="note stack-16">
       <b>Five of these seven are safe to automate.</b> Each is a value one of your tokens already holds, so the swap carries no decision. The two marked as needing a person are drift — someone has to decide whether the near-miss was deliberate before it gets reconciled.
     </div>
     <!-- /SLOT:fix-queue -->
   </section>
 
-  <section>
+  <section id="ownership">
     <div class="eyebrow">Ownership</div>
     <h2>The same findings, grouped by who owns them</h2>
     <p class="lede">
@@ -1286,7 +1401,7 @@
     <!-- /SLOT:groups -->
   </section>
 
-  <section>
+  <section id="lineage">
     <div class="eyebrow">Lineage</div>
     <h2>Where each token comes from</h2>
     <p class="lede">
@@ -1319,13 +1434,13 @@
         <span class="step">2 components</span>
       </div>
     </div>
-    <div class="note" style="margin-top:16px">
+    <div class="note stack-16">
       <b>The fourth chain is the duplicate this catches.</b> <span class="lit">#0F8A83</span> is defined a second time with nothing linking it to <span class="tok">--brand</span>, which already holds that value. The first three chains are alias layers working as designed, and grading them the same way would report a healthy system as drift.
     </div>
     <!-- /SLOT:lineage -->
   </section>
 
-  <section>
+  <section id="inventory">
     <div class="eyebrow">Inventory</div>
     <h2>Your tokens, shown as what they are</h2>
     <p class="lede">
@@ -1352,7 +1467,7 @@
     <div class="panel" data-tier="collapsed">
       <h3>Color</h3>
       <p class="sub">208 tokens · 2 modes · 5 ramps and 8 that belong to none</p>
-      <p class="lede" style="margin:0 0 14px">
+      <p class="lede below-14">
         A palette this size fills a screen as labeled swatches and stays readable, so every color is here rather than a chosen few. Hover a swatch for its value.
       </p>
       <div class="swatches" data-dense>
@@ -1407,12 +1522,12 @@
           <div class="sw"><i style="background:#6B1E17" title="#6B1E17"></i><b>--red-800</b><span>#6B1E17</span></div>
           <div class="sw"><i style="background:#48120D" title="#48120D"></i><b>--red-900</b><span>#48120D</span></div>
       </div>
-      <div class="note" style="margin-top:16px">
+      <div class="note stack-16">
         <b>Eight colors belong to no ramp.</b> They were added by hand outside whatever generated the rest of the palette, and they are the ones worth looking at: <code>--brand</code>, <code>--brand-hover</code>, <code>--focus-ring</code>, <code>--overlay</code>, <code>--chart-pos</code>, <code>--chart-neg</code>, <code>--code-bg</code>, <code>--selection</code>.
       </div>
     </div>
 
-    <div data-tier="family-only" style="margin-top:26px">
+    <div data-tier="family-only" class="stack-26">
       <p class="lede">
         Your palette has structure: a ramp built from <code>blue-50</code> through <code>blue-900</code> renders as one strip instead of ten separate chips. Ramps make a large palette easy to scan, and problems tend to announce themselves once that structure is visible.
       </p>
@@ -1504,7 +1619,7 @@
         </div>
       </div>
 
-      <div class="grid2" style="margin-top:26px">
+      <div class="grid2 stack-26">
         <div class="panel">
           <h3>Colors that belong to no ramp</h3>
           <p class="sub">4 tokens · worth a look</p>
@@ -1514,7 +1629,7 @@
             <span class="out"><i style="background:#7B5CD6"></i><b>promo.gradient.end</b></span>
             <span class="out"><i style="background:#2D6A4F"></i><b>chart.series.legacy</b></span>
           </div>
-          <div class="note" style="margin-top:16px">
+          <div class="note stack-16">
             Each of these was added by hand, outside the system that generated everything else. That is either a deliberate exception worth writing down, or drift worth folding back in.
           </div>
         </div>
@@ -1529,39 +1644,39 @@
             </thead>
               <tbody>
                 <tr>
-                  <td><span class="out" style="padding:2px 8px 2px 4px"><i style="background:#C62828;width:16px;height:16px"></i></span></td>
+                  <td><span class="out out--mini"><i style="background:#C62828"></i></span></td>
                   <td><code>color.semantic.danger.strong</code></td>
                   <td><code>color.semantic.error.600</code></td>
                 </tr>
                 <tr>
-                  <td><span class="out" style="padding:2px 8px 2px 4px"><i style="background:#0F8A83;width:16px;height:16px"></i></span></td>
+                  <td><span class="out out--mini"><i style="background:#0F8A83"></i></span></td>
                   <td><code>color.semantic.brand.base</code></td>
                   <td><code>color.semantic.primary.500</code></td>
                 </tr>
                 <tr>
-                  <td><span class="out" style="padding:2px 8px 2px 4px"><i style="background:#868E96;width:16px;height:16px"></i></span></td>
+                  <td><span class="out out--mini"><i style="background:#868E96"></i></span></td>
                   <td><code>color.semantic.text.muted</code></td>
                   <td><code>color.semantic.text.secondary</code></td>
                 </tr>
                 <tr>
-                  <td><span class="out" style="padding:2px 8px 2px 4px"><i style="background:#0B0D0E;width:16px;height:16px"></i></span></td>
+                  <td><span class="out out--mini"><i style="background:#0B0D0E"></i></span></td>
                   <td><code>color.semantic.text.strong</code></td>
                   <td><code>color.neutral.900</code></td>
                 </tr>
                 <tr>
-                  <td><span class="out" style="padding:2px 8px 2px 4px"><i style="background:#F1F3F5;width:16px;height:16px"></i></span></td>
+                  <td><span class="out out--mini"><i style="background:#F1F3F5"></i></span></td>
                   <td><code>color.semantic.surface.sunk</code></td>
                   <td><code>color.neutral.100</code></td>
                 </tr>
                 <tr>
-                  <td><span class="out" style="padding:2px 8px 2px 4px"><i style="background:#0B7285;width:16px;height:16px"></i></span></td>
+                  <td><span class="out out--mini"><i style="background:#0B7285"></i></span></td>
                   <td><code>color.semantic.link.base</code></td>
                   <td><code>color.semantic.brand.600</code></td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div class="note" style="margin-top:14px">
+          <div class="note stack-14">
             <b>This one only shows up at scale.</b> Two semantic names for the same value usually means two teams named the same decision separately. People then pick between them at random, and the system slowly drifts along that seam.
           </div>
         </div>
@@ -1569,7 +1684,7 @@
     </div>
     <!-- /SLOT:inventory-color -->
 
-    <div class="inv-grid" style="margin-top:26px">
+    <div class="inv-grid stack-26">
       <!-- SLOT:inventory-type -->
       <div class="panel">
         <h3>Type scale</h3>
@@ -1582,7 +1697,7 @@
           <div class="ts-row"><span class="tk">--text-xl / 26</span><span class="spec" style="font-size:26px;color:var(--warn)">Grotesque</span></div>
           <div class="ts-row"><span class="tk">--text-2xl / 32</span><span class="spec" style="font-size:32px">Grotesque</span></div>
         </div>
-        <div class="note" style="margin-top:16px">
+        <div class="note stack-16">
           <b>Step 5 does not fit the ratio.</b> A 1.25 scale from 20 should give 25, but this one is 26. Someone hand-tuned a step and the rest of the scale was never recalculated to match.
         </div>
       </div>
@@ -1602,7 +1717,7 @@
           <div class="bar-row"><span class="tk">--space-12</span><i style="width:48px"></i><em>48</em></div>
           <div class="bar-row"><span class="tk">--space-16</span><i style="width:64px"></i><em>64</em></div>
         </div>
-        <div class="note" style="margin-top:16px">
+        <div class="note stack-16">
           <b>There is no 20px step.</b> That is why <code>gap: 20px</code> shows up hardcoded in nine files — people needed it and the scale did not have it.
         </div>
       </div>
@@ -1610,8 +1725,8 @@
     </div>
 
     <!-- SLOT:family-coverage -->
-    <div style="margin-top:26px">
-      <h3 style="margin:0 0 6px;font-size:15px;font-weight:600;letter-spacing:-0.008em">Foundational families</h3>
+    <div class="stack-26">
+      <h3 class="subhead">Foundational families</h3>
       <p class="lede">
         Every family in the taxonomy, whether or not this project declares it. Measured, unmeasured and absent are three different answers: measured means found and counted, absent means the project declares none, and unmeasured means this run could not resolve it. A family shown as unmeasured is one the report makes no claim about.
       </p>
@@ -1648,7 +1763,7 @@
   </section>
 
 
-  <section>
+  <section id="coverage">
     <div class="eyebrow">Coverage</div>
     <h2>What was measured, per bundle and mode</h2>
     <p class="lede">
@@ -1670,21 +1785,21 @@
         </tbody>
       </table>
     </div>
-    <div class="split" style="margin-top:12px">
+    <div class="split stack-12">
       <span class="ok">measured</span>
       <span class="unk">unmeasured</span>
       <span class="block">blocked</span>
     </div>
-    <div class="note" style="margin-top:16px">
+    <div class="note stack-16">
       <b>The mobile dark bundle was never resolved.</b> No compiled output exists for it, so this run measured nothing there and grades nothing there. Building that bundle and re-running fills the row. <b>Elevation is unmeasured on desktop and mobile</b> because the shadow scale resolves in a build step this run could not execute — the tokens may be complete, and this run cannot say so.
     </div>
-    <div class="note" style="margin-top:12px">
+    <div class="note stack-12">
       <b>This bundle layout is a worked example and it is unverified.</b> The <code>common</code>, <code>desktop</code> and <code>mobile</code> split is the shape a Discourse tree takes, and the adapter for it has not yet been run against a real checkout. The matrix itself is generic: the first axis is whatever entry bundles discovery found.
     </div>
     <!-- /SLOT:coverage-matrix -->
   </section>
 
-  <section>
+  <section id="leakage">
     <div class="eyebrow">Leakage</div>
     <h2>Hardcoded values, and whether a token already existed</h2>
     <p class="lede">
@@ -1693,12 +1808,12 @@
 
     <!-- SLOT:leak-ranked -->
     <div data-tier="collapsed family-only">
-      <h3 style="margin:0 0 6px;font-size:15px;font-weight:600;letter-spacing:-0.008em">Ranked by how much they touch</h3>
+      <h3 class="subhead">Ranked by how much they touch</h3>
       <p class="lede">
         This can be more findings than anyone can read through in one sitting. Each group below shows the entries touching the most files first, and that ranking is stable, so re-running the report will not reshuffle what you see. The rest is one click away.
       </p>
 
-      <div class="note" style="margin-top:0;margin-bottom:22px">
+      <div class="note flush below-22">
         <b>The top 12 findings account for 61&nbsp;% of all 1,645 occurrences.</b> At this size the distribution is the real finding: a handful of missing tokens create most of the mess, so fixing twelve things clears roughly two-thirds of it.
       </div>
 
@@ -1712,84 +1827,84 @@
             </thead>
           <tbody>
             <tr>
-              <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
+              <td><span class="lit">redundant</span></td>
               <td><code>#0F8A83</code></td>
               <td><span class="tok">color.semantic.brand.base</span></td>
               <td><span class="blast">84 files</span></td>
               <td><span class="path">Link.tsx:11</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
+              <td><span class="lit">redundant</span></td>
               <td><code>8px</code></td>
               <td><span class="tok">size.space.2</span></td>
               <td><span class="blast">71 files</span></td>
               <td><span class="path">Stack.tsx:29</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
+              <td><span class="lit tier-near-miss">near-miss</span></td>
               <td><code>#0F8B84</code></td>
               <td><span class="tok">color.semantic.brand.base</span></td>
               <td><span class="blast">38 files</span></td>
               <td><span class="path">Tag.tsx:44</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
+              <td><span class="lit tier-near-miss">near-miss</span></td>
               <td><code>13px</code></td>
               <td><span class="tok">typography.size.sm · 14px</span></td>
               <td><span class="blast">26 files</span></td>
               <td><span class="path">Caption.tsx:8</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
+              <td><span class="lit tier-uncovered">uncovered</span></td>
               <td><code>cubic-bezier(.2,0,0,1)</code></td>
               <td><span class="tok">motion.ease.emphasized</span></td>
               <td><span class="blast">112 files</span></td>
               <td><span class="path">Drawer.tsx:57</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
+              <td><span class="lit tier-uncovered">uncovered</span></td>
               <td><code>z-index: 1400</code></td>
               <td><span class="tok">layer.modal</span></td>
               <td><span class="blast">47 files</span></td>
               <td><span class="path">Modal.tsx:19</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
+              <td><span class="lit">redundant</span></td>
               <td><code>#B3402F</code></td>
               <td><span class="tok">color.semantic.danger.strong</span></td>
               <td><span class="blast">24 files</span></td>
               <td><span class="path">Toast.tsx:19</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
+              <td><span class="lit">redundant</span></td>
               <td><code>24px</code></td>
               <td><span class="tok">size.space.6</span></td>
               <td><span class="blast">21 files</span></td>
               <td><span class="path">Section.tsx:12</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
+              <td><span class="lit tier-near-miss">near-miss</span></td>
               <td><code>#1D4FDD</code></td>
               <td><span class="tok">color.semantic.link.base</span></td>
               <td><span class="blast">19 files</span></td>
               <td><span class="path">Anchor.tsx:33</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
+              <td><span class="lit tier-uncovered">uncovered</span></td>
               <td><code>0 2px 6px rgba(0,0,0,.1)</code></td>
               <td><span class="tok">elevation.card.shadow</span></td>
               <td><span class="blast">17 files</span></td>
               <td><span class="path">Card.tsx:8</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
+              <td><span class="lit tier-uncovered">uncovered</span></td>
               <td><code>opacity: .64</code></td>
               <td><span class="tok">opacity.disabled</span></td>
               <td><span class="blast">15 files</span></td>
               <td><span class="path">Button.tsx:88</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
+              <td><span class="lit tier-near-miss">near-miss</span></td>
               <td><code>6px</code></td>
               <td><span class="tok">size.radius.md · 8px</span></td>
               <td><span class="blast">13 files</span></td>
@@ -1811,56 +1926,56 @@
             </thead>
               <tbody>
             <tr>
-              <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
+              <td><span class="lit">redundant</span></td>
               <td><code>#0B7285</code></td>
               <td><span class="tok">color.semantic.brand.base</span></td>
               <td><span class="blast">11 files</span></td>
               <td><span class="path">NavLink.tsx:22</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
+              <td><span class="lit">redundant</span></td>
               <td><code>12px</code></td>
               <td><span class="tok">size.space.3</span></td>
               <td><span class="blast">10 files</span></td>
               <td><span class="path">ListItem.tsx:14</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
+              <td><span class="lit tier-near-miss">near-miss</span></td>
               <td><code>#495060</code></td>
               <td><span class="tok">color.semantic.text.soft · #4A4D5C</span></td>
               <td><span class="blast">9 files</span></td>
               <td><span class="path">Meta.tsx:7</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
+              <td><span class="lit tier-uncovered">uncovered</span></td>
               <td><code>250ms cubic-bezier(.4,0,.2,1)</code></td>
               <td><span class="tok">motion.ease.standard</span></td>
               <td><span class="blast">8 files</span></td>
               <td><span class="path">Accordion.tsx:41</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
+              <td><span class="lit tier-uncovered">uncovered</span></td>
               <td><code>z-index: 40</code></td>
               <td><span class="tok">layer.dropdown</span></td>
               <td><span class="blast">7 files</span></td>
               <td><span class="path">Select.tsx:9</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
+              <td><span class="lit tier-near-miss">near-miss</span></td>
               <td><code>15px</code></td>
               <td><span class="tok">typography.size.sm · 14px</span></td>
               <td><span class="blast">6 files</span></td>
               <td><span class="path">Helper.tsx:3</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
+              <td><span class="lit">redundant</span></td>
               <td><code>#9A6B12</code></td>
               <td><span class="tok">color.semantic.warning.base</span></td>
               <td><span class="blast">5 files</span></td>
               <td><span class="path">Banner.tsx:52</span></td>
             </tr>
             <tr>
-              <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
+              <td><span class="lit tier-uncovered">uncovered</span></td>
               <td><code>1px solid rgba(0,0,0,.08)</code></td>
               <td><span class="tok">border.subtle.hairline</span></td>
               <td><span class="blast">4 files</span></td>
@@ -1875,7 +1990,7 @@
 
 
       <div data-tier="family-only">
-        <p class="lede" style="margin:0 0 14px">
+        <p class="lede below-14">
           At this size a table of rows stops being readable, so each group draws its occurrence count to width instead. The ranking is the same one, and the bar makes the drop-off visible: a handful of groups carry most of the pile.
         </p>
 
@@ -1904,7 +2019,7 @@
         <details>
           <summary>Show the remaining 47 groups</summary>
           <div class="details-body">
-            <p class="lede" style="margin:12px 0 0">Fill this with the tail of the ranking, in the same grouped form. Every group keeps its own count and one real location, so nothing here loses its evidence.</p>
+            <p class="lede stack-12">Fill this with the tail of the ranking, in the same grouped form. Every group keeps its own count and one real location, so nothing here loses its evidence.</p>
           </div>
         </details>
       </div>
@@ -2002,7 +2117,7 @@
                 <td><span class="path">components/table.tsx:103</span></td>
               </tr>
               <tr>
-                <td><span class="pair"><i style="background:var(--surface-sunk)"></i><i style="background:var(--surface-sunk)"></i></span></td>
+                <td><span class="pair"><i class="empty"></i><i class="empty"></i></span></td>
                 <td><span class="lit">15px</span></td>
                 <td><span class="tok">--space-4 &nbsp;16px</span></td>
                 <td><span class="drift">1px</span></td>
@@ -2059,7 +2174,7 @@
     </div>
   </section>
 
-  <section>
+  <section id="modes">
     <div class="eyebrow">Mode completeness</div>
     <h2>Which tokens are missing a value in each mode</h2>
     <p class="lede">
@@ -2357,7 +2472,7 @@
     <!-- /SLOT:modes-gaps -->
   </section>
 
-  <section>
+  <section id="orphans">
     <div class="eyebrow">Orphans &amp; enforcement</div>
     <h2>Tokens nothing uses, and what stops this coming back</h2>
     <p class="lede">
@@ -2412,7 +2527,7 @@
         <div class="chips">
           <span class="chip">stylelint: declaration-no-important</span>
         </div>
-        <div class="note" style="margin-top:16px">
+        <div class="note stack-16">
           <b>Nothing here is protected from coming back.</b> Every finding in this report could reappear tomorrow without anyone being told. The cheapest first move is a lint rule covering the redundant group: 18 fixes, all mechanical, and the rule keeps them fixed.
         </div>
       </div>
@@ -2420,28 +2535,28 @@
     </div>
   </section>
 
-  <section>
+  <section id="working-set">
     <div class="eyebrow">Working set</div>
     <h2>Where to go from here</h2>
     <div class="grid2">
       <div class="panel">
         <h3>This page</h3>
         <p class="sub">what to fix</p>
-        <p style="margin:0;font-size:13.5px;color:var(--ink-soft)">
+        <p class="p-soft">
           Eight graded checks, your architecture, and every finding this run produced. A section that outgrows a table changes its mark rather than its length — colors become swatches, leaks become ranked bars — so nothing here is trimmed away to another file.
         </p>
       </div>
       <div class="panel">
         <h3><code>.token-vitals/report.json</code></h3>
         <p class="sub">the same findings, machine-readable</p>
-        <p style="margin:0;font-size:13.5px;color:var(--ink-soft)">
+        <p class="p-soft">
           All findings, orphans and mode gaps, with every occurrence and location — a duplicate of exactly what this page shows, in a shape a codemod or a triage script can consume without parsing HTML.
         </p>
       </div>
     </div>
   </section>
 
-  <section>
+  <section id="measurement">
     <div class="eyebrow">Measurement</div>
     <h2>How this was measured</h2>
     <p class="lede">

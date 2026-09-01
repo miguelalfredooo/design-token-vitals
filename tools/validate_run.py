@@ -3,10 +3,10 @@
 
     python3 tools/validate_run.py .token-vitals/report.json [--html report.html]
 
-Eight rules, from the framework-aware discovery and actionable-report
+Nine rules, from the framework-aware discovery and actionable-report
 designs. Each one describes a report that looks finished and is not, and
 every one of them has produced a plausible-looking report at some point.
-Exit status is 1 when any rule fails.
+Exit status is 1 when any rule fails, 2 on bad arguments — see tools/cli.py.
 
 These run as code rather than as prose the agent checks itself against,
 because a rule the run re-derives each time is a rule that drifts.
@@ -18,16 +18,10 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cli import EXIT_FINDING, EXIT_OK, add_json_flag, emit_json  # noqa: E402
 from findings import collect_ids, is_automatable  # noqa: E402
 
-TAXONOMY_TIER_ONE = [
-    "color", "typography", "spacing", "sizing", "radius", "border",
-    "elevation", "opacity", "layer", "motion", "breakpoint",
-]
-TAXONOMY_TIER_TWO = [
-    "grid", "focus", "target", "state", "icon", "aspect", "blur", "density",
-]
-FAMILIES = TAXONOMY_TIER_ONE + TAXONOMY_TIER_TWO
+from taxonomy import FAMILIES  # noqa: E402
 
 ACTIVE_CLASSES = {"canonical", "alias"}
 MEASURE_STATES = {"measured", "unmeasured", "absent"}
@@ -224,6 +218,26 @@ def rule_8_html_holds_every_finding(doc, html):
     return None
 
 
+# What the template never contains. Repository content — a literal, a path,
+# a note — is rendered into the report, and a CSS string holding markup
+# reaches the page as-is unless the fill stage escapes it. The template
+# ships no script and no event handler, so any of these in the output came
+# from the repository, unescaped.
+INJECTION = re.compile(r"<script\b|<iframe\b|\son(?:error|load|mouseover|click|focus)\s*=|javascript:", re.I)
+
+
+def rule_9_no_unescaped_markup(html):
+    """Repository content rendered into the page without escaping."""
+    if html is None:
+        return None
+    hits = INJECTION.findall(html)
+    if hits:
+        return Failure("9-unescaped-markup",
+                       "%d executable-markup pattern(s) in the HTML; the template ships none" % len(hits),
+                       sorted(set(h.strip() for h in hits))[:6])
+    return None
+
+
 def validate(doc, html=None):
     checks = [
         rule_1_discovery_evidence(doc),
@@ -234,6 +248,7 @@ def validate(doc, html=None):
         rule_6_html_matches_json(doc, html),
         rule_7_fix_queue_integrity(doc),
         rule_8_html_holds_every_finding(doc, html),
+        rule_9_no_unescaped_markup(html),
     ]
     return [c for c in checks if c is not None]
 
@@ -242,6 +257,7 @@ def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("report_json")
     ap.add_argument("--html", dest="html")
+    add_json_flag(ap)
     args = ap.parse_args(argv)
 
     with open(args.report_json, encoding="utf-8") as fh:
@@ -252,15 +268,19 @@ def main(argv):
             html = fh.read()
 
     failures = validate(doc, html)
+    emit_json(args.json_out, {
+        "passed": not failures,
+        "failures": [{"rule": f.rule, "message": f.message, "detail": f.detail} for f in failures],
+    })
     if not failures:
-        print("validate: pass — all eight rules hold")
-        return 0
+        print("validate: pass — all nine rules hold")
+        return EXIT_OK
     for f in failures:
         print("FAIL  %-22s %s" % (f.rule, f.message))
         for line in f.detail:
             print("%26s%s" % ("", line))
-    print("\n%d of 8 rules failed. The report claims more than the run established." % len(failures))
-    return 1
+    print("\n%d of 9 rules failed. The report claims more than the run established." % len(failures))
+    return EXIT_FINDING
 
 
 if __name__ == "__main__":
