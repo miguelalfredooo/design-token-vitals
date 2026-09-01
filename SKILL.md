@@ -19,7 +19,7 @@ Match the repository against `references/adapters/css-vars.md`,
 More than one adapter can apply at once — Tailwind sits on top of custom
 properties in most repositories, and both should run.
 
-Record `stack.adapter`, `stack.detected_by` (the filename or config key that
+Record `stack.adapters`, `stack.detected_by` (the filename or config key that
 proved it), and `stack.confidence` in `assets/capability-map.yml`'s schema.
 If nothing matches, do not guess: interview the user about where their
 tokens live and how modes are expressed, then record what they tell you with
@@ -44,8 +44,11 @@ leakage, classify every hardcoded value through the cascade in
 order, and rank findings by the six-key total order there.
 
 Five status values only: `pass`, `attention`, `fail`, `blocked`,
-`not_applicable`. Attach at least one real `file:line` to every grade. A
-vital with a count and no reachable instance is `blocked`, never `fail` —
+`not_applicable`. Attach at least one real `file:line` to every grade that
+reports a finding. A clean `pass` and a `blocked` check may carry an empty
+evidence list instead, with a note explaining why — there is nothing to
+point at when nothing was found, or when the check could not run. A vital
+with a count and no reachable instance is `blocked`, never `fail` —
 silence is not evidence.
 
 ## Stage 4 — Choose the rendering tier

@@ -8,7 +8,7 @@ run:
   family_count: null
 
 stack:
-  adapter: null             # css-vars | tailwind | scss | dtcg | unknown
+  adapters: []              # any of: css-vars, tailwind, scss, dtcg, unknown — more than one can apply at once
   token_sources: []         # paths that define tokens
   detected_by: null         # what proved it — a filename, a config key
   confidence: null          # certain | inferred | interviewed
@@ -32,8 +32,9 @@ vitals:
 
 # grade: pass | attention | fail | blocked | not_applicable
 # evidence: a list of "path:line" strings. A grade with an empty
-#           evidence list must be blocked, never fail.
-# note:     why, when the grade is blocked or not_applicable.
+#           evidence list must be a clean pass or blocked, never fail.
+# note:     why, when the grade is blocked or not_applicable, or when
+#           pass carries no evidence because nothing was found.
 
 rendering:
   tier: null                # full | collapsed | family-only
