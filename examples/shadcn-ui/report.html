@@ -1,0 +1,1042 @@
+<!doctype html>
+<!--
+  design-token-vitals report template.
+
+  The skill (see SKILL.md) copies this file for one run, drops sections that
+  do not apply to the chosen rendering tier, and replaces the contents of
+  each region below with real findings. Everything else on this page is
+  static chrome and ships unchanged in every report.
+
+  Fifteen regions are marked with a pair of HTML comments naming a region,
+  for example a "runhead-meta" region wraps the run metadata list. The
+  fifteen region names are: doc-title, runhead-meta, vitals-grid,
+  inventory-color, inventory-type, inventory-space, families,
+  leak-redundant, leak-near-miss, leak-uncovered, modes-coverage,
+  modes-gaps, orphans, enforcement, and footer-meta. This file calls them
+  regions rather than slots to avoid colliding with the sentence slots
+  defined in references/voice.md.
+
+  doc-title wraps the whole title element rather than nesting its
+  comments inside the element's text, unlike every other region. A title
+  element is a raw-text element: a browser never parses tags or comments
+  in its content, it only reads characters up to the literal closing tag,
+  so a comment placed inside it renders as visible text in the browser
+  tab instead of disappearing. Wrapping the element from the outside
+  keeps the region mechanism working without corrupting the one thing it
+  is meant to fill in.
+
+  Rendering tiers are full (under 150 tokens), collapsed (150 to 600), and
+  family-only (over 600); see references/report.md. Some elements carry a
+  data-tier attribute listing the tiers they render in, for example
+  data-tier="full collapsed" or data-tier="family-only". The skill removes
+  every element whose data-tier list excludes the chosen tier. A data-tier
+  attribute can sit on a whole section, such as the family table below
+  (data-tier="collapsed family-only"), or on a smaller element nested
+  inside a region when that region renders in two different shapes at
+  different tiers, such as color inventory: individual swatches at full and
+  collapsed, ramps and outliers and duplicate pairs at family-only, both
+  living inside the single inventory-color region. The same pattern covers
+  leakage (a table per tier at full, one table ranked by blast radius at
+  collapsed and family-only) and mode completeness (a full token-by-mode
+  matrix at full, summarized coverage bars plus a gaps list at collapsed
+  and family-only).
+
+  With no tier filtering applied, this file shows every tier's sample
+  content at once, on purpose: opening it in a browser is how a contributor
+  checks the template still reads correctly without running the skill.
+
+  A vital card's colored left stripe is read from the article's data-grade
+  attribute, and its grade chip is read from the nested grade element's
+  data-g attribute (class "grade"). These two must always be set to the
+  same value, from one source, whenever a region is filled in. A card whose
+  stripe and chip disagree is exactly the kind of drift this skill exists
+  to catch, and must never ship.
+
+  data-grade and data-g use the skill's own five status values, verbatim:
+  pass, attention, fail, blocked, not_applicable (see references/vitals.md,
+  assets/capability-map.yml, and SKILL.md). Do not reintroduce "warn" or
+  "na" here — those were an earlier, second vocabulary for the same five
+  values, and this skill grades other codebases on exactly that kind of
+  naming drift.
+
+  The family table's per-vital health pip (span.pip, attribute data-s)
+  uses the same five status values for the same reason: pass, attention,
+  fail, blocked, not_applicable. Do not reintroduce "ok", "warn", "bad" or
+  "na" there either. This does not extend to the mode-matrix cell
+  (span.dot, attribute data-s, values ok / gap / none) below, which
+  describes a different thing entirely: whether a token has its own value
+  in a given mode, silently inherits one, or the mode itself is not
+  declared. That is a different signal from a vital's grade, so its values stay as they are.
+
+  The utf-8 charset meta tag in the document head below must never be
+  removed.
+  The skill writes this file to .token-vitals/report.html for a person to
+  open directly from disk, not through a host that declares its own
+  encoding, and this page contains em dashes, middle dots, curly quotes,
+  an arrow, and the Delta character in its ΔE near-miss thresholds. Without
+  a declared charset, a browser falls back to a locale default and every
+  one of those characters can render as mojibake — the ΔE values are a
+  number the report's correctness depends on, so this is not cosmetic.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- SLOT:doc-title --><title>Design Token Vitals</title><!-- /SLOT:doc-title -->
+<!--
+  A locally-written report must make no network request: it describes a
+  private codebase, and its own footer claims "runs locally, nothing
+  leaves your machine." A Google Fonts stylesheet link for IBM Plex used
+  to sit here; it was removed on purpose. Do not restore it. The --sans and
+  --mono custom properties below already carry real fallback stacks
+  (ui-sans-serif / system-ui / -apple-system / "Segoe UI" and
+  ui-monospace / SFMono-Regular / Menlo), so the page still uses IBM Plex
+  for anyone who already has it installed, and degrades cleanly for
+  everyone else, offline or in a sandbox. assets/reference/*.html keep
+  the Google Fonts link — they are hosted pages, a different context.
+-->
+<style>
+  :root {
+    --ground: #FBFBFC;
+    --surface: #FFFFFF;
+    --surface-sunk: #F4F5F7;
+    --line: #E3E4EA;
+    --line-strong: #CDCFD8;
+    --ink: #15161C;
+    --ink-soft: #4A4D5C;
+    --ink-mute: #767A8B;
+    --accent: #1F5F6B;
+    --accent-soft: #E4F0F2;
+
+    --pass: #3E7C4F;
+    --pass-bg: #EAF2EB;
+    --fail: #B3402F;
+    --fail-bg: #FAEBE8;
+    --warn: #9A6B12;
+    --warn-bg: #FAF1DF;
+    --block: #5B5B7A;
+    --block-bg: #EEEEF3;
+    --na: #767A8B;
+    --na-bg: #F2F3F5;
+
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --col: 1120px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101116;
+      --surface: #171922;
+      --surface-sunk: #1E212B;
+      --line: #2A2D39;
+      --line-strong: #3A3E4D;
+      --ink: #EDEEF2;
+      --ink-soft: #B4B8C6;
+      --ink-mute: #858A9B;
+      --accent: #4FBFD1;
+      --accent-soft: #16303550;
+      --pass: #78C08B;  --pass-bg: #1B2A20;
+      --fail: #E58A78;  --fail-bg: #2E1D1A;
+      --warn: #D9AE5E;  --warn-bg: #2C2416;
+      --block: #A0A2C0; --block-bg: #22232F;
+      --na: #858A9B;    --na-bg: #1C1E27;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101116;
+    --surface: #171922;
+    --surface-sunk: #1E212B;
+    --line: #2A2D39;
+    --line-strong: #3A3E4D;
+    --ink: #EDEEF2;
+    --ink-soft: #B4B8C6;
+    --ink-mute: #858A9B;
+    --accent: #4FBFD1;
+    --accent-soft: #16303550;
+    --pass: #78C08B;  --pass-bg: #1B2A20;
+    --fail: #E58A78;  --fail-bg: #2E1D1A;
+    --warn: #D9AE5E;  --warn-bg: #2C2416;
+    --block: #A0A2C0; --block-bg: #22232F;
+    --na: #858A9B;    --na-bg: #1C1E27;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: var(--col); margin: 0 auto; padding: 40px 28px 96px; }
+
+  /* ---------- run header ---------- */
+
+  .runhead {
+    display: flex; flex-wrap: wrap; align-items: flex-end;
+    justify-content: space-between; gap: 24px;
+    padding-bottom: 20px; border-bottom: 2px solid var(--ink);
+  }
+  .runhead h1 {
+    margin: 0; font-size: 30px; font-weight: 600;
+    letter-spacing: -0.022em; text-wrap: balance;
+  }
+  .sampletag {
+    display: inline-block; margin-top: 10px; padding: 3px 8px;
+    border: 1px dashed var(--line-strong); border-radius: 3px;
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-mute);
+  }
+
+  .meta {
+    display: grid; grid-template-columns: auto auto; gap: 2px 18px;
+    font-family: var(--mono); font-size: 12px;
+  }
+  .meta dt { color: var(--ink-mute); }
+  .meta dd { margin: 0; color: var(--ink-soft); }
+
+  /* ---------- section scaffolding ---------- */
+
+  section { margin-top: 52px; }
+
+  .eyebrow {
+    display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px;
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.11em; text-transform: uppercase; color: var(--accent);
+  }
+  .eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  h2 { margin: 0 0 6px; font-size: 21px; font-weight: 550; letter-spacing: -0.014em; }
+  .lede { margin: 0 0 22px; max-width: 68ch; color: var(--ink-soft); font-size: 14.5px; }
+
+  /* ---------- vitals ---------- */
+
+  .vitals { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 12px; }
+
+  .vital {
+    position: relative; padding: 14px 16px 15px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 4px; overflow: hidden;
+  }
+  .vital::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; }
+  .vital[data-grade="pass"]::before { background: var(--pass); }
+  .vital[data-grade="fail"]::before { background: var(--fail); }
+  .vital[data-grade="attention"]::before { background: var(--warn); }
+  .vital[data-grade="not_applicable"]::before   { background: var(--line-strong); }
+  .vital[data-grade="blocked"]::before {
+    background: repeating-linear-gradient(135deg, var(--block) 0 3px, transparent 3px 6px);
+  }
+  .vital h3 { margin: 0 0 7px; font-size: 14.5px; font-weight: 550; letter-spacing: -0.005em; }
+  .vital p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+  .vital code { font-size: 12px; }
+
+  .grade {
+    display: inline-flex; align-items: center; gap: 5px; margin-bottom: 9px;
+    padding: 2px 7px 2px 6px; border-radius: 3px;
+    font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: 0.07em; text-transform: uppercase;
+  }
+  .grade::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
+  .grade[data-g="pass"] { color: var(--pass); background: var(--pass-bg); }
+  .grade[data-g="pass"]::before { background: var(--pass); }
+  .grade[data-g="fail"] { color: var(--fail); background: var(--fail-bg); }
+  .grade[data-g="fail"]::before { background: var(--fail); }
+  .grade[data-g="attention"] { color: var(--warn); background: var(--warn-bg); }
+  .grade[data-g="attention"]::before { background: var(--warn); }
+  .grade[data-g="not_applicable"] { color: var(--na); background: var(--na-bg); }
+  .grade[data-g="not_applicable"]::before { background: transparent; border: 1px dashed var(--na); }
+  .grade[data-g="blocked"] { color: var(--block); background: var(--block-bg); }
+  .grade[data-g="blocked"]::before {
+    background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px);
+  }
+
+  /* ---------- legend ---------- */
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 16px;
+    padding: 12px 14px; background: var(--surface-sunk);
+    border-radius: 4px; font-size: 12.5px; color: var(--ink-soft);
+  }
+  .legend b { color: var(--ink); font-weight: 550; }
+
+  /* ---------- truncation notice ---------- */
+
+  .trunc {
+    display: flex; align-items: center; gap: 8px; margin-top: 10px;
+    padding: 7px 11px; border: 1px dashed var(--line-strong); border-radius: 3px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute);
+    font-variant-numeric: tabular-nums;
+  }
+  .trunc::before {
+    content: ""; flex: none; width: 7px; height: 7px; border-radius: 1px;
+    background: repeating-linear-gradient(135deg, var(--ink-mute) 0 2px, transparent 2px 4px);
+  }
+
+  /* ---------- tables (generic) ---------- */
+
+  .tbl-scroll { overflow-x: auto; }
+
+  table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 13px; }
+  th {
+    padding: 7px 12px 7px 0; text-align: left;
+    font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-mute);
+    border-bottom: 1px solid var(--line-strong); white-space: nowrap;
+  }
+  td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; padding-right: 18px; }
+
+  /* ---------- family table ---------- */
+
+  .fam { min-width: 720px; }
+  .fam td:first-child { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+  .fam .health { display: flex; gap: 4px; align-items: center; }
+  .pip {
+    width: 9px; height: 16px; border-radius: 1px; flex: none;
+    background: var(--line-strong);
+  }
+  .pip[data-s="pass"]   { background: var(--pass); }
+  .pip[data-s="attention"] { background: var(--warn); }
+  .pip[data-s="fail"]  { background: var(--fail); }
+  .pip[data-s="not_applicable"]   { background: transparent; border: 1px dashed var(--line-strong); }
+  .pip[data-s="blocked"] {
+    background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px);
+  }
+
+  code, .path { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
+  .path { white-space: nowrap; }
+
+  .lit { font-family: var(--mono); font-size: 12px; padding: 1px 5px; border-radius: 3px; background: var(--fail-bg); color: var(--fail); }
+  .tok { font-family: var(--mono); font-size: 12px; padding: 1px 5px; border-radius: 3px; background: var(--pass-bg); color: var(--pass); }
+
+  .blast {
+    display: inline-block; min-width: 58px; padding: 1px 6px; border-radius: 3px;
+    background: var(--surface-sunk); font-family: var(--mono); font-size: 11.5px;
+    color: var(--ink-soft); font-variant-numeric: tabular-nums; text-align: center;
+  }
+
+  /* ---------- row-definition tooltip ---------- */
+
+  .ihelp {
+    position: relative;
+    display: inline-block;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .info {
+    display: block;
+    width: 14px; height: 14px;
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ink-mute);
+    font-family: var(--mono);
+    font-size: 9.5px; font-weight: 600; line-height: 12px;
+    text-align: center;
+    text-transform: none;
+    letter-spacing: 0;
+    cursor: help;
+    transition: color 120ms ease, border-color 120ms ease;
+  }
+  .info::before { content: "i"; }
+  .ihelp:hover .info { color: var(--accent); border-color: var(--accent); }
+  .info:focus-visible {
+    color: var(--accent); border-color: var(--accent);
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  .tip {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: -6px;
+    z-index: 5;
+    width: max-content;
+    max-width: 264px;
+    padding: 9px 11px;
+    border-radius: 4px;
+    background: var(--ink);
+    color: var(--ground);
+    font-family: var(--sans);
+    font-size: 12px; font-weight: 400; line-height: 1.45;
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.16);
+  }
+  .tip::before {
+    content: "";
+    position: absolute;
+    bottom: 100%; left: 10px;
+    border: 5px solid transparent;
+    border-bottom-color: var(--ink);
+  }
+  .ihelp:hover .tip,
+  .ihelp:focus-within .tip { opacity: 1; visibility: visible; }
+
+  .ihelp--end .tip { left: auto; right: -6px; }
+  .ihelp--end .tip::before { left: auto; right: 10px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tip, .info { transition: none; }
+  }
+
+  /* near-miss pair — the side-by-side that only works visually */
+  .pair {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    overflow: hidden;
+    vertical-align: middle;
+  }
+  .pair i { display: block; width: 34px; height: 26px; }
+  .pair i + i { border-left: 1px solid rgba(255,255,255,0.35); }
+
+  .drift {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--warn);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* ---------- ramps ---------- */
+
+  .ramps { display: flex; flex-direction: column; gap: 14px; }
+  .ramp-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .ramp-row .name {
+    flex: 0 0 96px; font-family: var(--mono); font-size: 12px; color: var(--ink-soft);
+  }
+  .ramp { display: flex; flex: 1 1 380px; min-width: 260px; border-radius: 3px; overflow: hidden; border: 1px solid rgba(128,128,128,0.22); }
+  .ramp i { flex: 1; height: 30px; }
+  .ramp-row .n { font-family: var(--mono); font-size: 11px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
+
+  .outliers { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+  .out {
+    display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px 6px;
+    border: 1px solid var(--line-strong); border-radius: 3px; background: var(--surface);
+  }
+  .out i { width: 22px; height: 22px; border-radius: 2px; border: 1px solid rgba(128,128,128,0.22); flex: none; }
+  .out b { font-family: var(--mono); font-size: 11.5px; font-weight: 500; color: var(--ink-soft); }
+
+  /* ---------- coverage bars ---------- */
+
+  .cov { display: flex; flex-direction: column; gap: 12px; }
+  .cov-row { display: flex; align-items: center; gap: 14px; }
+  .cov-row .name { flex: 0 0 84px; font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
+  .track {
+    flex: 1; height: 16px; border-radius: 2px; background: var(--surface-sunk);
+    overflow: hidden; display: flex; min-width: 160px;
+  }
+  .track i { height: 100%; display: block; }
+  .track i.done { background: var(--pass); opacity: 0.8; }
+  .track i.gap  { background: var(--fail); }
+  .track i.na {
+    background: repeating-linear-gradient(135deg, var(--line-strong) 0 3px, transparent 3px 6px);
+  }
+  .cov-row .n { flex: 0 0 132px; text-align: right; font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
+
+  /* ---------- details ---------- */
+
+  details {
+    margin-top: 10px; border: 1px solid var(--line);
+    border-radius: 4px; background: var(--surface);
+  }
+  details[open] { background: var(--surface); }
+  summary {
+    list-style: none; cursor: pointer; padding: 10px 14px;
+    font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+    letter-spacing: 0.04em; color: var(--accent);
+    display: flex; align-items: center; gap: 8px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: ""; width: 0; height: 0; flex: none;
+    border-left: 5px solid currentColor;
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    transition: transform 140ms ease;
+  }
+  details[open] > summary::before { transform: rotate(90deg); }
+  summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .details-body { padding: 0 14px 14px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    summary::before { transition: none; }
+  }
+
+  /* ---------- panels & notes ---------- */
+
+  .panel {
+    padding: 18px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 4px;
+  }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 26px; }
+  .panel h3 { margin: 0 0 3px; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
+  .panel .sub { margin: 0 0 16px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute); }
+
+  .note {
+    margin-top: 14px; padding: 13px 15px;
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    font-size: 13.5px; color: var(--ink-soft);
+  }
+  .note b { color: var(--ink); font-weight: 600; }
+
+  footer {
+    margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute);
+    display: flex; flex-wrap: wrap; gap: 6px 22px;
+  }
+
+  /* ---------- inventory (color / type / space) ---------- */
+
+  .inv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 26px;
+  }
+
+  .swatches {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+    gap: 8px;
+  }
+  .sw { display: flex; flex-direction: column; gap: 5px; }
+  .sw i {
+    display: block;
+    height: 44px;
+    border-radius: 3px;
+    border: 1px solid rgba(128,128,128,0.22);
+  }
+  .sw b {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    word-break: break-all;
+  }
+  .sw span {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-mute);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .typescale { display: flex; flex-direction: column; gap: 11px; }
+  .ts-row { display: flex; align-items: baseline; gap: 14px; }
+  .ts-row .tk {
+    flex: 0 0 128px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mute);
+  }
+  .ts-row .spec {
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bars { display: flex; flex-direction: column; gap: 7px; }
+  .bar-row { display: flex; align-items: center; gap: 12px; }
+  .bar-row .tk {
+    flex: 0 0 118px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mute);
+  }
+  .bar-row i {
+    height: 12px;
+    background: var(--accent);
+    opacity: 0.75;
+    border-radius: 2px;
+  }
+  .bar-row em {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-style: normal;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- leakage tier blocks (full-tier rendering) ---------- */
+
+  .tier { margin-top: 22px; }
+
+  .tier-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .tier-head h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.008em;
+  }
+  .count {
+    padding: 1px 7px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    background: var(--surface-sunk);
+    color: var(--ink-soft);
+  }
+  .tier-head p {
+    flex: 1 1 260px;
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-mute);
+  }
+
+  /* ---------- mode matrix (full-tier rendering) ---------- */
+
+  .matrix { min-width: 520px; }
+  .matrix th.mode { text-align: center; width: 92px; }
+  .matrix td.cell { text-align: center; padding: 0; }
+  .matrix .dot {
+    display: inline-block;
+    width: 100%;
+    padding: 9px 0;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .dot[data-s="ok"]   { color: var(--pass); background: var(--pass-bg); }
+  .dot[data-s="gap"]  { color: var(--fail); background: var(--fail-bg); font-weight: 600; }
+  .dot[data-s="none"] { color: var(--na); }
+
+  /* ---------- orphans / enforcement chips ---------- */
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .chip {
+    padding: 3px 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    background: var(--surface);
+  }
+
+  @media (max-width: 620px) {
+    .wrap { padding: 28px 18px 72px; }
+    .runhead h1 { font-size: 24px; }
+    .ramp-row .name { flex: 0 0 100%; }
+    .cov-row .name { flex: 0 0 62px; }
+    .cov-row .n { flex: 0 0 96px; }
+    .ts-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .ts-row .tk { flex: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="runhead">
+    <div>
+      <h1>Design Token Vitals</h1>
+      <span class="sampletag">Live report · shadcn-ui/ui @ 63c1308</span>
+    </div>
+    <!-- SLOT:runhead-meta -->
+    <dl class="meta">
+      <dt>project</dt><dd>shadcn-ui/ui — apps/v4</dd>
+      <dt>stack</dt><dd>Tailwind CSS v4 + CSS custom properties</dd>
+      <dt>adapter</dt><dd>tailwind + css-vars</dd>
+      <dt>commit</dt><dd>63c1308</dd>
+      <dt>modes</dt><dd>light · dark</dd>
+    </dl>
+    <!-- /SLOT:runhead-meta -->
+  </header>
+
+  <section>
+    <div class="eyebrow">The eight vitals</div>
+    <h2>Eight checks on your token system</h2>
+    <p class="lede">
+      Each check is graded on its own, against evidence pulled from your repository. There is no single overall score, because averaging these would hide the one thing you need to see. If your system has no dark mode, that check is marked <em>not applicable</em> rather than counted against you. And if a check could not run at all, it says <em>blocked</em> instead of quietly passing.
+    </p>
+
+    <!--
+      The stripe on the left edge of each card below comes from this
+      article's data-grade attribute; the chip inside it comes from the
+      nested span's data-g attribute. Set both from the same grade when
+      filling this region — see the file-level comment at the top of this
+      document.
+    -->
+    <!-- SLOT:vitals-grid -->
+    <div class="vitals">
+      <article class="vital" data-grade="attention">
+        <span class="grade" data-g="attention">Attention</span>
+        <h3>Tier integrity</h3>
+        <p>26 of 1,230 component files (2.1&nbsp;%) reach past the semantic layer for a raw Tailwind palette color — mostly one dialog utility hardcoding <code>neutral-900</code> instead of the <code>--popover</code>/<code>--border</code> tokens every other dialog uses.</p>
+      </article>
+
+      <article class="vital" data-grade="attention">
+        <span class="grade" data-g="attention">Attention</span>
+        <h3>Leakage</h3>
+        <p>2 exact matches to an existing token (a corner radius and a min-width, both bracket-arbitrary when a named utility already covered them), plus a handful of uncovered gaps. No hardcoded hex or oklch colors were found anywhere in the scanned surface.</p>
+      </article>
+
+      <article class="vital" data-grade="attention">
+        <span class="grade" data-g="attention">Attention</span>
+        <h3>Coverage</h3>
+        <p>9 of 11 categories resolve to a real token, project-defined or Tailwind's own default theme. z-index and opacity do not — Tailwind v4 has no <code>--z-*</code> or <code>--opacity-*</code> scale, so every <code>z-50</code> and <code>opacity-50</code> is a fixed value with nothing to reach for instead.</p>
+      </article>
+
+      <article class="vital" data-grade="pass">
+        <span class="grade" data-g="pass">Pass</span>
+        <h3>Mode completeness</h3>
+        <p>All 34 color-bearing tokens are redefined in both <code>:root</code> and <code>.dark</code> with zero gaps. The one token present only in <code>:root</code> is <code>--radius</code>, a corner radius that correctly does not vary by color scheme.</p>
+      </article>
+
+      <article class="vital" data-grade="pass">
+        <span class="grade" data-g="pass">Pass</span>
+        <h3>Naming coherence</h3>
+        <p>One grammar holds across every token: a kebab-case role name, optionally paired with a <code>-foreground</code> counterpart. No second grammar or legacy family was found in the token source.</p>
+      </article>
+
+      <article class="vital" data-grade="attention">
+        <span class="grade" data-g="attention">Attention</span>
+        <h3>Single source of truth</h3>
+        <p>The default chart palette is declared independently in four places — the project default plus three of four theme presets — and all four currently agree. Nothing stops a future edit to one from leaving the other three behind.</p>
+      </article>
+
+      <article class="vital" data-grade="pass">
+        <span class="grade" data-g="pass">Pass</span>
+        <h3>Orphans</h3>
+        <p>All ~53 declared tokens resolve to at least one real reference elsewhere in the app, including ones that looked orphaned at first glance — <code>--code-number</code> and <code>--selection</code> both back rules inside <code>globals.css</code> itself.</p>
+      </article>
+
+      <article class="vital" data-grade="blocked">
+        <span class="grade" data-g="blocked">Blocked</span>
+        <h3>Enforcement</h3>
+        <p>No lint rule or CI gate in this repository reads the token layer. ESLint is scoped to type-import style and React hooks; CI runs lint, format, typecheck and a registry-namespace check — none of them look at a color, a spacing value, or a token reference.</p>
+      </article>
+    </div>
+    <!-- /SLOT:vitals-grid -->
+
+    <div class="legend">
+      <span><b>Pass</b> — checked, nothing to fix</span>
+      <span><b>Attention</b> — worth a look, not urgent</span>
+      <span><b>Fail</b> — real problems with a clear fix</span>
+      <span><b>Blocked</b> — could not check this one</span>
+      <span><b>N/A</b> — does not apply to your setup</span>
+    </div>
+  </section>
+
+
+  <section>
+    <div class="eyebrow">Inventory</div>
+    <h2>Your tokens, shown as what they are</h2>
+    <p class="lede">
+      Color is shown as color, the type scale is set at its real sizes, and spacing is drawn to width. Seeing your system the way it was designed makes most problems obvious before you read a single number.
+    </p>
+
+    <!-- SLOT:inventory-color -->
+    <div class="panel" data-tier="full collapsed">
+      <h3>Semantic color (light mode)</h3>
+      <p class="sub">14 of 34 color tokens shown · 2 modes</p>
+      <div class="swatches">
+        <div class="sw"><i style="background:oklch(1 0 0)"></i><b>--background</b><span>oklch(1 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0% 0 0)"></i><b>--foreground</b><span>oklch(0% 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(1 0 0)"></i><b>--card</b><span>oklch(1 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(1 0 0)"></i><b>--popover</b><span>oklch(1 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0% 0 0)"></i><b>--primary</b><span>oklch(0% 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.97 0 0)"></i><b>--secondary</b><span>oklch(0.97 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.97 0 0)"></i><b>--muted</b><span>oklch(0.97 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.97 0 0)"></i><b>--accent</b><span>oklch(0.97 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.577 0.245 27.325)"></i><b>--destructive</b><span>oklch(0.577 0.245 27.325)</span></div>
+        <div class="sw"><i style="background:oklch(0.922 0 0)"></i><b>--border</b><span>oklch(0.922 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.708 0 0)"></i><b>--ring</b><span>oklch(0.708 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(80.9% 0.105 251.813)"></i><b>--chart-1</b><span>via var(--color-blue-300)</span></div>
+        <div class="sw"><i style="background:oklch(0.985 0 0)"></i><b>--sidebar</b><span>oklch(0.985 0 0)</span></div>
+        <div class="sw"><i style="background:oklch(0.98 0 0)"></i><b>--surface</b><span>oklch(0.98 0 0)</span></div>
+      </div>
+      <div class="note" style="margin-top:16px">
+        <b>34 color-bearing tokens exist; 14 representative ones are shown here.</b> The full set — including every <code>-foreground</code> pairing, the 5-step chart palette, and the 8 sidebar tokens — is in <code>report.json</code>.
+      </div>
+    </div>
+
+    <!-- /SLOT:inventory-color -->
+
+    <div class="inv-grid" style="margin-top:26px">
+      <!-- SLOT:inventory-type -->
+      <div class="panel">
+        <h3>Typography</h3>
+        <p class="sub">3 font-family tokens · no custom numeric type scale</p>
+        <div class="typescale">
+          <div class="ts-row"><span class="tk">--font-sans</span><span class="spec">Body text</span></div>
+          <div class="ts-row"><span class="tk">--font-heading</span><span class="spec" style="font-weight:600">Headings</span></div>
+          <div class="ts-row"><span class="tk">--font-mono</span><span class="spec" style="font-family:var(--mono)">Code</span></div>
+        </div>
+        <div class="note" style="margin-top:16px">
+          <b>The project tokenizes font family, not font size.</b> Type sizes (<code>text-xs</code> through <code>text-9xl</code>) come from Tailwind v4's own default scale, unmodified — there is no project-authored ratio to check for a hand-tuned step.
+        </div>
+      </div>
+      <!-- /SLOT:inventory-type -->
+
+      <!-- SLOT:inventory-space -->
+      <div class="panel">
+        <h3>Spacing</h3>
+        <p class="sub">Tailwind's default 0.25rem multiplier · not overridden</p>
+        <div class="bars">
+          <div class="bar-row"><span class="tk">space-1</span><i style="width:4px"></i><em>4</em></div>
+          <div class="bar-row"><span class="tk">space-2</span><i style="width:8px"></i><em>8</em></div>
+          <div class="bar-row"><span class="tk">space-3</span><i style="width:12px"></i><em>12</em></div>
+          <div class="bar-row"><span class="tk">space-4</span><i style="width:16px"></i><em>16</em></div>
+          <div class="bar-row"><span class="tk">space-6</span><i style="width:24px"></i><em>24</em></div>
+          <div class="bar-row"><span class="tk">space-8</span><i style="width:32px"></i><em>32</em></div>
+          <div class="bar-row"><span class="tk">--space-12</span><i style="width:48px"></i><em>48</em></div>
+          <div class="bar-row"><span class="tk">space-16</span><i style="width:64px"></i><em>64</em></div>
+        </div>
+        <div class="note" style="margin-top:16px">
+          <b>The project never authors its own spacing scale.</b> Every padding, margin and gap value resolves through Tailwind v4's single <code>--spacing</code> base, unmodified. That is also why a demo chart height like <code>h-[250px]</code> lands as a bracket literal in 32 files — 250px sits between named steps, so there is no step to reach for instead.
+        </div>
+      </div>
+      <!-- /SLOT:inventory-space -->
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Leakage</div>
+    <h2>Hardcoded values, and whether a token already existed</h2>
+    <p class="lede">
+      Not every hardcoded value is a mistake — a 1px hairline rarely needs a token. What matters is when your system already had an answer and the code went around it. These are sorted into three groups, because each one needs a different fix from a different person.
+    </p>
+
+
+    <div data-tier="full">
+      <div class="tier">
+        <!-- SLOT:leak-redundant -->
+        <div class="tier-head">
+          <h3>Redundant</h3>
+          <span class="count">2</span>
+          <p>A token already holds this exact value, so swapping it in is safe and needs no discussion. No hardcoded hex or oklch colors were found anywhere in the scanned surface — both findings here are dimensions.</p>
+        </div>
+        <div class="tbl-scroll">
+          <table>
+            <thead>
+              <tr><th>Literal<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is a hardcoded value that one of your tokens already holds. Swapping it in is a safe, mechanical change.</span></span></th><th>Should be<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The token that already holds this exact value — what the code should reference instead.</span></span></th><th>Category<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Which part of the system this value belongs to. Color matters most, because it is what breaks theming.</span></span></th><th>Location<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The first place this appears. There may be more; the full list lives in the JSON sidecar.</span></span></th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="lit">rounded-[6px]</span></td>
+                <td><span class="tok">rounded-sm &nbsp;(--radius-sm, 6px)</span></td>
+                <td><code>dimension</code></td>
+                <td><span class="path">components/chart-code-viewer.tsx:40</span></td>
+              </tr>
+              <tr>
+                <td><span class="lit">min-w-[96px]</span></td>
+                <td><span class="tok">min-w-24 &nbsp;(96px)</span></td>
+                <td><code>dimension</code></td>
+                <td><span class="path">app/(app)/(create)/components/picker.tsx:161</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- /SLOT:leak-redundant -->
+      </div>
+
+      <div class="tier">
+        <!-- SLOT:leak-near-miss -->
+        <div class="tier-head">
+          <h3>Near miss</h3>
+          <span class="count">0</span>
+          <p>Close to a token without matching it. This kind of drift never shows up in a search or a code review, and it is the usual reason a system slowly stops feeling consistent.</p>
+        </div>
+        <div class="note">
+          None found. A dedicated pass checked every hardcoded color and dimension literal in the scanned surface against the near-miss thresholds in <code>references/leakage.md</code> — no raw hex or oklch color literal exists in the graded code at all (see Redundant, left), and the two dimension values close to a radius step (<code>rounded-[2px]</code>, <code>rounded-[4px]</code>) sit in a region of the radius scale that steps by 2px, which is exactly the case the near-miss threshold is defined to exclude — so both are reported as Uncovered instead.
+        </div>
+        <!-- /SLOT:leak-near-miss -->
+      </div>
+
+      <div class="tier">
+        <!-- SLOT:leak-uncovered -->
+        <div class="tier-head">
+          <h3>Uncovered</h3>
+          <span class="count">3</span>
+          <p>There is no token for this yet. The fix is to add one, and nobody did anything wrong here.</p>
+        </div>
+        <div class="tbl-scroll">
+          <table>
+            <thead>
+              <tr><th>Literal<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is a hardcoded value your token system has no name for yet. This is a gap in the system, not a mistake by whoever wrote the component.</span></span></th><th>Category<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Which part of the system this belongs to. Motion, elevation and z-index are the ones most often left untokenized.</span></span></th><th>Occurrences<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">How many files use this value. The higher it is, the more you gain from adding a token for it.</span></span></th><th>Suggested token<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">A proposed name that follows your existing naming pattern. A starting point for a conversation, not a decision.</span></span></th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="lit">h-[250px]</span></td>
+                <td><code>dimension</code></td>
+                <td><code>32 files</code></td>
+                <td><span class="tok">--chart-height</span></td>
+              </tr>
+              <tr>
+                <td><span class="lit">rounded-[2px]</span></td>
+                <td><code>dimension</code></td>
+                <td><code>4 files</code></td>
+                <td><span class="tok">--radius-2xs</span></td>
+              </tr>
+              <tr>
+                <td><span class="lit">rounded-[4px]</span></td>
+                <td><code>dimension</code></td>
+                <td><code>1 file</code></td>
+                <td><span class="tok">--radius-xs</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note" style="margin-top:14px">
+          <b>h-[250px] is duplicated across every chart registry item on purpose.</b> Each file under <code>registry/new-york-v4/charts</code> is designed to be a self-contained snippet a user copies out of the CLI, so this is not ordinary drift — it is still a real gap (no chart-height token exists to reach for) but the fix is lower-stakes than a leak that reaches production once. z-index (<code>z-50</code>) and opacity (<code>opacity-50</code>) leak the same way across the app — see Coverage above — but are reported there rather than duplicated in this table.
+        </div>
+        <!-- /SLOT:leak-uncovered -->
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Mode completeness</div>
+    <h2>Which tokens are missing a value in each mode</h2>
+    <p class="lede">
+      When a token has a value in one mode but not another, nothing breaks at build time. It quietly falls back, renders wrong, and ships. These gaps do not show up anywhere else in the report.
+    </p>
+
+    <!-- SLOT:modes-coverage -->
+    <div data-tier="full">
+      <div class="tbl-scroll">
+        <table class="matrix">
+          <thead>
+              <tr><th>Semantic token<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is one semantic token — a token that carries meaning, like “danger” or “surface”, rather than a raw value.</span></span></th><th class="mode">light<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Whether this token has its own value defined for light mode.</span></span></th><th class="mode">dark<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Whether this token has its own dark-mode value. If it does not, it silently reuses the light one.</span></span></th><th class="mode">hc<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">High contrast. Shown as unavailable because this project only declares light and dark — an absence by choice, not an oversight.</span></span></th></tr>
+            </thead>
+          <tbody>
+            <tr>
+              <td><code>--background</code></td>
+              <td class="cell"><span class="dot" data-s="ok">def</span></td>
+              <td class="cell"><span class="dot" data-s="ok">def</span></td>
+              <td class="cell"><span class="dot" data-s="none">—</span></td>
+            </tr>
+            <tr>
+              <td><code>--foreground</code></td>
+              <td class="cell"><span class="dot" data-s="ok">def</span></td>
+              <td class="cell"><span class="dot" data-s="ok">def</span></td>
+              <td class="cell"><span class="dot" data-s="none">—</span></td>
+            </tr>
+            <tr>
+              <td><code>--card</code></td>
+              <td class="cell"><span class="dot" data-s="ok">def</span></td>
+              <td class="cell"><span class="dot" data-s="ok">def</span></td>
+              <td class="cell"><span class="dot" data-s="none">—</span></td>
+            </tr>
+            <tr>
+              <td><code>--primary</code></td>
+              <td class="cell"><span class="dot" data-s="ok">def</span></td>
+              <td class="cell"><span class="dot" data-s="ok">def</span></td>
+              <td class="cell"><span class="dot" data-s="none">—</span></td>
+            </tr>
+            <tr>
+              <td><code>--border</code></td>
+              <td class="cell"><span class="dot" data-s="ok">def</span></td>
+              <td class="cell"><span class="dot" data-s="ok">def</span></td>
+              <td class="cell"><span class="dot" data-s="none">—</span></td>
+            </tr>
+            <tr>
+              <td><code>--ring</code></td>
+              <td class="cell"><span class="dot" data-s="ok">def</span></td>
+              <td class="cell"><span class="dot" data-s="ok">def</span></td>
+              <td class="cell"><span class="dot" data-s="none">—</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note">
+        <b>Zero gaps across all 34 color-bearing tokens.</b> High contrast is not counted against this project: it declares only light and dark, so that column is marked <em>not applicable</em> rather than missing. <code>--radius</code> is the one token present in <code>:root</code> and absent from <code>.dark</code> (globals.css:100) — it is left out of this table because a corner radius correctly does not vary by color scheme; <code>.dark</code> layers on top of <code>:root</code> rather than replacing it, so nothing falls back wrong.
+      </div>
+    </div>
+
+    <!-- /SLOT:modes-coverage -->
+
+    <!-- SLOT:modes-gaps -->
+    <!-- /SLOT:modes-gaps -->
+  </section>
+
+  <section>
+    <div class="eyebrow">Orphans &amp; enforcement</div>
+    <h2>Tokens nothing uses, and what stops this coming back</h2>
+    <p class="lede">
+      Orphaned tokens make your system look bigger and more capable than it really is. They stick around because nothing breaks when they go, so nobody ever gets a reason to remove them.
+    </p>
+
+    <div class="inv-grid">
+      <!-- SLOT:orphans -->
+      <div class="panel">
+        <h3>Defined, but never used</h3>
+        <p class="sub">0 of ~53 tokens · none found</p>
+        <div class="note" style="margin-top:4px">
+          Every declared token resolves to at least one real reference elsewhere in <code>apps/v4</code>. Two that looked orphaned on a first pass turned out not to be: <code>--code-highlight</code>/<code>--code-number</code> back the code-block syntax-highlighting rules inside <code>globals.css</code> itself (lines 365, 372, 426), and <code>--selection</code>/<code>--selection-foreground</code> back the global <code>::selection</code> rule (globals.css:196) rather than any per-component class.
+        </div>
+      </div>
+      <!-- /SLOT:orphans -->
+
+      <!-- SLOT:enforcement -->
+      <div class="panel">
+        <h3>What is protecting this today</h3>
+        <p class="sub">0 rules · 0 CI gates</p>
+        <div class="note" style="margin-top:4px">
+          No lint rule or CI gate in this repository reads the token layer. <code>apps/v4/eslint.config.mjs</code> is scoped to type-import style and React Hooks correctness; there is no stylelint config anywhere outside CLI test fixtures for other people's projects. <code>.github/workflows/code-check.yml</code> runs lint / format:check / typecheck, and <code>validate-registries.yml</code> checks registry namespace collisions — none of them look at a color, a spacing value, or a token reference.
+        </div>
+        <div class="note" style="margin-top:16px">
+          <b>Nothing here is protected from coming back.</b> Every finding in this report could reappear tomorrow without anyone being told. The cheapest first move is a lint rule banning bracket-arbitrary literals that match an existing utility — that alone would have caught both redundant findings above.
+        </div>
+      </div>
+      <!-- /SLOT:enforcement -->
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Working set</div>
+    <h2>Where to go from here</h2>
+    <div class="grid2">
+      <div class="panel">
+        <h3>This page</h3>
+        <p class="sub">what to fix</p>
+        <p style="margin:0;font-size:13.5px;color:var(--ink-soft)">
+          Eight graded checks, your architecture, and the evidence that matters most. Short enough to read in one sitting and to attach to a pull request. Past about 600 tokens it stops trying to list everything.
+        </p>
+      </div>
+      <div class="panel">
+        <h3><code>.token-vitals/report.json</code></h3>
+        <p class="sub">where all of it is</p>
+        <p style="margin:0;font-size:13.5px;color:var(--ink-soft)">
+          All findings, orphans and mode gaps, with every occurrence and location. This is what you would point a codemod or a triage session at. The page tells you what is wrong; this file tells you everywhere it is.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>design-token-vitals</span>
+    <!-- SLOT:footer-meta -->
+    <span>adapter: tailwind + css-vars</span>
+    <span>53 tokens · 5 families · 2 modes</span>
+    <span>full rendering (&lt;150)</span>
+    <!-- /SLOT:footer-meta -->
+    <span>runs locally · nothing leaves your machine</span>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+
+  "run": {
+    "generated_at": "2026-09-01T06:17:38Z",
+    "repo_ref": "63c1308",
+    "token_count": 53,
+    "family_count": 5
+  },
+
+  "stack": {
+    "adapter": "tailwind+css-vars",
+    "token_sources": [
+      "apps/v4/app/globals.css",
+      "apps/v4/app/legacy-themes.css"
+    ],
+    "detected_by": "apps/v4/app/globals.css: '@theme inline' block (Tailwind v4) wrapping a ':root' block with 41 '--' declarations (>= 20)",
+    "confidence": "certain"
+  },
+
+  "declared": {
+    "modes": ["light", "dark"],
+    "categories": [
+      "color", "typography", "space", "size", "radius", "border",
+      "elevation", "motion", "z-index", "opacity", "breakpoint"
+    ],
+    "accessibility_target": null
+  },
+
+  "scope_note": "This repository is a monorepo containing the shadcn/ui CLI, its docs/demo site, and framework-fixture/template trees used only to test the CLI's project scaffolding. This run graded apps/v4 (the real Next.js application: registry/new-york-v4 component source, blocks, docs pages, and the app/globals.css token layer) and excluded packages/shadcn/test/fixtures/** and templates/** as CLI test fixtures and starter scaffolds, not consuming application code. Denominators below (e.g. 1,230 files) are apps/v4 only.",
+
+  "vitals": {
+    "tier-integrity": {
+      "grade": "attention",
+      "evidence": [
+        "apps/v4/app/globals.css:456",
+        "apps/v4/app/(app)/(create)/components/welcome-dialog.tsx:41",
+        "apps/v4/app/(app)/(create)/components/welcome-dialog.tsx:43",
+        "apps/v4/components/mobile-nav.tsx:142",
+        "apps/v4/components/mobile-nav.tsx:174",
+        "apps/v4/components/tailwind-indicator.tsx:15"
+      ],
+      "note": "26 of 1,230 scanned .tsx files (2.1%) reach past the semantic color layer for a raw Tailwind palette utility (neutral-*, gray-*, blue-*) where a semantic token already covers the case. The largest cluster is a `.dialog-ring` utility (globals.css:456) and its one caller (welcome-dialog.tsx:41,43), both hardcoding `neutral-900`/`neutral-950`/`neutral-200` instead of the `--popover`/`--border`/`--ring` tokens every other dialog in the registry uses. mobile-nav.tsx uses `bg-blue-500` for a \"New\" indicator dot with no semantic equivalent token. tailwind-indicator.tsx is a dev-only breakpoint overlay (never renders in production) using `bg-gray-800`. 2.1% falls in the >0%-to-5% band."
+    },
+
+    "leakage": {
+      "grade": "attention",
+      "evidence": [
+        "apps/v4/components/chart-code-viewer.tsx:40",
+        "apps/v4/components/chart-copy-button.tsx:41",
+        "apps/v4/components/chart-toolbar.tsx:36",
+        "apps/v4/app/(app)/(create)/components/picker.tsx:161",
+        "apps/v4/registry/new-york-v4/ui/chart.tsx:225",
+        "apps/v4/registry/new-york-v4/ui/chart.tsx:316",
+        "apps/v4/registry/new-york-v4/charts/chart-tooltip-advanced.tsx:84",
+        "apps/v4/registry/new-york-v4/ui/tooltip.tsx:51",
+        "apps/v4/registry/new-york-v4/ui/checkbox.tsx:17",
+        "apps/v4/registry/new-york-v4/blocks/dashboard-01/components/chart-area-interactive.tsx:214"
+      ],
+      "note": "A targeted manual scan (not an exhaustive automated pass) of apps/v4 for hardcoded hex/rgb/oklch colors and bracket-arbitrary dimensions. No hardcoded hex or oklch colors were found anywhere in the graded surface outside of legitimate exemptions (fixed SVG brand-logo fills, and CSS attribute selectors matching third-party Recharts inline markup like [stroke='#ccc'] -- these target markup the app doesn't control, not a design decision, so they aren't graded as leaks). All findings are dimension leaks.",
+      "tiers": { "redundant": 2, "near-miss": 0, "uncovered": 3 }
+    },
+
+    "coverage": {
+      "grade": "attention",
+      "evidence": [
+        "apps/v4/registry/new-york-v4/ui/alert-dialog.tsx:39",
+        "apps/v4/registry/new-york-v4/ui/accordion.tsx:38"
+      ],
+      "note": "9 of 11 categories present. color, typography, space, size, radius, border, elevation, motion and breakpoint all resolve to a real, named CSS custom property -- either a project token in globals.css, or one of Tailwind v4's own default-theme tokens the project imports via `@import \"tailwindcss\"` and never overrides (verified against tailwindcss@4.3.3's theme.css: --spacing, --shadow-*, --ease-*, --animate-*, --default-transition-duration, --breakpoint-* all exist there). z-index and opacity do not: Tailwind v4 has no `--z-*` or `--opacity-*` theme scale -- `z-50` and `opacity-50` compile straight to fixed values with no underlying variable for a component author to reach for instead. 9/11 falls in the 8-10 attention band."
+    },
+
+    "mode-completeness": {
+      "grade": "pass",
+      "evidence": [
+        "apps/v4/app/globals.css:99",
+        "apps/v4/app/globals.css:143"
+      ],
+      "note": "Diffed every '--' declaration in ':root' (light, line 99) against '.dark' (line 143): all 34 color-bearing tokens (background, foreground, card, popover, primary, secondary, muted, accent, destructive, border, input, ring, chart-1..5, sidebar and its 7 variants, surface, code and its 3 variants, selection and its foreground) are redefined in both blocks with zero gaps. The one token present in ':root' and absent from '.dark' is '--radius' (globals.css:100) -- a corner-radius value, not a themed appearance token, and .dark applies as an additional class alongside :root rather than replacing it, so --radius correctly falls through unchanged. It is excluded from the gap count as a judgment call: mode-completeness as defined checks for a token whose fallback 'ships wrong', and a shared corner radius across light and dark is the correct, intended behavior, not a bug. See task-10-report.md for why this reads as a real ambiguity in vitals.md worth resolving."
+    },
+
+    "naming-coherence": {
+      "grade": "pass",
+      "evidence": [
+        "apps/v4/app/globals.css:99",
+        "apps/v4/app/globals.css:143"
+      ],
+      "note": "Every design token in the graded layer follows one grammar: a kebab-case role name, optionally suffixed '-foreground' for the on-color text that pairs with it (--card / --card-foreground, --popover / --popover-foreground, --sidebar-accent / --sidebar-accent-foreground, and so on across all 34 color tokens). No second grammar or legacy family was found in the token source. Component-internal CSS custom properties used to implement specific utilities (--scroll-fade-*, --shimmer-* in packages/shadcn/src/tailwind.css) were not counted -- they are implementation state for one utility class, not entries in the design-token layer this run grades."
+    },
+
+    "single-source": {
+      "grade": "attention",
+      "evidence": [
+        "apps/v4/app/globals.css:120",
+        "apps/v4/app/legacy-themes.css:3",
+        "apps/v4/app/legacy-themes.css:77",
+        "apps/v4/app/legacy-themes.css:168"
+      ],
+      "note": "The default chart palette (--chart-1 through --chart-5, resolving to var(--color-blue-300) through var(--color-blue-800)) is declared independently in four places: the project default in globals.css:120, and three of the four theme-preset blocks in legacy-themes.css (.theme-default:3, .theme-scaled:77, .theme-blue:168 -- .theme-mono intentionally overrides with its own stone-based values, which is correct variant behavior, not drift). All four sites currently agree exactly. Nothing stops a future edit to the default palette in one site from silently leaving the other three behind."
+    },
+
+    "orphans": {
+      "grade": "pass",
+      "evidence": [],
+      "note": "Checked all ~53 tokens declared in apps/v4/app/globals.css for at least one reference elsewhere in apps/v4 (as a generated Tailwind utility class -- bg-surface, text-code-number -- or a raw var(--x)). Every token resolved to real usage, including ones that looked orphaned on a first pass: --code-highlight/--code-number are consumed by the rehype-pretty-code styling in globals.css itself (lines 365, 372, 426), --selection/--selection-foreground back the global '::selection' rule (globals.css:196), and --breakpoint-3xl/--breakpoint-4xl are used as Tailwind variants (3xl:, 4xl:) in 17 and 4 files respectively. No orphaned token found; grade is pass, not blocked, because the check was actually run to completion."
+    },
+
+    "enforcement": {
+      "grade": "blocked",
+      "evidence": [],
+      "note": "No lint rule or CI gate in this repository reads the token layer. apps/v4/eslint.config.mjs runs eslint-config-next plus typescript-eslint, scoped to type-import style and React hooks correctness -- nothing about colors, spacing, or bracket-arbitrary literals. There is no stylelint config anywhere in the repository (grep found none outside CLI test fixtures, which scaffold OTHER people's projects and aren't this repo's own enforcement). .github/workflows/code-check.yml runs pnpm lint / format:check / typecheck; .github/workflows/validate-registries.yml checks registry namespace collisions, not token usage. 0 qualifying rules found, so per the vital's own grading this is blocked rather than failed: with nothing in place, there is nothing to verify as protecting the system."
+    }
+  },
+
+  "rendering": {
+    "tier": "full",
+    "truncated": []
+  }
+}
