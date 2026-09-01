@@ -7,14 +7,19 @@ report.json files a pair of runs produced and reports where they agree.
 
     python3 tools/compare_runs.py a/report.json b/report.json
 
-Exit status is 1 when the two runs disagree on any graded vital, and 0
-otherwise. Divergence below the grade level — a different evidence line for
+Exit status is 1 when the two runs disagree on any graded vital, 0
+otherwise, and 2 on bad arguments — see tools/cli.py. Divergence below the grade level — a different evidence line for
 the same grade, a different rendering form — is reported and does not fail
 the comparison on its own, because it does not change what the report says
 about the codebase.
 """
+import argparse
 import json
+import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cli import EXIT_FINDING, EXIT_OK, add_json_flag, emit_json  # noqa: E402
 
 VITALS = [
     "tier-integrity", "leakage", "coverage", "mode-completeness",
@@ -69,11 +74,18 @@ def shorten(value, width=76):
 
 
 def main(argv):
-    if len(argv) != 2:
-        print(__doc__.strip())
-        return 2
-    a = json.load(open(argv[0], encoding="utf-8"))
-    b = json.load(open(argv[1], encoding="utf-8"))
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("run_a")
+    ap.add_argument("run_b")
+    add_json_flag(ap)
+    try:
+        args = ap.parse_args(argv)
+    except SystemExit as e:
+        return int(e.code) if e.code is not None else 2
+    with open(args.run_a, encoding="utf-8") as fh:
+        a = json.load(fh)
+    with open(args.run_b, encoding="utf-8") as fh:
+        b = json.load(fh)
 
     grade_diffs = 0
     other_diffs = 0
@@ -128,16 +140,21 @@ def main(argv):
     agreed = len(VITALS) - grade_diffs
     print(f"grades agreed:      {agreed} of {len(VITALS)}")
     print(f"other divergences:  {other_diffs}")
+    emit_json(args.json_out, {
+        "grades_agreed": agreed, "grades_total": len(VITALS),
+        "grade_divergences": [v for v in VITALS if get(a, "vitals", v, "grade") != get(b, "vitals", v, "grade")],
+        "other_divergences": other_diffs,
+    })
     if grade_diffs:
         print("\nThe two runs disagree on what this codebase is. Read the scope block")
         print("first — a different owned path or adapter set explains most of the rest.")
-        return 1
+        return EXIT_FINDING
     if other_diffs:
         print("\nThe two runs agree on all eight grades. The divergences above sit below")
         print("the grade level and change nothing the report claims about the codebase.")
-        return 0
+        return EXIT_OK
     print("\nThe two runs are identical.")
-    return 0
+    return EXIT_OK
 
 
 if __name__ == "__main__":

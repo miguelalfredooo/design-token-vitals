@@ -16,3 +16,7 @@
 .panel__link { color: var(--blue-500); }
 .panel__link:visited { color: var(--blue-600); }
 .panel__small { font-size: var(--font-size-sm); }
+
+/* A string value holding markup. A run that renders this literal into the
+   report without escaping it has shipped an injection. */
+.panel__badge::before { content: "<b onmouseover=alert(1)>new</b>"; }

@@ -30,6 +30,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cli import EXIT_OK, add_json_flag, emit_json  # noqa: E402
+
 STYLE_EXT = {".css", ".scss", ".sass", ".less"}
 
 # @import "a", @use "b" as c, @forward "d", @import url("e"), composes from "f"
@@ -286,19 +289,17 @@ def main(argv):
     ap.add_argument("root")
     ap.add_argument("--entry", action="append", default=[])
     ap.add_argument("--ignore", action="append", default=[])
-    ap.add_argument("--json", dest="out")
+    add_json_flag(ap)
     args = ap.parse_args(argv)
 
     graph = build(args.root, args.entry or None, DEFAULT_IGNORES + args.ignore)
-    text = json.dumps(graph, indent=2, sort_keys=True)
-    if args.out:
-        with open(args.out, "w", encoding="utf-8") as fh:
-            fh.write(text + "\n")
+    if args.json_out:
+        emit_json(args.json_out, graph)
         print("wrote %s — %d root(s), %d reachable, %d orphan stylesheet(s)"
-              % (args.out, len(graph["roots"]), len(graph["reachable"]), len(graph["orphans"])))
+              % (args.json_out, len(graph["roots"]), len(graph["reachable"]), len(graph["orphans"])))
     else:
-        print(text)
-    return 0
+        print(json.dumps(graph, indent=2, sort_keys=True))
+    return EXIT_OK
 
 
 if __name__ == "__main__":

@@ -247,6 +247,35 @@ class TestRule8HtmlCompleteness(unittest.TestCase):
         self.assertNotIn("8-html-completeness", rules_failed(good_doc(), None))
 
 
+class TestRule9UnescapedMarkup(unittest.TestCase):
+    def test_a_script_tag_in_the_html_fails(self):
+        html = '<td><span class="lit">"<script>alert(1)</script>"</span></td>'
+        self.assertIn("9-unescaped-markup", rules_failed(good_doc(), html))
+
+    def test_an_event_handler_attribute_fails(self):
+        html = '<td><span class="lit"><b onmouseover=alert(1)>x</b></span></td>'
+        self.assertIn("9-unescaped-markup", rules_failed(good_doc(), html))
+
+    def test_a_javascript_url_fails(self):
+        html = '<a href="javascript:alert(1)">x</a>'
+        self.assertIn("9-unescaped-markup", rules_failed(good_doc(), html))
+
+    def test_escaped_markup_passes(self):
+        """The same content, escaped on fill, is inert and must pass."""
+        html = '<td><span class="lit">"&lt;script&gt;alert(1)&lt;/script&gt;"</span></td>'
+        self.assertNotIn("9-unescaped-markup", rules_failed(good_doc(), html))
+
+    def test_the_word_onload_inside_prose_does_not_trip_it(self):
+        html = '<p>The onload story here is a real one, and so is the script.</p>'
+        self.assertNotIn("9-unescaped-markup", rules_failed(good_doc(), html))
+
+    def test_the_template_itself_passes(self):
+        import os
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "assets", "report-template.html"), encoding="utf-8") as fh:
+            self.assertNotIn("9-unescaped-markup", rules_failed(good_doc(), fh.read()))
+
+
 class TestIndependence(unittest.TestCase):
     def test_each_rule_fails_on_its_own(self):
         """A broken doc reports every rule it breaks, rather than the first."""

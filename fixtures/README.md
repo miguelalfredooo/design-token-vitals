@@ -39,6 +39,7 @@ expectation to match a run, which turns the test into a mirror.
 | `components/chart.tsx` | Two uncovered values: no layer token and no opacity token exists |
 | `theme.config.json` | Declares `high-contrast`, which nothing resolves. `mode-completeness` must be `blocked` |
 | `pnpm-workspace.yaml`, `packages/ui/` | **A workspace package imported by name.** `globals.css` imports `ui/theme.css`; the file is `packages/ui/src/theme.css`. A graph that cannot read the workspace reports it as unresolved and the file as an orphan. It defines no tokens, so the count stays at 20 |
+| `app/components.css`, last rule | **A string value holding markup.** `content: "<b onmouseover=alert(1)>new</b>"`. A run that renders it unescaped has shipped an injection; `validate_run.py` rule 9 catches it |
 | `dist/bundle.css` | Generated output carrying a sourceMappingURL. Holds `#2563eb`; must never be reported |
 | `node_modules/pkg/theme.css` | A dependency holding `#2563eb` and `8px`; must never be reported |
 
