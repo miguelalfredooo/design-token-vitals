@@ -506,6 +506,72 @@
     summary::before { transition: none; }
   }
 
+  /* ---------- contents rail ---------- */
+
+  /* Twenty-six regions in one scroll had no way to reach any of them. On a
+     wide viewport this sits beside the report; below that it becomes a row
+     of chips at the top. Every section carries an id, and every fix-queue
+     row carries its finding id as an anchor, so a finding can be linked
+     from a ticket. */
+  .contents {
+    display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center;
+    margin: 0 0 32px; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  .contents-label {
+    flex: 0 0 100%; margin-bottom: 4px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-mute);
+  }
+  .contents a {
+    padding: 4px 10px; border-radius: 3px; border: 1px solid var(--line);
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); text-decoration: none; background: var(--surface);
+  }
+  .contents a:hover { color: var(--accent); border-color: var(--accent); }
+  .contents a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (min-width: 1320px) {
+    .contents {
+      position: fixed; top: 32px; left: calc(50% - 640px - 200px); width: 170px;
+      flex-direction: column; align-items: stretch; gap: 2px; margin: 0; padding: 0; border: none;
+    }
+    .contents-label { margin: 0 0 8px; }
+    .contents a { border: none; background: transparent; padding: 5px 8px; border-left: 2px solid transparent; border-radius: 0; }
+    .contents a:hover { border-left-color: var(--accent); background: var(--surface); }
+  }
+  section[id] { scroll-margin-top: 24px; }
+  tr[id] { scroll-margin-top: 80px; }
+  tr[id]:target td { background: var(--accent-soft); }
+
+  /* ---------- print ---------- */
+
+  /* The docs say this file gets attached to CI and forwarded by email.
+     Definitions that live in hover tooltips do not print, and neither
+     does anything behind a scroll container. CSS cannot open a closed
+     <details> — its content is hidden inside the element's own shadow
+     tree — so those stay closed on paper; the summary line still prints
+     with its count. */
+  @media print {
+    body { background: #fff; color: #000; }
+    .contents, .ihelp .info { display: none; }
+    .tip {
+      position: static; opacity: 1; visibility: visible; display: block;
+      max-width: none; margin: 4px 0 0; padding: 0; box-shadow: none;
+      background: transparent; color: #333; font-size: 10px; line-height: 1.35;
+      text-transform: none; letter-spacing: 0; font-weight: 400;
+    }
+    .tip::before { display: none; }
+    th { white-space: normal; vertical-align: top; }
+    .tbl-scroll { overflow: visible; }
+    table { font-size: 11px; }
+    section { break-inside: avoid-page; page-break-inside: avoid; }
+    section + section { break-before: auto; }
+    h2 { break-after: avoid; }
+    details { border: 1px solid #bbb; }
+    summary::before { display: none; }
+    a { color: inherit; text-decoration: none; }
+    .sw i, .ramp i, .out i, .pair i, .cell, .c, .pip, .track i, .gbar i, .bar-row i {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+  }
+
   /* ---------- spacing scale ---------- */
 
   /* The template's own vertical rhythm, as a scale rather than as inline
@@ -848,7 +914,25 @@
     <!-- /SLOT:runhead-meta -->
   </header>
 
-  <section>
+  <nav class="contents" aria-label="Report sections">
+    <span class="contents-label">In this report</span>
+    <a href="#summary">Summary</a>
+    <a href="#trend" data-tier="full collapsed family-only">Trend</a>
+    <a href="#vitals">Vitals</a>
+    <a href="#start">Where to start</a>
+    <a href="#architecture" data-tier="collapsed family-only">Architecture</a>
+    <a href="#fix-queue">Fix queue</a>
+    <a href="#ownership">Ownership</a>
+    <a href="#lineage">Lineage</a>
+    <a href="#inventory">Inventory</a>
+    <a href="#coverage">Coverage</a>
+    <a href="#leakage">Leakage</a>
+    <a href="#modes">Modes</a>
+    <a href="#orphans">Orphans</a>
+    <a href="#measurement">Measurement</a>
+  </nav>
+
+  <section id="summary">
     <div class="eyebrow">Summary</div>
     <h2>What is worst, and what to do first</h2>
     <!-- SLOT:exec-summary -->
@@ -884,7 +968,7 @@
     <!-- /SLOT:exec-summary -->
   </section>
 
-  <section>
+  <section id="trend">
     <div class="eyebrow">Trend</div>
     <h2>What moved since the last run</h2>
     <p class="lede">
@@ -914,7 +998,7 @@
     <!-- /SLOT:trend -->
   </section>
 
-  <section>
+  <section id="vitals">
     <div class="eyebrow">The eight vitals</div>
     <h2>Eight checks on your token system</h2>
     <p class="lede">
@@ -989,7 +1073,7 @@
     </div>
   </section>
 
-  <section>
+  <section id="start">
     <div class="eyebrow">Where to start</div>
     <h2>The next concrete move, ranked</h2>
     <p class="lede">
@@ -1043,7 +1127,7 @@
     <!-- /SLOT:next-steps -->
   </section>
 
-  <section data-tier="collapsed family-only">
+  <section id="architecture" data-tier="collapsed family-only">
     <div class="eyebrow">Architecture</div>
     <h2>Your system, grouped the way you built it</h2>
     <p class="lede">
@@ -1208,7 +1292,7 @@
   </section>
 
 
-  <section>
+  <section id="fix-queue">
     <div class="eyebrow">Fix queue</div>
     <h2>What a person or an agent can act on now</h2>
     <p class="lede">
@@ -1221,7 +1305,7 @@
           <tr><th>Finding</th><th>Literal</th><th>Replacement</th><th>Priority<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">(n + 2f + 3b) &times; c. Files outweigh occurrences because ten occurrences in one file is one edit. Breadth outweighs both, because a value crossing many components is a missing system decision.</span></span></th><th>Confidence</th><th>Automation<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Only a value a token already holds can be swapped without a decision. Drift and uncovered values always need a person.</span></span></th><th>First location</th></tr>
         </thead>
         <tbody>
-              <tr data-finding="c3b404ccdd7e">
+              <tr id="f-c3b404ccdd7e" data-finding="c3b404ccdd7e">
                 <td><code>c3b404ccdd7e</code></td>
                 <td><span class="lit">#0F8A83</span></td>
                 <td><span class="tok">--brand</span></td>
@@ -1230,7 +1314,7 @@
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/Link.tsx:11</span></td>
               </tr>
-              <tr data-finding="4ccda3abfece">
+              <tr id="f-4ccda3abfece" data-finding="4ccda3abfece">
                 <td><code>4ccda3abfece</code></td>
                 <td><span class="lit">#B3402F</span></td>
                 <td><span class="tok">--danger</span></td>
@@ -1239,7 +1323,7 @@
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/Toast.tsx:19</span></td>
               </tr>
-              <tr data-finding="e9b395923232">
+              <tr id="f-e9b395923232" data-finding="e9b395923232">
                 <td><code>e9b395923232</code></td>
                 <td><span class="lit">#3E7C4F</span></td>
                 <td><span class="tok">--ok</span></td>
@@ -1248,7 +1332,7 @@
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/status-dot.tsx:12</span></td>
               </tr>
-              <tr data-finding="938b90223b1e">
+              <tr id="f-938b90223b1e" data-finding="938b90223b1e">
                 <td><code>938b90223b1e</code></td>
                 <td><span class="lit">8px</span></td>
                 <td><span class="tok">--space-2</span></td>
@@ -1257,7 +1341,7 @@
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/Stack.tsx:29</span></td>
               </tr>
-              <tr data-finding="bac392391fab">
+              <tr id="f-bac392391fab" data-finding="bac392391fab">
                 <td><code>bac392391fab</code></td>
                 <td><span class="lit">24px</span></td>
                 <td><span class="tok">--space-6</span></td>
@@ -1266,7 +1350,7 @@
                 <td><span class="auto" data-a="yes">automatable</span></td>
                 <td><span class="path">components/Section.tsx:12</span></td>
               </tr>
-              <tr data-finding="34883b1bd180">
+              <tr id="f-34883b1bd180" data-finding="34883b1bd180">
                 <td><code>34883b1bd180</code></td>
                 <td><span class="lit">#0F8B84</span></td>
                 <td><span class="tok">--brand</span></td>
@@ -1275,7 +1359,7 @@
                 <td><span class="auto" data-a="no">needs a person</span></td>
                 <td><span class="path">components/Tag.tsx:44</span></td>
               </tr>
-              <tr data-finding="bb8650af35d0">
+              <tr id="f-bb8650af35d0" data-finding="bb8650af35d0">
                 <td><code>bb8650af35d0</code></td>
                 <td><span class="lit">13px</span></td>
                 <td><span class="tok">--text-sm</span></td>
@@ -1293,7 +1377,7 @@
     <!-- /SLOT:fix-queue -->
   </section>
 
-  <section>
+  <section id="ownership">
     <div class="eyebrow">Ownership</div>
     <h2>The same findings, grouped by who owns them</h2>
     <p class="lede">
@@ -1317,7 +1401,7 @@
     <!-- /SLOT:groups -->
   </section>
 
-  <section>
+  <section id="lineage">
     <div class="eyebrow">Lineage</div>
     <h2>Where each token comes from</h2>
     <p class="lede">
@@ -1356,7 +1440,7 @@
     <!-- /SLOT:lineage -->
   </section>
 
-  <section>
+  <section id="inventory">
     <div class="eyebrow">Inventory</div>
     <h2>Your tokens, shown as what they are</h2>
     <p class="lede">
@@ -1679,7 +1763,7 @@
   </section>
 
 
-  <section>
+  <section id="coverage">
     <div class="eyebrow">Coverage</div>
     <h2>What was measured, per bundle and mode</h2>
     <p class="lede">
@@ -1715,7 +1799,7 @@
     <!-- /SLOT:coverage-matrix -->
   </section>
 
-  <section>
+  <section id="leakage">
     <div class="eyebrow">Leakage</div>
     <h2>Hardcoded values, and whether a token already existed</h2>
     <p class="lede">
@@ -2090,7 +2174,7 @@
     </div>
   </section>
 
-  <section>
+  <section id="modes">
     <div class="eyebrow">Mode completeness</div>
     <h2>Which tokens are missing a value in each mode</h2>
     <p class="lede">
@@ -2388,7 +2472,7 @@
     <!-- /SLOT:modes-gaps -->
   </section>
 
-  <section>
+  <section id="orphans">
     <div class="eyebrow">Orphans &amp; enforcement</div>
     <h2>Tokens nothing uses, and what stops this coming back</h2>
     <p class="lede">
@@ -2451,7 +2535,7 @@
     </div>
   </section>
 
-  <section>
+  <section id="working-set">
     <div class="eyebrow">Working set</div>
     <h2>Where to go from here</h2>
     <div class="grid2">
@@ -2472,7 +2556,7 @@
     </div>
   </section>
 
-  <section>
+  <section id="measurement">
     <div class="eyebrow">Measurement</div>
     <h2>How this was measured</h2>
     <p class="lede">
