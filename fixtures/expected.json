@@ -1,0 +1,84 @@
+{
+  "_comment": "Golden output for the fixture repository. Every value here is derivable from the files by hand, and is what a correct run must produce. A run that disagrees is either wrong or has found a defect in this file — check by hand, never by adjusting the expectation to match the run.",
+
+  "discovery": {
+    "environment": "nextjs",
+    "adapters": ["css-vars", "scss"],
+    "owned_paths": ["app", "components", "styles"],
+    "excluded_paths": [
+      { "path": "node_modules/", "reason": "dependency" },
+      { "path": "dist/", "reason": "generated output, carries a sourceMappingURL" }
+    ],
+    "import_graph": {
+      "roots": ["app/layout.tsx"],
+      "reachable": [
+        "app/layout.tsx",
+        "app/globals.css",
+        "styles/main.scss",
+        "app/components.css",
+        "app/theme.css",
+        "styles/_primitives.scss"
+      ],
+      "orphans": ["app/orphan-tokens.css"]
+    },
+    "token_sources": [
+      { "path": "app/globals.css",        "classification": "canonical",  "proves": "primitive definitions, reachable at depth 1" },
+      { "path": "app/theme.css",          "classification": "alias",      "proves": "semantic layer projecting the primitives" },
+      { "path": "styles/_primitives.scss","classification": "canonical",  "proves": "a projection pair: 2 SCSS variables emitting 2 custom properties" },
+      { "path": "app/components.css",     "classification": "consumer",   "proves": "uses tokens, defines none" },
+      { "path": "app/orphan-tokens.css",  "classification": "unverified", "proves": "3 real declarations no entry point reaches" }
+    ],
+    "declared_modes": ["light", "dark", "high-contrast"],
+    "resolved_modes": ["light", "dark"]
+  },
+
+  "counts": {
+    "token_count": 20,
+    "_token_count_note": "20 concepts, not 22. $accent and --accent are one concept with two sites, and so are $accent-soft and --accent-soft. A run reporting 22 has skipped the deduplication job.",
+    "orphan_tokens": ["--unused-legacy-accent"]
+  },
+
+  "inventory_families": {
+    "measured": ["color", "typography", "spacing", "radius", "motion"],
+    "absent": ["sizing", "border", "elevation", "opacity", "layer", "breakpoint",
+               "grid", "focus", "target", "state", "icon", "aspect", "blur", "density"],
+    "unmeasured": [],
+    "_note": "19 families total. A run reporting 0 for an absent family rather than the absent state fails validate_run rule 4."
+  },
+
+  "leaks": {
+    "redundant": [
+      { "literal": "#2563eb", "token": "--blue-500", "files": ["components/button.tsx"] },
+      { "literal": "8px",     "token": "--space-2",  "files": ["components/button.tsx", "components/card.tsx"] },
+      { "literal": "6px",     "token": "--radius-md","files": ["components/card.tsx"] }
+    ],
+    "near_miss": [
+      { "literal": "#2563ec", "token": "--blue-500", "files": ["components/badge.tsx"],
+        "why": "one hex step from #2563eb" }
+    ],
+    "uncovered": [
+      { "literal": "1400", "concept": "z-index / layer", "files": ["components/chart.tsx"] },
+      { "literal": "0.64", "concept": "opacity",         "files": ["components/chart.tsx"] }
+    ],
+    "_scope_note": "Leaks come from owned reachable consumer files only. node_modules/pkg/theme.css holds #2563eb and 8px and must never appear; dist/bundle.css holds #2563eb and must never appear."
+  },
+
+  "fix_queue": {
+    "entries": 3,
+    "safe_to_automate": 3,
+    "_note": "Only the three redundant groups. Near-miss needs a person to decide whether the drift was deliberate; uncovered needs a token to exist first."
+  },
+
+  "vitals": {
+    "mode-completeness": "blocked",
+    "_mode_note": "theme.config.json declares high-contrast and no source resolves it. A run grading this pass, attention or fail fails validate_run rule 3.",
+    "orphans": "attention",
+    "_orphans_note": "exactly one: --unused-legacy-accent",
+    "enforcement": "blocked",
+    "_enforcement_note": "no lint config and no CI in the fixture"
+  },
+
+  "validation": {
+    "expected": "all eight rules pass"
+  }
+}

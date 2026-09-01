@@ -1,0 +1,15 @@
+:root {
+  --brand: var(--blue-500);
+  --brand-strong: var(--blue-600);
+  --surface: var(--gray-100);
+  --text: var(--gray-900);
+  --text-sm: var(--font-size-sm);
+}
+
+.dark {
+  --brand: var(--blue-500);
+  --brand-strong: var(--blue-600);
+  --surface: var(--gray-100);
+  --text: var(--gray-900);
+  --text-sm: var(--font-size-sm);
+}

@@ -1,0 +1,10 @@
+lockfileVersion: '9.0'
+importers:
+  .:
+    dependencies:
+      next:
+        specifier: 16.0.0
+        version: 16.0.0
+      sass:
+        specifier: 1.80.0
+        version: 1.80.0
