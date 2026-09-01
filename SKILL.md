@@ -116,6 +116,15 @@ titles — unchanged. A region that still holds the template's own sample
 data once you are done is a bug, not an acceptable gap: it means the
 report ships describing a codebase that was never scanned.
 
+Every region that lists findings — `inventory-color`, `inventory-type`,
+`inventory-space`, `families`, `leak-redundant`, `leak-near-miss`,
+`leak-uncovered`, `modes-gaps`, `orphans`, and `next-steps` — follows the
+40-row rule in `references/report.md`: render every row up to 40, and past
+that, the first 40 plus a `<details>` element holding the remainder on the
+same page. Never truncate a section that has 40 or fewer findings, and
+never point a reader at the JSON for something the page itself has room to
+show.
+
 - [ ] `doc-title` — the project name and the short commit ref, using the
       same "`<repo>` @ `<short-sha>`" pattern as `runhead-tag`.
 - [ ] `runhead-tag` — ships reading "Sample report · representative data";
@@ -173,7 +182,13 @@ report while one of these is still failing:
 
 Write `.token-vitals/report.html` (from Stage 6) and `.token-vitals/report.json`
 (the filled-in `assets/capability-map.yml` schema, as JSON). The HTML report
-is the deliverable — it is what a stakeholder opens, reads, and acts on.
+is the deliverable — it is what a stakeholder opens, reads, and acts on. The
+JSON is a machine-readable duplicate of exactly what the HTML shows, plus
+the full detail behind every `<details>` disclosure in it — see "The JSON
+duplicates the report" in `references/report.md`. No finding may exist only
+in the JSON: apply the 40-row rule (`references/report.md`) to every listing
+region so a reader who never opens the JSON still sees everything the run
+found, directly or one `<details>` away.
 
 Then print a short terminal summary that points at the report rather than
 standing in for it: the tier chosen, the count of vitals at each grade, the

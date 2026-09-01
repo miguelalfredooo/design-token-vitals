@@ -18,9 +18,12 @@ one real `file:line` you can open and check yourself — a clean pass or a
 blocked check carries a note instead. The report also ranks those findings
 into a "Where to start" plan — a short, ordered list of concrete actions,
 each with an owner and a real `file:line` — so you leave with a next move,
-not just a diagnosis. The output is a single self-contained HTML report, a
-JSON working set for tooling, and a short terminal summary naming the one
-thing worth doing first.
+not just a diagnosis. The report shows every finding it produced, up to 40
+per section, with anything past that behind a `<details>` element on the
+same page rather than filed away in another file. The output is a single
+self-contained HTML report, a JSON working set that duplicates exactly what
+the HTML shows in a machine-readable form for tooling, and a short terminal
+summary naming the one thing worth doing first.
 
 See a real one: [`examples/shadcn-ui/report.html`](examples/shadcn-ui/report.html)
 (GitHub renders this as raw HTML rather than a page, so download it and open it locally).
@@ -41,7 +44,7 @@ stages directly against your repository.
 4. **Grade the eight vitals** — each one graded against the stack and declarations from the prior stages, with at least one real `file:line` attached to every grade.
 5. **Choose the rendering tier** — the token count decides how much evidence renders inline versus rolls up into a count.
 6. **Fill the template** — the self-contained report is built by filling named slots in a fixed template, never by writing free-form HTML.
-7. **Write the outputs** — the HTML report, the JSON working set, and a terminal summary naming one next step.
+7. **Write the outputs** — the HTML report, a JSON working set that duplicates it for tooling, and a terminal summary naming one next step.
 
 ## The eight vitals
 
