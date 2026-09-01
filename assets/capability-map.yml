@@ -6,6 +6,9 @@ run:
   repo_ref: null            # git SHA, or null if not a git repo
   token_count: null
   family_count: null
+  files_scanned: null       # how many files leakage actually searched
+  scope: []                 # the globs or directories analyzed
+  framework_versions: {}    # any framework whose defaults were consulted, and the exact version
 
 stack:
   adapters: []              # any of: css-vars, tailwind, scss, dtcg, unknown — more than one can apply at once
