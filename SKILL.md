@@ -9,15 +9,40 @@ allowed-tools: Read, Grep, Glob, Bash, Write
 
 You are grading a codebase's design token layer against eight fixed vitals
 and reporting what you found — with evidence, never an average. Work through
-the six stages below in order.
+the seven stages below in order.
 
-## Stage 1 — Detect the stack
+## Stage 1 — Discover the codebase
+
+Before you count a single token, do the three jobs in
+`references/discovery.md`: work out what owns theming, work out what the
+project actually authored, and derive the scope those two answers leave
+you with. Skip this stage and every stage after it measures the wrong
+thing — a coverage grade against the wrong build step, a leakage count
+padded with code nobody here can fix, a mode check graded against a
+mechanism the project doesn't even run.
+
+Record `discovery.environment`, `discovery.detected_by`,
+`discovery.confidence`, `discovery.owned_paths`, and
+`discovery.excluded_paths` (each with its reason) in
+`assets/capability-map.yml`'s schema before moving on.
+
+If the derived scope is ambiguous — more than one app in a monorepo
+plausibly qualifies — or the environment doesn't match anything in
+`references/discovery.md`'s table, say so to the reader before continuing.
+Proceeding on a guess here is exactly the failure mode this stage exists
+to prevent.
+
+## Stage 2 — Detect the stack
 
 Match the repository against `references/adapters/css-vars.md`,
 `references/adapters/tailwind.md`, `references/adapters/scss.md`, and
 `references/adapters/dtcg.md`, using each file's own Detection section.
 More than one adapter can apply at once — Tailwind sits on top of custom
-properties in most repositories, and both should run.
+properties in most repositories, and both should run. The environment you
+recorded in Stage 1 narrows which adapters are even plausible — a
+Discourse plugin tree is not going to resolve its tokens through a Next.js
+build step, so don't spend time matching adapters the environment already
+rules out.
 
 Record `stack.adapters`, `stack.detected_by` (the filename or config key that
 proved it), and `stack.confidence` in `assets/capability-map.yml`'s schema.
@@ -29,11 +54,11 @@ it grades code against a system that was never there.
 Also record `run.scope` — the globs or directories this run analyzes — and,
 for any framework whose default theme the active adapter can draw
 categories from, `run.framework_versions` with the installed version you
-checked. Stage 3's `coverage` step depends on `framework_versions` already
+checked. Stage 4's `coverage` step depends on `framework_versions` already
 being recorded here; see the framework-default rule in
 `references/vitals.md`'s `coverage` vital and `references/adapters/tailwind.md`.
 
-## Stage 2 — Read what the project declares
+## Stage 3 — Read what the project declares
 
 Read the repository for its declared modes, categories, and accessibility
 target — never assume a standard. This is the step that decides, later,
@@ -41,11 +66,11 @@ whether a missing high-contrast mode is `fail` or `not_applicable`: a mode
 the project never declared cannot be missing from it. Record these under
 `declared` in the capability map before grading anything.
 
-## Stage 3 — Grade the eight vitals
+## Stage 4 — Grade the eight vitals
 
 Grade each vital in `references/vitals.md` — tier-integrity, leakage,
 coverage, mode-completeness, naming-coherence, single-source, orphans,
-enforcement — against the stack and declarations from Stages 1 and 2. For
+enforcement — against the stack and declarations from Stages 2 and 3. For
 leakage, classify every hardcoded value through the cascade in
 `references/leakage.md`: `redundant`, `near-miss`, then `uncovered`, in that
 order, and rank findings by the six-key total order there.
@@ -53,7 +78,7 @@ order, and rank findings by the six-key total order there.
 For `coverage`, when the active adapter says a category can come from a
 framework's own default theme, checking that framework's installed version
 is required before grading — not optional. If `run.framework_versions` was
-not recorded in Stage 1 and the version cannot be determined now, grade
+not recorded in Stage 2 and the version cannot be determined now, grade
 `coverage` as `blocked` with a note saying so; never `pass` on an unchecked
 assumption. See `references/vitals.md`'s `coverage` vital.
 
@@ -65,7 +90,7 @@ point at when nothing was found, or when the check could not run. A vital
 with a count and no reachable instance is `blocked`, never `fail` —
 silence is not evidence.
 
-## Stage 4 — Choose the rendering tier
+## Stage 5 — Choose the rendering tier
 
 Count the tokens the stack detected and choose the tier from
 `references/report.md`: under 150 tokens is `full`; 150 to 600 inclusive is
@@ -73,7 +98,7 @@ Count the tokens the stack detected and choose the tier from
 `collapsed`; a count of exactly 600 is `collapsed`. Record the tier in
 `assets/capability-map.yml`'s `rendering.tier`.
 
-## Stage 5 — Fill the template
+## Stage 6 — Fill the template
 
 Copy `assets/report-template.html` to `.token-vitals/report.html`, and strip
 the leading `<!-- … -->` instruction comment at the top of the copy — it
@@ -114,8 +139,10 @@ report ships describing a codebase that was never scanned.
 - [ ] `orphans`
 - [ ] `enforcement`
 - [ ] `measurement` — the token sources and count, the analysis scope and
-      files searched, the adapters used and their confidence, and any
-      framework version consulted, all read back from `assets/capability-map.yml`.
+      files searched, the adapters used and their confidence, any
+      framework version consulted, and the environment, what proved it,
+      and the owned and excluded paths from Stage 1, all read back from
+      `assets/capability-map.yml`.
 - [ ] `footer-meta`
 
 For a generated sentence, use the slot templates in `references/voice.md`
@@ -142,9 +169,9 @@ report while one of these is still failing:
 - Every vital card's `data-grade` matches its chip's `data-g`.
 - The leading instruction comment is gone.
 
-## Stage 6 — Write the outputs
+## Stage 7 — Write the outputs
 
-Write `.token-vitals/report.html` (from Stage 5) and `.token-vitals/report.json`
+Write `.token-vitals/report.html` (from Stage 6) and `.token-vitals/report.json`
 (the filled-in `assets/capability-map.yml` schema, as JSON). The HTML report
 is the deliverable — it is what a stakeholder opens, reads, and acts on.
 
