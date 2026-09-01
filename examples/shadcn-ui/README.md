@@ -52,8 +52,7 @@ directory tree.
 A reader can re-run this and check every number:
 
 ```bash
-git clone --depth 1 https://github.com/shadcn-ui/ui.git dtv-example
-cd dtv-example && git checkout 63c1308  # only needed once the default branch has moved past it
+git clone --filter=blob:none https://github.com/shadcn-ui/ui.git && cd ui && git checkout 63c1308
 ```
 
 Then follow `SKILL.md` by hand against `apps/v4` in the cloned tree, the

@@ -9,7 +9,7 @@
   },
 
   "stack": {
-    "adapter": "tailwind+css-vars",
+    "adapters": ["tailwind", "css-vars"],
     "token_sources": [
       "apps/v4/app/globals.css",
       "apps/v4/app/legacy-themes.css"
@@ -76,7 +76,7 @@
         "apps/v4/app/globals.css:99",
         "apps/v4/app/globals.css:143"
       ],
-      "note": "Diffed every '--' declaration in ':root' (light, line 99) against '.dark' (line 143): all 34 color-bearing tokens (background, foreground, card, popover, primary, secondary, muted, accent, destructive, border, input, ring, chart-1..5, sidebar and its 7 variants, surface, code and its 3 variants, selection and its foreground) are redefined in both blocks with zero gaps. The one token present in ':root' and absent from '.dark' is '--radius' (globals.css:100) -- a corner-radius value, not a themed appearance token, and .dark applies as an additional class alongside :root rather than replacing it, so --radius correctly falls through unchanged. It is excluded from the gap count as a judgment call: mode-completeness as defined checks for a token whose fallback 'ships wrong', and a shared corner radius across light and dark is the correct, intended behavior, not a bug. See task-10-report.md for why this reads as a real ambiguity in vitals.md worth resolving."
+      "note": "Diffed every '--' declaration in ':root' (light, line 99) against '.dark' (line 143): all 34 color-bearing tokens (background, foreground, card, popover, primary, secondary, muted, accent, destructive, border, input, ring, chart-1..5, sidebar and its 7 variants, surface, code and its 3 variants, selection and its foreground) are redefined in both blocks with zero gaps. The one token present in ':root' and absent from '.dark' is '--radius' (globals.css:100) -- a corner-radius value, not a themed appearance token, and .dark applies as an additional class alongside :root rather than replacing it, so --radius correctly falls through unchanged. It is excluded from the gap count as a judgment call: mode-completeness as defined checks for a token whose fallback 'ships wrong', and a shared corner radius across light and dark is the correct, intended behavior, not a bug. references/vitals.md scopes mode-completeness to tokens whose meaning is appearance-dependent -- color, elevation, and anything else whose correct value changes with the mode -- and puts geometry, spacing, typography metrics and timing out of scope by default, since a token like --radius can legitimately hold one value across every mode."
     },
 
     "naming-coherence": {
