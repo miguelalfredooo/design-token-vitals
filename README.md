@@ -4,6 +4,43 @@ An agent skill that grades the health of a codebase's design token layer —
 eight fixed checks, each backed by real evidence from your repository,
 never a guess and never an average.
 
+## Status: a working skill, still evolving
+
+This skill is in active development and it is not finalized. Treat it as
+something in use and under revision at the same time, rather than a
+finished tool with settled behavior.
+
+What is stable: the eight vitals, the five status values
+(`pass`, `attention`, `fail`, `blocked`, `not_applicable`), the refusal to
+produce a composite score, and the rule that every finding carries a real
+`file:line`. Those are the design, and changing them would make it a
+different skill.
+
+What is still moving: the rendering forms, the discovery stage, the leakage
+cascade's borderline cases, and the reproducibility work. A later version
+can change what a report looks like, and it can change how a genuinely
+close call gets graded.
+
+So: trust a report the way you would trust a colleague's reading of your
+codebase — check it. Every finding points at a line you can open, which is
+the whole reason the evidence rule exists. If you need two runs months
+apart to be comparable, pin the version you ran.
+
+Open work, in the order it matters:
+
+- **Reproducibility.** Two runs on the same input have disagreed, on grades
+  and on token count. A determinism pass addressed four root causes, and
+  every report now records what it measured — sources, scope, files
+  searched, adapters, framework versions, and the rendering form chosen per
+  section — so a divergence between two runs can be attributed rather than
+  argued about. Confirmation by two fresh runs is still outstanding.
+- **The rendering forms are new.** The display-density work landed
+  recently and has had little use in the field.
+
+Issues and pull requests are welcome, and so is a report that came out
+wrong — a case where the skill graded something you know to be untrue is
+more useful than one where it agreed with you.
+
 ## What you get on the first run
 
 Before it counts anything, the skill works out what your project owns —
@@ -67,7 +104,7 @@ stages directly against your repository.
 - **Web only in v1.** iOS, Android, and Flutter adapters are not written yet.
 - **It grades against what your project declares.** It reads your modes and categories from your repository and grades against those — it never imposes a standard you did not choose.
 - **It measures, ranks what to do first, and stops short of changing your code.** The report tells you where to start — a ranked list of concrete actions, each with an owner and a real `file:line` — but refactoring your tokens stays your decision to make and carry out.
-- **Two runs can disagree, because a language model runs this skill.** The same repository, the same commit, the same scope can produce different grades or a different token count on two separate runs. Every report records what it measured — the token sources it counted, the analysis scope and files searched, the adapters detected and their confidence, and any framework version consulted — so a difference between two runs can be attributed to what each one actually looked at, rather than argued about.
+- **Two runs can disagree, because a language model runs this skill.** The same repository, at the same commit, with the same scope, can produce different grades or a different token count on two separate runs. Every report records what it measured, so a difference can be attributed to what each run actually looked at. See [Status](#status-a-working-skill-still-evolving) for where that work stands.
 
 ## The honest-gaps example
 
