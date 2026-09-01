@@ -1,0 +1,911 @@
+<title>Token Vitals at Scale</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap">
+<style>
+  :root {
+    --ground: #FBFBFC;
+    --surface: #FFFFFF;
+    --surface-sunk: #F4F5F7;
+    --line: #E3E4EA;
+    --line-strong: #CDCFD8;
+    --ink: #15161C;
+    --ink-soft: #4A4D5C;
+    --ink-mute: #767A8B;
+    --accent: #1F5F6B;
+    --accent-soft: #E4F0F2;
+
+    --pass: #3E7C4F;
+    --pass-bg: #EAF2EB;
+    --fail: #B3402F;
+    --fail-bg: #FAEBE8;
+    --warn: #9A6B12;
+    --warn-bg: #FAF1DF;
+    --block: #5B5B7A;
+    --block-bg: #EEEEF3;
+    --na: #767A8B;
+    --na-bg: #F2F3F5;
+
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --col: 1120px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101116;
+      --surface: #171922;
+      --surface-sunk: #1E212B;
+      --line: #2A2D39;
+      --line-strong: #3A3E4D;
+      --ink: #EDEEF2;
+      --ink-soft: #B4B8C6;
+      --ink-mute: #858A9B;
+      --accent: #4FBFD1;
+      --accent-soft: #16303550;
+      --pass: #78C08B;  --pass-bg: #1B2A20;
+      --fail: #E58A78;  --fail-bg: #2E1D1A;
+      --warn: #D9AE5E;  --warn-bg: #2C2416;
+      --block: #A0A2C0; --block-bg: #22232F;
+      --na: #858A9B;    --na-bg: #1C1E27;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101116;
+    --surface: #171922;
+    --surface-sunk: #1E212B;
+    --line: #2A2D39;
+    --line-strong: #3A3E4D;
+    --ink: #EDEEF2;
+    --ink-soft: #B4B8C6;
+    --ink-mute: #858A9B;
+    --accent: #4FBFD1;
+    --accent-soft: #16303550;
+    --pass: #78C08B;  --pass-bg: #1B2A20;
+    --fail: #E58A78;  --fail-bg: #2E1D1A;
+    --warn: #D9AE5E;  --warn-bg: #2C2416;
+    --block: #A0A2C0; --block-bg: #22232F;
+    --na: #858A9B;    --na-bg: #1C1E27;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: var(--col); margin: 0 auto; padding: 40px 28px 96px; }
+
+  /* ---------- run header ---------- */
+
+  .runhead {
+    display: flex; flex-wrap: wrap; align-items: flex-end;
+    justify-content: space-between; gap: 24px;
+    padding-bottom: 20px; border-bottom: 2px solid var(--ink);
+  }
+  .runhead h1 {
+    margin: 0; font-size: 30px; font-weight: 600;
+    letter-spacing: -0.022em; text-wrap: balance;
+  }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .sampletag, .scaletag {
+    display: inline-block; padding: 3px 8px; border-radius: 3px;
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .sampletag { border: 1px dashed var(--line-strong); color: var(--ink-mute); }
+  .scaletag { background: var(--accent-soft); color: var(--accent); border: 1px solid transparent; }
+
+  .meta {
+    display: grid; grid-template-columns: auto auto; gap: 2px 18px;
+    font-family: var(--mono); font-size: 12px;
+  }
+  .meta dt { color: var(--ink-mute); }
+  .meta dd { margin: 0; color: var(--ink-soft); }
+
+  /* ---------- sections ---------- */
+
+  section { margin-top: 52px; }
+
+  .eyebrow {
+    display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px;
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.11em; text-transform: uppercase; color: var(--accent);
+  }
+  .eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  h2 { margin: 0 0 6px; font-size: 21px; font-weight: 550; letter-spacing: -0.014em; }
+  .lede { margin: 0 0 22px; max-width: 68ch; color: var(--ink-soft); font-size: 14.5px; }
+
+  /* ---------- vitals ---------- */
+
+  .vitals { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 12px; }
+
+  .vital {
+    position: relative; padding: 14px 16px 15px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 4px; overflow: hidden;
+  }
+  .vital::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; }
+  .vital[data-grade="pass"]::before { background: var(--pass); }
+  .vital[data-grade="fail"]::before { background: var(--fail); }
+  .vital[data-grade="warn"]::before { background: var(--warn); }
+  .vital[data-grade="na"]::before   { background: var(--line-strong); }
+  .vital[data-grade="blocked"]::before {
+    background: repeating-linear-gradient(135deg, var(--block) 0 3px, transparent 3px 6px);
+  }
+  .vital h3 { margin: 0 0 7px; font-size: 14.5px; font-weight: 550; letter-spacing: -0.005em; }
+  .vital p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+  .vital code { font-size: 12px; }
+
+  .grade {
+    display: inline-flex; align-items: center; gap: 5px; margin-bottom: 9px;
+    padding: 2px 7px 2px 6px; border-radius: 3px;
+    font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: 0.07em; text-transform: uppercase;
+  }
+  .grade::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
+  .grade[data-g="pass"] { color: var(--pass); background: var(--pass-bg); }
+  .grade[data-g="pass"]::before { background: var(--pass); }
+  .grade[data-g="fail"] { color: var(--fail); background: var(--fail-bg); }
+  .grade[data-g="fail"]::before { background: var(--fail); }
+  .grade[data-g="warn"] { color: var(--warn); background: var(--warn-bg); }
+  .grade[data-g="warn"]::before { background: var(--warn); }
+  .grade[data-g="na"] { color: var(--na); background: var(--na-bg); }
+  .grade[data-g="na"]::before { background: transparent; border: 1px dashed var(--na); }
+  .grade[data-g="blocked"] { color: var(--block); background: var(--block-bg); }
+  .grade[data-g="blocked"]::before {
+    background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px);
+  }
+
+  /* ---------- truncation notice ---------- */
+
+  .trunc {
+    display: flex; align-items: center; gap: 8px; margin-top: 10px;
+    padding: 7px 11px; border: 1px dashed var(--line-strong); border-radius: 3px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute);
+    font-variant-numeric: tabular-nums;
+  }
+  .trunc::before {
+    content: ""; flex: none; width: 7px; height: 7px; border-radius: 1px;
+    background: repeating-linear-gradient(135deg, var(--ink-mute) 0 2px, transparent 2px 4px);
+  }
+
+  /* ---------- family table ---------- */
+
+  .tbl-scroll { overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    padding: 7px 12px 7px 0; text-align: left;
+    font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-mute);
+    border-bottom: 1px solid var(--line-strong); white-space: nowrap;
+  }
+  td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; padding-right: 18px; }
+
+  .fam { min-width: 720px; }
+  .fam td:first-child { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+  .fam .health { display: flex; gap: 4px; align-items: center; }
+  .pip {
+    width: 9px; height: 16px; border-radius: 1px; flex: none;
+    background: var(--line-strong);
+  }
+  .pip[data-s="ok"]   { background: var(--pass); }
+  .pip[data-s="warn"] { background: var(--warn); }
+  .pip[data-s="bad"]  { background: var(--fail); }
+  .pip[data-s="na"]   { background: transparent; border: 1px dashed var(--line-strong); }
+  .pip[data-s="blocked"] {
+    background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px);
+  }
+
+  code, .path { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
+  .path { white-space: nowrap; }
+
+  .lit { font-family: var(--mono); font-size: 12px; padding: 1px 5px; border-radius: 3px; background: var(--fail-bg); color: var(--fail); }
+  .tok { font-family: var(--mono); font-size: 12px; padding: 1px 5px; border-radius: 3px; background: var(--pass-bg); color: var(--pass); }
+
+  .blast {
+    display: inline-block; min-width: 58px; padding: 1px 6px; border-radius: 3px;
+    background: var(--surface-sunk); font-family: var(--mono); font-size: 11.5px;
+    color: var(--ink-soft); font-variant-numeric: tabular-nums; text-align: center;
+  }
+
+  /* ---------- row-definition tooltip ---------- */
+
+  .ihelp {
+    position: relative;
+    display: inline-block;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .info {
+    display: block;
+    width: 14px; height: 14px;
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ink-mute);
+    font-family: var(--mono);
+    font-size: 9.5px; font-weight: 600; line-height: 12px;
+    text-align: center;
+    text-transform: none;
+    letter-spacing: 0;
+    cursor: help;
+    transition: color 120ms ease, border-color 120ms ease;
+  }
+  .info::before { content: "i"; }
+  .ihelp:hover .info { color: var(--accent); border-color: var(--accent); }
+  .info:focus-visible {
+    color: var(--accent); border-color: var(--accent);
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  .tip {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: -6px;
+    z-index: 5;
+    width: max-content;
+    max-width: 264px;
+    padding: 9px 11px;
+    border-radius: 4px;
+    background: var(--ink);
+    color: var(--ground);
+    font-family: var(--sans);
+    font-size: 12px; font-weight: 400; line-height: 1.45;
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.16);
+  }
+  .tip::before {
+    content: "";
+    position: absolute;
+    bottom: 100%; left: 10px;
+    border: 5px solid transparent;
+    border-bottom-color: var(--ink);
+  }
+  .ihelp:hover .tip,
+  .ihelp:focus-within .tip { opacity: 1; visibility: visible; }
+
+  .ihelp--end .tip { left: auto; right: -6px; }
+  .ihelp--end .tip::before { left: auto; right: 10px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tip, .info { transition: none; }
+  }
+
+  /* near-miss pair — the side-by-side that only works visually */
+  .pair {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    overflow: hidden;
+    vertical-align: middle;
+  }
+  .pair i { display: block; width: 34px; height: 26px; }
+  .pair i + i { border-left: 1px solid rgba(255,255,255,0.35); }
+
+  .drift {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--warn);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+
+  /* ---------- ramps ---------- */
+
+  .ramps { display: flex; flex-direction: column; gap: 14px; }
+  .ramp-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .ramp-row .name {
+    flex: 0 0 96px; font-family: var(--mono); font-size: 12px; color: var(--ink-soft);
+  }
+  .ramp { display: flex; flex: 1 1 380px; min-width: 260px; border-radius: 3px; overflow: hidden; border: 1px solid rgba(128,128,128,0.22); }
+  .ramp i { flex: 1; height: 30px; }
+  .ramp-row .n { font-family: var(--mono); font-size: 11px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
+
+  .outliers { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+  .out {
+    display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px 6px;
+    border: 1px solid var(--line-strong); border-radius: 3px; background: var(--surface);
+  }
+  .out i { width: 22px; height: 22px; border-radius: 2px; border: 1px solid rgba(128,128,128,0.22); flex: none; }
+  .out b { font-family: var(--mono); font-size: 11.5px; font-weight: 500; color: var(--ink-soft); }
+
+  /* ---------- coverage bars ---------- */
+
+  .cov { display: flex; flex-direction: column; gap: 12px; }
+  .cov-row { display: flex; align-items: center; gap: 14px; }
+  .cov-row .name { flex: 0 0 84px; font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
+  .track {
+    flex: 1; height: 16px; border-radius: 2px; background: var(--surface-sunk);
+    overflow: hidden; display: flex; min-width: 160px;
+  }
+  .track i { height: 100%; display: block; }
+  .track i.done { background: var(--pass); opacity: 0.8; }
+  .track i.gap  { background: var(--fail); }
+  .track i.na {
+    background: repeating-linear-gradient(135deg, var(--line-strong) 0 3px, transparent 3px 6px);
+  }
+  .cov-row .n { flex: 0 0 132px; text-align: right; font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
+
+  /* ---------- details ---------- */
+
+  details {
+    margin-top: 10px; border: 1px solid var(--line);
+    border-radius: 4px; background: var(--surface);
+  }
+  details[open] { background: var(--surface); }
+  summary {
+    list-style: none; cursor: pointer; padding: 10px 14px;
+    font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+    letter-spacing: 0.04em; color: var(--accent);
+    display: flex; align-items: center; gap: 8px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: ""; width: 0; height: 0; flex: none;
+    border-left: 5px solid currentColor;
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    transition: transform 140ms ease;
+  }
+  details[open] > summary::before { transform: rotate(90deg); }
+  summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .details-body { padding: 0 14px 14px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    summary::before { transition: none; }
+  }
+
+  /* ---------- panels & notes ---------- */
+
+  .panel {
+    padding: 18px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 4px;
+  }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 26px; }
+  .panel h3 { margin: 0 0 3px; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
+  .panel .sub { margin: 0 0 16px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute); }
+
+  .note {
+    margin-top: 14px; padding: 13px 15px;
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    font-size: 13.5px; color: var(--ink-soft);
+  }
+  .note b { color: var(--ink); font-weight: 600; }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 16px;
+    padding: 12px 14px; background: var(--surface-sunk);
+    border-radius: 4px; font-size: 12.5px; color: var(--ink-soft);
+  }
+  .legend b { color: var(--ink); font-weight: 550; }
+
+  footer {
+    margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute);
+    display: flex; flex-wrap: wrap; gap: 6px 22px;
+  }
+
+  @media (max-width: 620px) {
+    .wrap { padding: 28px 18px 72px; }
+    .runhead h1 { font-size: 24px; }
+    .ramp-row .name { flex: 0 0 100%; }
+    .cov-row .name { flex: 0 0 62px; }
+    .cov-row .n { flex: 0 0 96px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="runhead">
+    <div>
+      <h1>Token Vitals at Scale</h1>
+      <div class="tags">
+        <span class="sampletag">Sample report · representative data</span>
+        <span class="scaletag">Large-system rendering · 840 tokens</span>
+      </div>
+    </div>
+    <dl class="meta">
+      <dt>project</dt><dd>northwind-ds</dd>
+      <dt>stack</dt><dd>Style Dictionary → CSS + iOS + Android</dd>
+      <dt>adapter</dt><dd>dtcg (web surface only)</dd>
+      <dt>commit</dt><dd>7f0c22ab</dd>
+      <dt>modes</dt><dd>light · dark · high-contrast</dd>
+    </dl>
+  </header>
+
+  <section>
+    <div class="eyebrow">The eight vitals</div>
+    <h2>The same eight checks, at 840 tokens</h2>
+    <p class="lede">
+      These eight checks stay the same whether your system holds 20 tokens or 8,000. Only the evidence underneath them changes shape as things get bigger, which is what the rest of this page is about.
+    </p>
+
+    <div class="vitals">
+      <article class="vital" data-grade="pass">
+        <span class="grade" data-g="pass">Pass</span>
+        <h3>Tier integrity</h3>
+        <p>All three tiers are intact. Every one of your 148 component tokens resolves through a semantic alias, so nothing reaches straight for a raw palette value.</p>
+      </article>
+
+      <article class="vital" data-grade="fail">
+        <span class="grade" data-g="fail">Fail</span>
+        <h3>Leakage</h3>
+        <p>1,645 hardcoded values where a token already existed. The encouraging part is how concentrated it is: the top 12 account for 61&nbsp;% of every occurrence.</p>
+      </article>
+
+      <article class="vital" data-grade="pass">
+        <span class="grade" data-g="pass">Pass</span>
+        <h3>Coverage</h3>
+        <p>All 11 categories have tokens, including motion, elevation and z-index. The four categories teams most often skip are all covered here.</p>
+      </article>
+
+      <article class="vital" data-grade="fail">
+        <span class="grade" data-g="fail">Fail</span>
+        <h3>Mode completeness</h3>
+        <p>You declare a high-contrast mode but only 11&nbsp;% of it is filled in. 744 tokens fall back to their light value in a mode that promises something different.</p>
+      </article>
+
+      <article class="vital" data-grade="warn">
+        <span class="grade" data-g="warn">Attention</span>
+        <h3>Naming coherence</h3>
+        <p>One naming pattern holds across 638 tokens. The 202 tokens in <code>legacy.*</code> came before it and were never migrated.</p>
+      </article>
+
+      <article class="vital" data-grade="warn">
+        <span class="grade" data-g="warn">Attention</span>
+        <h3>Single source of truth</h3>
+        <p>Style Dictionary is your source of truth, but 9 tokens are declared again in <code>tailwind.config.ts</code> — and two of those nine now disagree with it.</p>
+      </article>
+
+      <article class="vital" data-grade="fail">
+        <span class="grade" data-g="fail">Fail</span>
+        <h3>Orphans</h3>
+        <p>274 tokens are not referenced anywhere on the web surface: 202 legacy and 72 current. That is a third of the system doing nothing.</p>
+      </article>
+
+      <article class="vital" data-grade="pass">
+        <span class="grade" data-g="pass">Pass</span>
+        <h3>Enforcement</h3>
+        <p>Three rules run in CI: no raw hex, no off-scale spacing, and a check that every new token is defined in all the modes you declare.</p>
+      </article>
+    </div>
+
+    <div class="legend">
+      <span><b>Pass</b> — checked, nothing to fix</span>
+      <span><b>Attention</b> — worth a look, not urgent</span>
+      <span><b>Fail</b> — real problems with a clear fix</span>
+      <span><b>Blocked</b> — could not check this one</span>
+      <span><b>N/A</b> — does not apply to your setup</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Architecture</div>
+    <h2>Your system, grouped the way you built it</h2>
+    <p class="lede">
+      840 tokens are never really a flat list. Shown as the namespace tree you authored them in, the whole system fits on one screen and every family carries its own health line.
+    </p>
+
+    <div class="tbl-scroll">
+      <table class="fam">
+        <thead>
+            <tr><th>Family<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is a namespace, not a single token. Counts cover the whole family, and the last column always points at real code you can open.</span></span></th><th class="num">Tokens<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">How many tokens live in this family.</span></span></th><th class="num">Orphans<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Tokens here that nothing references. Safe to delete, and they are what makes a system look bigger than it is.</span></span></th><th class="num">Mode gaps<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Tokens missing a value in at least one declared mode. These do not error — they quietly fall back to another mode's value.</span></span></th><th class="num">Leaks<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Hardcoded values found in code that this family already has a token for.</span></span></th><th>Vitals<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Five pips, one per check that applies to this family: green is healthy, amber needs attention, red is failing, and a dashed outline means the check does not apply here.</span></span></th><th>First instance<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">A real file using this family. Every summary row keeps one, so you can always get from a count to actual code.</span></span></th></tr>
+          </thead>
+        <tbody>
+          <tr>
+            <td>color.primitive.*</td>
+            <td class="num">120</td><td class="num">4</td><td class="num">0</td><td class="num">—</td>
+            <td><div class="health">
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="ok"></span>
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="ok"></span>
+              <span class="pip" data-s="warn"></span>
+            </div></td>
+            <td><span class="path">tokens/color.primitive.json</span></td>
+          </tr>
+          <tr>
+            <td>color.semantic.*</td>
+            <td class="num">86</td><td class="num">2</td><td class="num">78</td><td class="num">412</td>
+            <td><div class="health">
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="bad"></span>
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="bad"></span>
+              <span class="pip" data-s="ok"></span>
+            </div></td>
+            <td><span class="path">components/Banner.tsx:41</span></td>
+          </tr>
+          <tr>
+            <td>color.component.*</td>
+            <td class="num">148</td><td class="num">31</td><td class="num">134</td><td class="num">96</td>
+            <td><div class="health">
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="warn"></span>
+              <span class="pip" data-s="bad"></span><span class="pip" data-s="bad"></span>
+              <span class="pip" data-s="ok"></span>
+            </div></td>
+            <td><span class="path">components/Button.tsx:18</span></td>
+          </tr>
+          <tr>
+            <td>typography.*</td>
+            <td class="num">74</td><td class="num">6</td><td class="num">62</td><td class="num">188</td>
+            <td><div class="health">
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="warn"></span>
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="bad"></span>
+              <span class="pip" data-s="ok"></span>
+            </div></td>
+            <td><span class="path">components/Heading.tsx:9</span></td>
+          </tr>
+          <tr>
+            <td>size.*</td>
+            <td class="num">52</td><td class="num">9</td><td class="num">0</td><td class="num">241</td>
+            <td><div class="health">
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="warn"></span>
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="ok"></span>
+              <span class="pip" data-s="bad"></span>
+            </div></td>
+            <td><span class="path">components/Avatar.tsx:22</span></td>
+          </tr>
+          <tr>
+            <td>motion.*</td>
+            <td class="num">28</td><td class="num">1</td><td class="num">0</td><td class="num">173</td>
+            <td><div class="health">
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="ok"></span>
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="ok"></span>
+              <span class="pip" data-s="bad"></span>
+            </div></td>
+            <td><span class="path">components/Drawer.tsx:57</span></td>
+          </tr>
+          <tr>
+            <td>elevation.*</td>
+            <td class="num">22</td><td class="num">3</td><td class="num">18</td><td class="num">147</td>
+            <td><div class="health">
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="warn"></span>
+              <span class="pip" data-s="ok"></span><span class="pip" data-s="bad"></span>
+              <span class="pip" data-s="bad"></span>
+            </div></td>
+            <td><span class="path">components/Popover.tsx:33</span></td>
+          </tr>
+          <tr>
+            <td>legacy.*</td>
+            <td class="num">202</td><td class="num">202</td><td class="num">—</td><td class="num">0</td>
+            <td><div class="health">
+              <span class="pip" data-s="na"></span><span class="pip" data-s="bad"></span>
+              <span class="pip" data-s="na"></span><span class="pip" data-s="na"></span>
+              <span class="pip" data-s="warn"></span>
+            </div></td>
+            <td><span class="path">tokens/legacy.json:1</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="trunc">Showing the 8 largest families. The other 6 hold 108 tokens, 16 orphans and no mode gaps.</div>
+
+    <div class="note">
+      <b>A single row here can stand in for two hundred tokens, but it always points at a real file you can open.</b> Counts can be summarized; evidence cannot. If a row cannot show you where something lives, it is not a finding yet.
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Palette</div>
+    <h2>Color, shown the way it was designed</h2>
+    <p class="lede">
+      Your palette has structure: <code>blue-50</code> through <code>blue-900</code> was built as a ramp, so it is shown as one. Twelve strips are easy to read where 120 separate chips would not be, and problems tend to announce themselves once that structure is visible.
+    </p>
+
+    <div class="ramps">
+      <div class="ramp-row"><span class="name">neutral</span>
+        <span class="ramp">
+          <i style="background:#F8F9FA"></i><i style="background:#E9ECEF"></i><i style="background:#DEE2E6"></i>
+          <i style="background:#CED4DA"></i><i style="background:#ADB5BD"></i><i style="background:#868E96"></i>
+          <i style="background:#495057"></i><i style="background:#343A40"></i><i style="background:#212529"></i>
+          <i style="background:#0B0D0E"></i>
+        </span><span class="n">10</span>
+      </div>
+      <div class="ramp-row"><span class="name">blue</span>
+        <span class="ramp">
+          <i style="background:#E7F1FF"></i><i style="background:#C7DEFF"></i><i style="background:#9DC4FF"></i>
+          <i style="background:#6BA4FF"></i><i style="background:#3C82F6"></i><i style="background:#2563EB"></i>
+          <i style="background:#1D4ED8"></i><i style="background:#1E40AF"></i><i style="background:#1E3A8A"></i>
+          <i style="background:#172554"></i>
+        </span><span class="n">10</span>
+      </div>
+      <div class="ramp-row"><span class="name">teal</span>
+        <span class="ramp">
+          <i style="background:#E0F5F4"></i><i style="background:#B8E9E6"></i><i style="background:#85D8D3"></i>
+          <i style="background:#4FC3BC"></i><i style="background:#26A69F"></i><i style="background:#0F8A83"></i>
+          <i style="background:#0B6E68"></i><i style="background:#0A5751"></i><i style="background:#08423E"></i>
+          <i style="background:#052E2B"></i>
+        </span><span class="n">10</span>
+      </div>
+      <div class="ramp-row"><span class="name">green</span>
+        <span class="ramp">
+          <i style="background:#E8F5E9"></i><i style="background:#C8E6C9"></i><i style="background:#A5D6A7"></i>
+          <i style="background:#81C784"></i><i style="background:#66BB6A"></i><i style="background:#4CAF50"></i>
+          <i style="background:#3E8E41"></i><i style="background:#2E7D32"></i><i style="background:#1B5E20"></i>
+          <i style="background:#0D3D12"></i>
+        </span><span class="n">10</span>
+      </div>
+      <div class="ramp-row"><span class="name">amber</span>
+        <span class="ramp">
+          <i style="background:#FFF8E1"></i><i style="background:#FFECB3"></i><i style="background:#FFE082"></i>
+          <i style="background:#FFD54F"></i><i style="background:#FFCA28"></i><i style="background:#FFC107"></i>
+          <i style="background:#FFB300"></i><i style="background:#FF8F00"></i><i style="background:#FF6F00"></i>
+          <i style="background:#E65100"></i>
+        </span><span class="n">10</span>
+      </div>
+      <div class="ramp-row"><span class="name">red</span>
+        <span class="ramp">
+          <i style="background:#FFEBEE"></i><i style="background:#FFCDD2"></i><i style="background:#EF9A9A"></i>
+          <i style="background:#E57373"></i><i style="background:#EF5350"></i><i style="background:#F44336"></i>
+          <i style="background:#E53935"></i><i style="background:#C62828"></i><i style="background:#B71C1C"></i>
+          <i style="background:#7F1010"></i>
+        </span><span class="n">10</span>
+      </div>
+      <div class="ramp-row"><span class="name">violet</span>
+        <span class="ramp">
+          <i style="background:#F3E8FF"></i><i style="background:#E1CCFF"></i><i style="background:#C9A7FF"></i>
+          <i style="background:#AC80FF"></i><i style="background:#9155F5"></i><i style="background:#7C3AED"></i>
+          <i style="background:#6D28D9"></i><i style="background:#5B21B6"></i><i style="background:#4C1D95"></i>
+          <i style="background:#2E1065"></i>
+        </span><span class="n">10</span>
+      </div>
+      <div class="ramp-row"><span class="name">cyan</span>
+        <span class="ramp">
+          <i style="background:#E0F7FA"></i><i style="background:#B2EBF2"></i><i style="background:#80DEEA"></i>
+          <i style="background:#4DD0E1"></i><i style="background:#26C6DA"></i><i style="background:#00BCD4"></i>
+          <i style="background:#00ACC1"></i><i style="background:#0097A7"></i><i style="background:#00838F"></i>
+          <i style="background:#006064"></i>
+        </span><span class="n">10</span>
+      </div>
+    </div>
+
+    <div class="trunc">Showing 8 of 12 ramps. 40 palette values are not displayed.</div>
+
+    <div class="grid2" style="margin-top:26px">
+      <div class="panel">
+        <h3>Colors that belong to no ramp</h3>
+        <p class="sub">4 tokens · worth a look</p>
+        <div class="outliers">
+          <span class="out"><i style="background:#00857A"></i><b>legacy.brand.teal</b></span>
+          <span class="out"><i style="background:#FF4E8B"></i><b>promo.gradient.start</b></span>
+          <span class="out"><i style="background:#7B5CD6"></i><b>promo.gradient.end</b></span>
+          <span class="out"><i style="background:#2D6A4F"></i><b>chart.series.legacy</b></span>
+        </div>
+        <div class="note" style="margin-top:16px">
+          Each of these was added by hand, outside the system that generated everything else. That is either a deliberate exception worth writing down, or drift worth folding back in.
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Two names, one value</h3>
+        <p class="sub">6 pairs · only visible at this size</p>
+        <div class="tbl-scroll">
+          <table>
+            <thead>
+            <tr><th>Value<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is a pair of tokens that resolve to exactly the same value. Both names are live, so people pick between them at random.</span></span></th><th>Token<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The name most code uses today.</span></span></th><th>Duplicate of<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">A second name for the same value, usually added later by a different team. Worth picking one and deprecating the other.</span></span></th></tr>
+          </thead>
+            <tbody>
+              <tr>
+                <td><span class="out" style="padding:2px 8px 2px 4px"><i style="background:#C62828;width:16px;height:16px"></i></span></td>
+                <td><code>color.semantic.danger.strong</code></td>
+                <td><code>color.semantic.error.600</code></td>
+              </tr>
+              <tr>
+                <td><span class="out" style="padding:2px 8px 2px 4px"><i style="background:#0F8A83;width:16px;height:16px"></i></span></td>
+                <td><code>color.semantic.brand.base</code></td>
+                <td><code>color.semantic.primary.500</code></td>
+              </tr>
+              <tr>
+                <td><span class="out" style="padding:2px 8px 2px 4px"><i style="background:#868E96;width:16px;height:16px"></i></span></td>
+                <td><code>color.semantic.text.muted</code></td>
+                <td><code>color.semantic.text.secondary</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="trunc">Showing 3 of 6 pairs</div>
+        <div class="note" style="margin-top:14px">
+          <b>This one only shows up at scale.</b> Two semantic names for the same value usually means two teams named the same decision separately. People then pick between them at random, and the system slowly drifts along that seam.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Mode completeness</div>
+    <h2>Where modes are missing values</h2>
+    <p class="lede">
+      840 tokens across 3 modes is 2,520 combinations, and almost all of them are fine. So coverage is summarized here and only the gaps are listed out.
+    </p>
+
+    <div class="cov">
+      <div class="cov-row">
+        <span class="name">light</span>
+        <span class="track"><i class="done" style="width:100%"></i></span>
+        <span class="n">840 / 840</span>
+      </div>
+      <div class="cov-row">
+        <span class="name">dark</span>
+        <span class="track"><i class="done" style="width:96.7%"></i><i class="gap" style="width:3.3%"></i></span>
+        <span class="n">812 / 840 · 28 gaps</span>
+      </div>
+      <div class="cov-row">
+        <span class="name">high-contrast</span>
+        <span class="track"><i class="done" style="width:11.4%"></i><i class="gap" style="width:88.6%"></i></span>
+        <span class="n">96 / 840 · 744 gaps</span>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>High contrast counts as a failure here, and did not in the smaller example.</b> This project declares three modes, so a mode left mostly empty is a promise it is not keeping. Which of the two it is comes from what your project declares, never from an assumption.
+    </div>
+
+    <details>
+      <summary>See all 28 dark-mode gaps</summary>
+      <div class="details-body">
+        <div class="tbl-scroll">
+          <table>
+            <thead>
+            <tr><th>Token<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is a token with a light value but no dark one.</span></span></th><th>Light<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The value defined for light mode.</span></span></th><th>Dark<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">What is defined for dark mode. “Inherits” means nothing is, so the light value is reused as-is.</span></span></th><th>Renders as<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">What someone in dark mode actually sees. This is the part that reaches users.</span></span></th><th>First use<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">A component where this token is already in play, so you can check the damage quickly.</span></span></th></tr>
+          </thead>
+            <tbody>
+              <tr>
+                <td><code>color.semantic.border.subtle</code></td>
+                <td><code>#DEE2E6</code></td>
+                <td><span class="lit">inherits</span></td>
+                <td>near-white hairline on #101116</td>
+                <td><span class="path">components/Card.tsx:14</span></td>
+              </tr>
+              <tr>
+                <td><code>color.semantic.text.disabled</code></td>
+                <td><code>#ADB5BD</code></td>
+                <td><span class="lit">inherits</span></td>
+                <td>1.9:1 contrast — below any threshold</td>
+                <td><span class="path">components/Input.tsx:66</span></td>
+              </tr>
+              <tr>
+                <td><code>elevation.overlay.shadow</code></td>
+                <td><code>0 8px 24px rgba(0,0,0,.14)</code></td>
+                <td><span class="lit">inherits</span></td>
+                <td>invisible against dark ground</td>
+                <td><span class="path">components/Popover.tsx:33</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="trunc">Showing 3 of 28. The full list is in <code>.token-vitals/report.json</code>.</div>
+      </div>
+    </details>
+  </section>
+
+  <section>
+    <div class="eyebrow">Leakage</div>
+    <h2>Ranked by how much they touch</h2>
+    <p class="lede">
+      1,645 findings is more than anyone can read through. Each group shows the entries touching the most files first, and that ranking is stable, so re-running the report will not reshuffle what you see. The rest is one click away.
+    </p>
+
+    <div class="note" style="margin-top:0;margin-bottom:22px">
+      <b>The top 12 findings account for 61&nbsp;% of all 1,645 occurrences.</b> At this size the distribution is the real finding: a handful of missing tokens create most of the mess, so fixing twelve things clears roughly two-thirds of it.
+    </div>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+            <tr><th>Tier<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is one finding, sorted by how much of your codebase it touches. Which tier it sits in tells you who can fix it.</span></span></th><th>Literal<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The hardcoded value as written in the code.</span></span></th><th>Token<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The token this should use — or, for uncovered values, a suggested name.</span></span></th><th>Blast radius<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">How many files this touches. Fixing the high numbers first clears the most ground for the least work.</span></span></th><th>Representative location<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">One real place this appears, so you can see the pattern before committing to a sweep.</span></span></th></tr>
+          </thead>
+        <tbody>
+          <tr>
+            <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
+            <td><code>#0F8A83</code></td>
+            <td><span class="tok">color.semantic.brand.base</span></td>
+            <td><span class="blast">84 files</span></td>
+            <td><span class="path">components/Link.tsx:11</span></td>
+          </tr>
+          <tr>
+            <td><span class="lit" style="background:var(--fail-bg)">redundant</span></td>
+            <td><code>8px</code></td>
+            <td><span class="tok">size.space.2</span></td>
+            <td><span class="blast">71 files</span></td>
+            <td><span class="path">components/Stack.tsx:29</span></td>
+          </tr>
+          <tr>
+            <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
+            <td><code>#0F8B84</code></td>
+            <td><span class="tok">color.semantic.brand.base</span></td>
+            <td><span class="blast">38 files</span></td>
+            <td><span class="path">components/Tag.tsx:44</span></td>
+          </tr>
+          <tr>
+            <td><span class="lit" style="background:var(--warn-bg);color:var(--warn)">near-miss</span></td>
+            <td><code>13px</code></td>
+            <td><span class="tok">typography.size.sm · 14px</span></td>
+            <td><span class="blast">26 files</span></td>
+            <td><span class="path">components/Caption.tsx:8</span></td>
+          </tr>
+          <tr>
+            <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
+            <td><code>cubic-bezier(.2,0,0,1)</code></td>
+            <td><span class="tok">motion.ease.emphasized</span></td>
+            <td><span class="blast">112 files</span></td>
+            <td><span class="path">components/Drawer.tsx:57</span></td>
+          </tr>
+          <tr>
+            <td><span class="lit" style="background:var(--na-bg);color:var(--na)">uncovered</span></td>
+            <td><code>z-index: 1400</code></td>
+            <td><span class="tok">layer.modal</span></td>
+            <td><span class="blast">47 files</span></td>
+            <td><span class="path">components/Modal.tsx:19</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="trunc">Showing 6 of 1,645, ranked by files affected. The full set is in <code>.token-vitals/report.json</code>.</div>
+
+    <details>
+      <summary>See totals for each group</summary>
+      <div class="details-body">
+        <div class="tbl-scroll">
+          <table>
+            <thead>
+            <tr><th>Tier<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is one of the three leakage groups, with its totals and who is best placed to fix it.</span></span></th><th class="num">Findings<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">How many distinct values fall into this group.</span></span></th><th class="num">Occurrences<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">How many times those values appear in total. The gap between this and Findings tells you how concentrated the problem is.</span></span></th><th class="num">Median blast<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The typical number of files a single finding in this group touches.</span></span></th><th>Owner of the fix<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Who can realistically resolve this group: whoever writes components, the design team, or whoever owns the token system.</span></span></th></tr>
+          </thead>
+            <tbody>
+              <tr><td>Redundant</td><td class="num">412</td><td class="num">1,988</td><td class="num">3</td><td>Component author — mechanical</td></tr>
+              <tr><td>Near miss</td><td class="num">87</td><td class="num">304</td><td class="num">2</td><td>Design — reconcile or accept</td></tr>
+              <tr><td>Uncovered</td><td class="num">1,146</td><td class="num">3,517</td><td class="num">6</td><td>System — add the token</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section>
+    <div class="eyebrow">Working set</div>
+    <h2>Where to go from here</h2>
+    <div class="grid2">
+      <div class="panel">
+        <h3>This page</h3>
+        <p class="sub">what to fix</p>
+        <p style="margin:0;font-size:13.5px;color:var(--ink-soft)">
+          Eight graded checks, your architecture, and the evidence that matters most. Short enough to read in one sitting and to attach to a pull request. Past about 600 tokens it stops trying to list everything.
+        </p>
+      </div>
+      <div class="panel">
+        <h3><code>.token-vitals/report.json</code></h3>
+        <p class="sub">where all of it is</p>
+        <p style="margin:0;font-size:13.5px;color:var(--ink-soft)">
+          All 1,645 findings, 274 orphans and 772 mode gaps, with every occurrence and location. This is what you would point a codemod or a triage session at. The page tells you what is wrong; this file tells you everywhere it is.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>design-token-vitals</span>
+    <span>adapter: dtcg</span>
+    <span>840 tokens · 14 families · 3 modes</span>
+    <span>large-system rendering (600+)</span>
+    <span>runs locally · nothing leaves your machine</span>
+  </footer>
+
+</div>
