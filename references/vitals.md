@@ -18,10 +18,11 @@ extra label sits between them.
 There is no composite score. Averaging these hides the one finding that
 matters: a system with 1,645 leaked values and perfect naming would land in
 the middle of a blended number, and the leakage is what you needed to see
-first. If your setup has no dark mode, mode completeness is
-`not_applicable` on that mode rather than counted against you. If a check
-could not run — no CI config to read, no build output to scan — it is
-`blocked`, never averaged in as a silent pass.
+first. If your setup has no dark mode — a mode being a named variant of
+your token values, such as light, dark, or high-contrast — mode
+completeness is `not_applicable` on that mode rather than counted against
+you. If a check could not run — no CI config to read, no build output to
+scan — it is `blocked`, never averaged in as a silent pass.
 
 Each vital below has four parts: **Catches** (what it looks for), **Signal**
 (what gets counted), **Grading** (the thresholds that produce a verdict),
@@ -30,8 +31,9 @@ and **Evidence** (the real instance backing that verdict).
 ## tier-integrity
 
 **Catches:** components reaching past your semantic layer to grab a
-primitive-tier name or a raw value directly, skipping the layer built to
-carry meaning.
+primitive-tier name — a token holding a raw value with no meaning attached,
+like `--blue-500`, as opposed to a semantic token like `--danger` — or a
+raw value directly, skipping the layer built to carry meaning.
 
 **Signal:** the count of component styles that reference a primitive-tier
 token or a literal value where a semantic token already covers that case.

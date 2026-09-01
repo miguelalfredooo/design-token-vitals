@@ -44,7 +44,7 @@ evidence renders inline versus rolls up into a count.
 | Tokens | Tier ID | Treatment |
 |---|---|---|
 | Under 150 | `full` | Everything rendered |
-| 150–600 | `collapsed` | Families collapsed by default, exceptions expanded, top-N tables |
+| 150 to 600 inclusive | `collapsed` | Families collapsed by default, exceptions expanded, top-N tables |
 | Over 600 | `family-only` | Family rows only, palette as ramps, modes as an exception report, full data in the JSON |
 
 `full` is what a small system earns: every color as its own swatch, every
@@ -54,7 +54,11 @@ families with something wrong, because 400 tokens do not need 400 rows to
 show you the dozen that matter. `family-only` stops listing individual
 tokens altogether — a family row carries a count, a health indicator per
 vital, and one real `file:line`, and your palette renders as ramps instead
-of a wall of chips.
+of a wall of chips. The health indicator is five pips, one for each vital
+that is meaningful per family: `tier-integrity`, `leakage`,
+`mode-completeness`, `naming-coherence`, and `orphans`. `coverage`,
+`single-source`, and `enforcement` grade the system as a whole rather than
+any one family, so they do not appear in a family row.
 
 ### Two findings that only exist at scale
 

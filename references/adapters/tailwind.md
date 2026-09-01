@@ -34,9 +34,9 @@ references a variable clears the bar — flag only the literals.
 value holding a bare custom-property name compiles to invalid CSS and is
 dropped with no error. `bg-[--brand]` renders transparent, because Tailwind
 needs `bg-[var(--brand)]` or the v4 parenthesis shorthand to treat it as a
-reference rather than a literal string. Report these as `redundant` leaks
-with high severity: the element ships unstyled, and nothing in the build
-warns you.
+reference rather than a literal string. Report these as `redundant` leaks —
+the value was meant to reference an existing token — and worth fixing
+first: the element ships unstyled, and nothing in the build warns you.
 
 ## How modes are expressed
 

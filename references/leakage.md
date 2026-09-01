@@ -30,7 +30,7 @@ order, and the first one that matches wins:
 
 | Tier | Condition | What it means | Fix owner |
 |---|---|---|---|
-| `redundant` | An exact match to a token exists | Someone bypassed the system | Component author — mechanical, no discussion |
+| `redundant` | An exact match to a token exists | The token existed but was not used | Component author — mechanical, no discussion |
 | `near-miss` | No exact match, but a token sits within the near-miss threshold | Value drift: invisible to search and to code review | Design — reconcile or accept |
 | `uncovered` | No token exists for this concept | A hole in the token layer | System owner — add the token |
 
