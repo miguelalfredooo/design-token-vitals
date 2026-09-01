@@ -1,7 +1,7 @@
 # design-token-vitals — design
 
 **Date:** 2026-09-01
-**Status:** approved, not yet implemented
+**Status:** v1 shipped and published 2026-09-01
 **Repo:** `design-token-vitals` (public, standalone)
 
 ---

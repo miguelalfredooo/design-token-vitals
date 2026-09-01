@@ -1,5 +1,7 @@
 # design-token-vitals v1 Implementation Plan
 
+**Status:** All twelve tasks shipped and published 2026-09-01.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship a public, standalone agent skill that inspects any web codebase and reports the health of its design token layer, with no setup required.
@@ -14,12 +16,18 @@
 
 Every task's requirements implicitly include this section.
 
-- **US English.** `color`, `tokenized`, `summarized`, `judgment`, `center`, `gray`, `catalog`, `labeled`, `canceled`, `acknowledgment`, `behavior`, `while` (not `whilst`), `among` (not `amongst`), `learned` (not `learnt`). Enforced by `tools/check_voice.py`.
+- **US English.** Enforced by `tools/check_voice.py`, which swaps each British spelling below for the American one shown beside it:
+
+  ```
+  color, tokenized, summarized, judgment, center, gray, catalog, labeled,
+  canceled, acknowledgment, behavior, while (not whilst), among (not
+  amongst), learned (not learnt).
+  ```
 - **No "X is not Y, it's Z" constructions** in any prose. Rewrite as a positive statement.
 - **Second person.** Address the reader as "you"; name the consequence before the principle.
 - **"Hardcoded values"** in prose. The word "literal" appears only where it labels a code value inside a table.
 - **No composite score**, in any output, in any release. Grades are per-vital only.
-- **Four grades exactly:** `pass`, `attention`, `fail`, `blocked`, `not_applicable`. An unrun check is `blocked`, never an implicit pass. (Five values; "four grades" in prose means the four judgment values plus `not_applicable`, so always write the list out rather than a count.)
+- **Five status values:** `pass`, `attention`, `fail`, `blocked`, `not_applicable`. An unrun check is `blocked`, never an implicit pass.
 - **Aggregate the count, never the evidence.** Every rolled-up finding carries at least one real `file:line`.
 - **Truncation is always declared.** Never a silent cut.
 - **The HTML report is a single self-contained file.** No external CSS, JS, fonts, or images. No server, no build step.
@@ -66,7 +74,7 @@ Every task's requirements implicitly include this section.
 - Consumes: nothing.
 - Produces: `check_voice.check_text(text: str) -> list[Finding]` where `Finding` is a `NamedTuple(line: int, level: str, rule: str, message: str)`; `level` is `"error"` or `"warning"`. CLI: `python3 tools/check_voice.py <path>...` exits `1` if any `error` is found, `0` otherwise. Every later task runs this CLI as its verification step.
 
-- [ ] **Step 1: Copy the two reference reports into the repo**
+- [x] **Step 1: Copy the two reference reports into the repo**
 
 These are the durable visual and copy standard for Task 8. They must live in the repo, not in a temp directory.
 
@@ -80,7 +88,7 @@ wc -l assets/reference/*.html
 
 Expected: two files, roughly 700 and 800 lines. If the source paths no longer exist, stop and ask — these cannot be reconstructed from the plan.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `tools/test_check_voice.py`:
 
@@ -155,12 +163,12 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 3: Run the test to verify it fails**
+- [x] **Step 3: Run the test to verify it fails**
 
 Run: `cd ~/Code/design-token-vitals/tools && python3 -m unittest test_check_voice -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'check_voice'`
 
-- [ ] **Step 4: Write the implementation**
+- [x] **Step 4: Write the implementation**
 
 Create `tools/check_voice.py`:
 
@@ -253,12 +261,12 @@ if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
 ```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `cd ~/Code/design-token-vitals/tools && python3 -m unittest test_check_voice -v`
 Expected: PASS, 10 tests.
 
-- [ ] **Step 6: Add LICENSE and .gitignore**
+- [x] **Step 6: Add LICENSE and .gitignore**
 
 `LICENSE` — MIT, copyright holder `Miguel Arias`, year `2026`. Use the standard MIT text verbatim from https://opensource.org/license/mit with those two substitutions.
 
@@ -271,7 +279,7 @@ __pycache__/
 .token-vitals/
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd ~/Code/design-token-vitals
@@ -290,7 +298,7 @@ git commit -m "feat(tools): voice lint, license, reference renderings"
 - Consumes: `tools/check_voice.py` CLI from Task 1.
 - Produces: the slot-template vocabulary every later prose file and the report template quote. Slot names are `{n}`, `{a}`, `{b}`, `{c}`, `{worst}`, `{shown}`, `{total}`, `{family}`, `{path}`.
 
-- [ ] **Step 1: Write the file**
+- [x] **Step 1: Write the file**
 
 `references/voice.md` must contain these five sections, with this content:
 
@@ -311,7 +319,11 @@ git commit -m "feat(tools): voice lint, license, reference renderings"
 - Nothing is anyone's fault. An uncovered value is a gap in the system, not a mistake by whoever wrote the component.
 - US English. The full swap list lives in `tools/check_voice.py`.
 
-**Section "Banned"** — the `BANNED` list from `tools/check_voice.py`, with one line explaining that "simply" and "effortlessly" tell the reader their difficulty is imaginary.
+**Section "Banned"** — the `BANNED` list from `tools/check_voice.py`, with one line explaining that the first and seventh entries tell the reader their difficulty is imaginary:
+
+```
+simply, effortlessly
+```
 
 **Section "Slot templates"** — the exact sentences, verbatim, that the skill fills:
 
@@ -339,14 +351,14 @@ family-evidence: {path}
 
 **Section "Worked examples"** — point at `assets/reference/small.html` and `assets/reference/large.html`, and state that a few dozen real sentences constrain tone better than a paragraph of description.
 
-- [ ] **Step 2: Verify the file passes its own lint**
+- [x] **Step 2: Verify the file passes its own lint**
 
 Run: `python3 tools/check_voice.py references/voice.md`
 Expected: `voice: clean (1 file(s))`, exit 0.
 
 If it reports errors, the file violates the standard it defines. Fix the file, not the lint.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add references/voice.md
@@ -364,7 +376,7 @@ git commit -m "docs(references): copy standard and slot templates"
 - Consumes: `references/voice.md` (Task 2) for tone.
 - Produces: the canonical vital IDs used by `assets/capability-map.yml` (Task 6) and `SKILL.md` (Task 9): `tier-integrity`, `leakage`, `coverage`, `mode-completeness`, `naming-coherence`, `single-source`, `orphans`, `enforcement`.
 
-- [ ] **Step 1: Write the file**
+- [x] **Step 1: Write the file**
 
 Open with the grading vocabulary, stated once:
 
@@ -393,7 +405,7 @@ Then one subsection per vital, each with exactly four parts — **Catches**, **S
 
 Close with a short section, **Held for a later release**: contrast guarantees (needs a declared WCAG target the repo usually does not have) and lifecycle/deprecation (only meaningful once a system has consumers to break).
 
-- [ ] **Step 2: Verify all eight vitals are present and lint-clean**
+- [x] **Step 2: Verify all eight vitals are present and lint-clean**
 
 ```bash
 python3 tools/check_voice.py references/vitals.md
@@ -404,7 +416,7 @@ done
 
 Expected: `voice: clean (1 file(s))` and no `MISSING` lines.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add references/vitals.md
@@ -422,7 +434,7 @@ git commit -m "docs(references): the eight vitals with signals and grading rules
 - Consumes: `references/vitals.md` (Task 3) — this file is the depth behind vital `leakage`.
 - Produces: tier IDs `redundant`, `near-miss`, `uncovered`, used by `assets/report-template.html` (Task 8) and `assets/capability-map.yml` (Task 6).
 
-- [ ] **Step 1: Write the file**
+- [x] **Step 1: Write the file**
 
 Open with the reason the tiering exists: counting hardcoded values punishes correct code, because a 1px hairline rarely needs a token. What matters is whether the system offered a token and the code went around it.
 
@@ -446,12 +458,12 @@ Then the three tiers:
 
 **Ranking:** order findings by blast radius (files affected), descending, then by token name ascending. The tiebreak makes the order deterministic, so re-running never reshuffles what the reader sees.
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 Run: `python3 tools/check_voice.py references/leakage.md`
 Expected: `voice: clean (1 file(s))`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add references/leakage.md
@@ -469,7 +481,7 @@ git commit -m "docs(references): three leakage tiers, near-miss math, ranking"
 - Consumes: `references/vitals.md`, `references/leakage.md`.
 - Produces: the rendering-tier names `full`, `collapsed`, `family-only` and the output paths `.token-vitals/report.html`, `.token-vitals/report.json`, used by `SKILL.md` (Task 9).
 
-- [ ] **Step 1: Write the file**
+- [x] **Step 1: Write the file**
 
 **Outputs** — three from one run:
 
@@ -498,12 +510,12 @@ At `family-only`, note the two findings that only exist at scale: **outliers** (
 1. **Aggregate the count, never the evidence.** Every rolled-up finding shows at least one real `file:line`. A finding that cannot point at code is an opinion.
 2. **Truncation is always declared.** `Showing 12 of 247` — never a silent cut. Same principle as `blocked` never being an implicit pass.
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 Run: `python3 tools/check_voice.py references/report.md`
 Expected: `voice: clean (1 file(s))`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add references/report.md
@@ -521,7 +533,7 @@ git commit -m "docs(references): output contract, rendering tiers, evidence inva
 - Consumes: vital IDs from Task 3, tier IDs from Task 4, rendering-tier IDs from Task 5.
 - Produces: the schema that `SKILL.md` (Task 9) writes and that the future `contract` stage reads. Top-level keys: `schema_version`, `run`, `stack`, `declared`, `vitals`, `rendering`.
 
-- [ ] **Step 1: Write the file**
+- [x] **Step 1: Write the file**
 
 ```yaml
 schema_version: 1
@@ -567,7 +579,7 @@ rendering:
   truncated: []             # every section that showed fewer rows than it holds
 ```
 
-- [ ] **Step 2: Verify it parses and every vital ID matches Task 3**
+- [x] **Step 2: Verify it parses and every vital ID matches Task 3**
 
 ```bash
 python3 -c "
@@ -586,7 +598,7 @@ Expected: `capability map: 8 vitals, keys ok`.
 
 If `yaml` is not installed, run `python3 -m pip install --user pyyaml` first. PyYAML is a verification-time convenience only; the shipped skill has no dependencies.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add assets/capability-map.yml
@@ -606,7 +618,7 @@ git commit -m "feat(assets): capability map schema"
 
 Each adapter answers the same four questions in the same four headings, so they stay swappable. Keep each under 60 lines; these are lookup tables, not logic.
 
-- [ ] **Step 1: Write `references/adapters/css-vars.md`**
+- [x] **Step 1: Write `references/adapters/css-vars.md`**
 
 Four headings:
 
@@ -616,7 +628,7 @@ Four headings:
 **How modes are expressed** — a second `:root` block under `[data-theme="dark"]` or `@media (prefers-color-scheme: dark)`. A mode gap is a custom property present in one block and absent from another.
 **Idiomatic enforcement** — stylelint `declaration-property-value-disallowed-list`, or a custom rule banning raw hex outside the token file.
 
-- [ ] **Step 2: Write `references/adapters/tailwind.md`**
+- [x] **Step 2: Write `references/adapters/tailwind.md`**
 
 **Where tokens live** — `@theme` in Tailwind v4, or `theme.extend` in `tailwind.config.*` for v3. Both usually reference CSS custom properties, so run the `css-vars` checks as well and report one merged set.
 **Detection** — a `tailwind.config.*` file, or an `@import "tailwindcss"` / `@theme` block in CSS.
@@ -626,7 +638,7 @@ Four headings:
 
 Add one gotcha, because it is silent and common: **a bracket-arbitrary value holding a bare custom-property name compiles to invalid CSS and is dropped with no error.** `bg-[--brand]` renders transparent; it must be `bg-[var(--brand)]` or Tailwind v4's parenthesis shorthand. Report these as `redundant` leaks with high severity, because the element renders unstyled and nothing warns.
 
-- [ ] **Step 3: Write `references/adapters/scss.md`**
+- [x] **Step 3: Write `references/adapters/scss.md`**
 
 **Where tokens live** — `$variable` declarations, `@use`/`@forward` module members, and `map.get()` lookups against a token map. Usually `_variables.scss`, `_tokens.scss`, or a `tokens/` directory.
 **Detection** — a `.scss` or `.less` file with 20 or more variable declarations, or a file whose name matches `_?(tokens|variables|theme)`.
@@ -636,7 +648,7 @@ Add one gotcha, because it is silent and common: **a bracket-arbitrary value hol
 
 Add the caution that SCSS variables are compile-time, so a runtime theme switch is usually implemented some other way. Find that mechanism before grading modes.
 
-- [ ] **Step 4: Write `references/adapters/dtcg.md`**
+- [x] **Step 4: Write `references/adapters/dtcg.md`**
 
 **Where tokens live** — JSON files with `$value` and `$type` keys (W3C Design Tokens Community Group format), typically under `tokens/`, built by Style Dictionary or a similar pipeline.
 **Detection** — a JSON file containing `$value`, or a `config.json`/`sd.config.*` naming Style Dictionary.
@@ -646,7 +658,7 @@ Add the caution that SCSS variables are compile-time, so a runtime theme switch 
 
 Note the one real advantage: this is the only adapter where the tier structure is explicit, since aliases are written as `{color.primitive.blue.500}`. Tier integrity is directly readable rather than inferred.
 
-- [ ] **Step 5: Verify all four exist, are lint-clean, and share the four headings**
+- [x] **Step 5: Verify all four exist, are lint-clean, and share the four headings**
 
 ```bash
 python3 tools/check_voice.py references/adapters/*.md
@@ -659,7 +671,7 @@ done
 
 Expected: `voice: clean (4 file(s))` and no `MISSING` lines.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add references/adapters/
@@ -678,7 +690,7 @@ git commit -m "docs(adapters): css-vars, tailwind, scss, dtcg"
 - Consumes: `assets/reference/*.html` as the visual and copy standard; slot names from `references/voice.md` (Task 2).
 - Produces: the slot vocabulary the skill fills. Slots are HTML comments of the form `<!-- SLOT:name -->…<!-- /SLOT:name -->` so the template stays a valid, openable HTML file with its sample content in place.
 
-- [ ] **Step 1: Derive the template from the reference renderings**
+- [x] **Step 1: Derive the template from the reference renderings**
 
 Start from `assets/reference/large.html`, because it contains every component the small one has plus the three scale treatments. Keep verbatim:
 
@@ -687,7 +699,7 @@ Start from `assets/reference/large.html`, because it contains every component th
 - The `.grade`, `.vital`, `.pip`, `.trunc`, `.ramp`, `.cov`, `.tip` component CSS.
 - All 42 tooltips, verbatim. They are static chrome and must not vary between runs.
 
-- [ ] **Step 2: Mark the slots**
+- [x] **Step 2: Mark the slots**
 
 Wrap every run-varying region. The complete slot list:
 
@@ -710,7 +722,7 @@ footer-meta         token count, family count, rendering tier
 
 Leave the reference sample content inside each slot. The template must open in a browser and look finished — that is how a contributor checks a change without running the skill.
 
-- [ ] **Step 3: Add the three rendering-tier switches**
+- [x] **Step 3: Add the three rendering-tier switches**
 
 Three sections carry a `data-tier` attribute listing the tiers in which they render:
 
@@ -722,7 +734,7 @@ Three sections carry a `data-tier` attribute listing the tiers in which they ren
 
 The skill removes sections whose `data-tier` does not include the chosen tier. Document this in a comment at the top of the file.
 
-- [ ] **Step 4: Verify the template**
+- [x] **Step 4: Verify the template**
 
 ```bash
 python3 tools/check_voice.py assets/report-template.html
@@ -747,7 +759,7 @@ EOF
 
 Expected: `template: 14 slots, 42 tooltips, theme guards present, markup balanced`.
 
-- [ ] **Step 5: Open it and look at it**
+- [x] **Step 5: Open it and look at it**
 
 ```bash
 open assets/report-template.html
@@ -755,7 +767,7 @@ open assets/report-template.html
 
 Check both themes by toggling your OS appearance. The page must be legible in each, and the body must never show the host's background through it.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add assets/report-template.html
@@ -773,7 +785,7 @@ git commit -m "feat(assets): self-contained report template with 14 slots"
 - Consumes: every reference file and asset from Tasks 2–8.
 - Produces: the skill's public contract — its frontmatter `name` and `description`, which is what an agent matches against.
 
-- [ ] **Step 1: Write the frontmatter**
+- [x] **Step 1: Write the frontmatter**
 
 ```yaml
 ---
@@ -784,7 +796,7 @@ allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 ```
 
-- [ ] **Step 2: Write the workflow**
+- [x] **Step 2: Write the workflow**
 
 Six numbered stages, each one screen or less:
 
@@ -795,13 +807,13 @@ Six numbered stages, each one screen or less:
 5. **Fill the template.** Copy `assets/report-template.html`, drop sections whose `data-tier` excludes the chosen tier, replace each slot's contents, and use the slot templates in `references/voice.md` verbatim for generated sentences. Never rewrite static chrome.
 6. **Write the outputs.** `.token-vitals/report.html`, `.token-vitals/report.json`, and a short terminal summary. Tell the user the path and the one thing worth doing first.
 
-- [ ] **Step 3: Write the stop conditions**
+- [x] **Step 3: Write the stop conditions**
 
 Stop and ask when: no token source can be located; two sources disagree and neither is obviously canonical; the repo declares a mode with no discoverable mechanism; or the user asks for a single score.
 
 On the last one, explain rather than comply: a single number would average away the finding that matters, and would score a repo with no dark mode as partially unhealthy when that check does not apply to it.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 ```bash
 python3 tools/check_voice.py SKILL.md
@@ -811,7 +823,7 @@ grep -c "references/" SKILL.md
 
 Expected: lint clean; frontmatter present with `name: design-token-vitals`; at least 5 references to `references/`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add SKILL.md
@@ -829,7 +841,7 @@ git commit -m "feat: SKILL.md workflow"
 - Consumes: the whole skill, Tasks 2–9.
 - Produces: the artifact the README links to. This is the task that proves the skill works.
 
-- [ ] **Step 1: Clone the subject**
+- [x] **Step 1: Clone the subject**
 
 A public repo, so every finding is verifiable and no private codebase is described.
 
@@ -840,11 +852,11 @@ cd dtv-example && git rev-parse --short HEAD
 
 Record that SHA. It goes in `examples/shadcn-ui/README.md` so a reader can reproduce the run.
 
-- [ ] **Step 2: Run the skill against it**
+- [x] **Step 2: Run the skill against it**
 
 Follow `SKILL.md` end to end, by hand, against `/tmp/dtv-example`. Do not shortcut a stage — this run is also the skill's first real test, and any stage that turns out to be unexecutable is a bug in `SKILL.md`, to be fixed there before continuing.
 
-- [ ] **Step 3: Copy the outputs into the repo**
+- [x] **Step 3: Copy the outputs into the repo**
 
 ```bash
 cd ~/Code/design-token-vitals
@@ -853,11 +865,11 @@ cp /tmp/dtv-example/.token-vitals/report.html examples/shadcn-ui/report.html
 cp /tmp/dtv-example/.token-vitals/report.json examples/shadcn-ui/report.json
 ```
 
-- [ ] **Step 4: Write `examples/shadcn-ui/README.md`**
+- [x] **Step 4: Write `examples/shadcn-ui/README.md`**
 
 It must contain: the subject repo URL, the exact commit SHA from Step 1, the date of the run, the adapter that was detected, the grade of each of the eight vitals as a table, and the reproduction command. State plainly that the findings describe that commit and nothing else, and that a reader can re-run to check them.
 
-- [ ] **Step 5: Verify the example is honest**
+- [x] **Step 5: Verify the example is honest**
 
 ```bash
 python3 - <<'EOF'
@@ -876,7 +888,7 @@ python3 tools/check_voice.py examples/shadcn-ui/README.md examples/shadcn-ui/rep
 
 Expected: both pass. **If a vital is `fail` with no evidence, the skill has a bug** — fix `SKILL.md` or `references/vitals.md` and re-run, rather than editing the output by hand.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add examples/
@@ -894,7 +906,7 @@ git commit -m "docs(examples): worked run against shadcn-ui"
 - Consumes: the worked example from Task 10 for its screenshots and numbers.
 - Produces: the repo's front door.
 
-- [ ] **Step 1: Write it**
+- [x] **Step 1: Write it**
 
 In this order:
 
@@ -916,7 +928,7 @@ In this order:
 
 **License** — MIT.
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 ```bash
 python3 tools/check_voice.py README.md
@@ -926,7 +938,7 @@ grep -qi "composite score" README.md || echo "MISSING the no-score statement"
 
 Expected: lint clean, no `MISSING` lines.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add README.md
@@ -945,7 +957,7 @@ git commit -m "docs: README"
 
 **This task requires the user's explicit go before Step 2.** A public repo is indexable from the first push. Do not run `gh repo create` on your own judgment.
 
-- [ ] **Step 1: Full verification pass**
+- [x] **Step 1: Full verification pass**
 
 ```bash
 cd ~/Code/design-token-vitals
@@ -957,11 +969,11 @@ git status --short
 
 Expected: lint clean across every markdown file and the template; 10 tests pass; a clean working tree; the file list matches the File Structure table at the top of this plan.
 
-- [ ] **Step 2: Ask the user to confirm publication**
+- [x] **Step 2: Ask the user to confirm publication**
 
 Show them the file list and the README. Ask directly whether to create the public repository. Wait for a yes.
 
-- [ ] **Step 3: Create and push**
+- [x] **Step 3: Create and push**
 
 ```bash
 cd ~/Code/design-token-vitals
@@ -971,7 +983,7 @@ git push -u origin main
 gh repo view --web
 ```
 
-- [ ] **Step 4: Confirm what is public**
+- [x] **Step 4: Confirm what is public**
 
 ```bash
 gh repo view design-token-vitals --json visibility,name,description
