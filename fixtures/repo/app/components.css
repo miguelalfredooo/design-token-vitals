@@ -1,4 +1,5 @@
 .panel {
+  --panel-gap: 12px;
   background: var(--surface);
   color: var(--text);
   padding: var(--space-4);
@@ -11,11 +12,11 @@
 .panel__title { color: var(--brand); font-size: var(--text-sm); }
 .panel__title:hover { color: var(--brand-strong); }
 .panel__tag { background: var(--accent-soft); color: var(--accent); }
-.panel--tight { padding: var(--space-1); gap: var(--space-2); }
+.panel--tight { padding: var(--space-1); gap: var(--panel-gap); }
 .panel__meta { color: var(--gray-900); background: var(--gray-100); }
 .panel__link { color: var(--blue-500); }
 .panel__link:visited { color: var(--blue-600); }
-.panel__small { font-size: var(--font-size-sm); }
+.panel__small { font-size: var(--font-size-sm); margin-top: calc(var(--spacing) * 2); }
 
 /* A string value holding markup. A run that renders this literal into the
    report without escaping it has shipped an injection. */

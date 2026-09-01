@@ -40,14 +40,22 @@ Excluded from the count, each for a stated reason:
 - **Runtime-injected properties** — `--radix-*`, `--swiper-*`, and anything
   else a library writes in at runtime. The project does not own these; they
   were never part of what it declared.
-- **Component-local properties** — a custom property declared inside a
-  component file rather than a token source. This is local state, not a
-  token, and it counts as a leak instead if a token already exists for the
-  same concept — see `references/leakage.md`.
+- **Scoped properties** — a custom property declared under anything other
+  than a theme root. Theme roots are `:root`, `html`, `[data-theme]`, a
+  scheme class such as `.dark`, `@theme`, and a mode media query. A
+  property declared inside a component rule, an `@utility` block, or a
+  `@property` registration with no theme-root declaration is local state,
+  whichever file it sits in. Two runs counted 82 and 77 on this one
+  question; the scope decides it, never the filename.
 - **Framework-default properties** — a category a framework's own default
   theme supplies without the project declaring it. These count toward
   `coverage`, which asks whether a category is available at all, but never
-  toward `token_count`, which asks what the project itself declares.
+  toward `token_count`, which asks what the project itself declares. **A
+  framework's name the project redeclares at an owned theme root is a
+  project token** — `--spacing` set in `@theme`, `--text-sm` overridden
+  under `.theme-compact` — because the project made a decision about it.
+  It counts once, however many roots declare it. Two runs counted 56 and
+  78 on this line.
 
 Record the count and the source files it came from — `run.token_count` and
 `stack.token_sources` in `assets/capability-map.yml` — so two runs against
@@ -83,7 +91,11 @@ token without matching it), and uncovered (no token exists yet).
 
 **Grading:** driven by the redundant tier, since that is the count you can
 act on immediately: `pass` at zero redundant findings; `attention` from 1
-to 10 inclusive; `fail` at 11 or more.
+to 10 inclusive; `fail` at 11 or more. **A finding is one distinct
+literal-to-token pair** — `8px` to `--space-2` is one finding whether it
+appears twice or seventy times. Occurrences and files are its blast
+radius, reported beside it, and never the number the grade reads. Two runs
+graded attention and fail on the same eight pairs over this word.
 
 **Evidence:** at least one real `file:line` per tier reported. A vital with
 a count and no reachable instance is graded `blocked`, never `fail`.

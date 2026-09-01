@@ -1,6 +1,11 @@
+@import "tailwindcss";
 @import "./theme.css";
 @import "./components.css";
 @import "ui/theme.css";
+
+@theme {
+  --spacing: 0.25rem;
+}
 
 :root {
   --blue-500: #2563eb;
@@ -16,6 +21,10 @@
   --line-height-base: 1.5;
   --duration-fast: 120ms;
   --unused-legacy-accent: #ff00ff;
+}
+
+.theme-compact {
+  --spacing: 0.125rem;
 }
 
 .dark {

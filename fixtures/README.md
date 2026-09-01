@@ -32,9 +32,11 @@ expectation to match a run, which turns the test into a mirror.
 | `app/theme.css` | The semantic layer. Alias classification, and lineage from primitive to role |
 | `app/components.css` | A consumer: uses tokens, defines none |
 | `app/orphan-tokens.css` | **Three real token declarations no entry point reaches.** A run that inventories these has skipped reachability |
-| `styles/main.scss`, `styles/_primitives.scss` | **A projection pair.** Two SCSS variables emit two custom properties. Four declarations, two concepts. A run reporting 22 tokens rather than 20 has skipped deduplication |
+| `styles/main.scss`, `styles/_primitives.scss` | **A projection pair.** Two SCSS variables emit two custom properties. Four declarations, two concepts. A run reporting 23 tokens has skipped deduplication |
+| `app/globals.css`, the `@theme` block | **A framework with a derived scale.** `--spacing: 0.25rem` is one token at a theme root; the steps Tailwind generates from it are not. `package.json` and the lockfile pin tailwindcss 4.3.0, so the framework-default check has something to read |
+| `app/components.css`, `.panel` | **A scoped property.** `--panel-gap` is declared inside a component rule. Local state, never a token, whichever file holds it |
 | `components/button.tsx` | Two redundant leaks: a color and a dimension a token already holds |
-| `components/card.tsx` | A second file for `8px`, so blast radius is 2 files rather than 1 |
+| `components/card.tsx` | A second file for `8px`, so blast radius is 2 files rather than 1. Also `20px`, which only the derived scale covers |
 | `components/badge.tsx` | A near-miss: `#2563ec`, one hex step from `#2563eb` |
 | `components/chart.tsx` | Two uncovered values: no layer token and no opacity token exists |
 | `theme.config.json` | Declares `high-contrast`, which nothing resolves. `mode-completeness` must be `blocked` |
@@ -48,7 +50,10 @@ expectation to match a run, which turns the test into a mirror.
 A run that gets all of these right has followed the stages rather than
 pattern-matched its way to a plausible report:
 
-1. **20 tokens, not 22.** The projection pair is one concept per name.
+1. **21 tokens, not 22 and not 23.** The projection pair is one concept
+   per name (23 counts both sides). `--panel-gap` sits inside `.panel`, a
+   component rule, so it is scoped state and never a token, whichever file
+   holds it (22 counted by file).
 2. **`app/orphan-tokens.css` is `unverified`.** It looks exactly like a
    token source and nothing imports it.
 3. **`--unused-legacy-accent` is the only orphan token.** Every other token
@@ -59,13 +64,15 @@ pattern-matched its way to a plausible report:
    for five families only.
 6. **`dist/` and `node_modules/` contribute nothing.** Both hold literals
    that would otherwise read as leaks.
+7. **`20px` is `uncovered`, never `redundant`.** Only Tailwind's derived
+   scale covers it — `--spacing` times five — and a derived scale is one
+   token with no named step to swap to. This is the question two runs
+   split on.
 
 ## What this fixture does not cover
 
 Recorded so nobody mistakes a passing run here for full coverage:
 
-- **The framework-default rule.** No Tailwind, so nothing exercises the
-  requirement to check an installed version before grading `coverage`.
 - **A resolving mode set.** Every mode path here ends in `blocked`. A second
   fixture is needed where all declared modes resolve and
   `mode-completeness` grades normally.

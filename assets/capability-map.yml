@@ -89,6 +89,18 @@ inventory:
 # The four questions the report answers before anything else. Question four
 # carries equal weight: a summary quiet about what it could not measure
 # describes a healthier system than the run established.
+# The stage the system is at, derived from the eight grades — see
+# references/maturity.md. Never a number.
+stage:
+  current: null             # scattered | declared | adopted | layered | complete | held
+  next: null                # the stage the threshold below leads to, or null at held
+  threshold: null           # the one thing that moves it, as a sentence
+  already_met: []           # later-stage conditions the system satisfies now
+
+# Every close call the run flagged — the reader is the tiebreak.
+# Each entry: {decision, moved, other_reading, vitals: [...]}
+decisions: []
+
 executive_summary:
   highest_impact: null      # {finding_id, statement, blast_radius}
   affected: null            # {owned_files, components}
@@ -99,8 +111,11 @@ executive_summary:
 # Each entry:
 #   {id, tier, family, literal, replacement, locations: ["path:line"],
 #    occurrences, files, breadth, confidence, safe_to_automate,
+#    effort: S | M | L,
 #    priority: {occurrences, files, breadth, confidence, confidence_weight,
 #               formula, score}}
+# effort: S automatable under ten files; M automatable across more, or one
+#         file needing a call; L needs a decision first. Derived, never hours.
 # confidence: exact static match | import-graph verified |
 #             compiled-runtime verified | manual review
 # safe_to_automate may only be true for the redundant tier at a confidence

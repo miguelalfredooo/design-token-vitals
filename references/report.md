@@ -18,41 +18,18 @@ machine with no dev server running, and it renders the same way every time.
 
 ## Why HTML is the primary output
 
-A token system communicates best rendered as the thing it describes. Your
-color tokens read as color swatches, not hex strings in a list. Your type
-scale sets each step at its real size, so a step that drifted off the ratio
-is visible before you read a single number. Your spacing scale draws each
-step to its actual width, so a missing step in the middle of the scale shows
-up as a gap in a row of bars. A near-miss pair — a hardcoded value one shade
-off a token that already exists — renders as two adjacent swatches, and your
-eye catches the drift that a table of hex codes would hide. A mode gap shows
-up as a red cell in a light/dark/high-contrast matrix. Near-miss drift
-especially barely communicates in plain text: the whole finding is that the
-difference is too small to describe in words, only to see.
-
-Stdout and the JSON working set sit alongside the HTML, not in place of it.
-Stdout gives you the same eight grades wherever a terminal or a PR comment
-is already open. The JSON is a machine-readable duplicate of exactly what
-the HTML shows, plus the full detail behind every `<details>` disclosure in
-it — see "The JSON duplicates the report" below. It gives a codemod or a
-triage session the same findings in a shape a script can consume; it is
-never where a finding lives and nowhere else.
+A token system communicates best rendered as the thing it describes —
+principle 1 in `PRINCIPLES.md`. A near-miss pair especially cannot be
+described in words, only shown: two adjacent swatches, one shade apart.
+Stdout and the JSON sit alongside the HTML and never in place of it.
 
 ## The JSON duplicates the report
 
-Nothing in a run's findings exists only in `.token-vitals/report.json`.
-Every finding the run produced is in the HTML report too — rendered in
-whatever form fits its volume, or, for the tail of a very large section,
-behind a `<details>` element. A reader who never opens the JSON still sees
-everything the run found; the JSON exists so a codemod or a triage script
-can consume the same findings without parsing HTML, not because the HTML
-left anything out.
-
-This replaces an older framing of the two outputs — "the HTML is the
-diagnosis, the JSON is the working set" — that read as license to move
-content out of the report rather than render it. The JSON is a duplicate
-with extra machine-readability, and the report is where every finding
-already lives.
+Nothing in a run's findings exists only in `report.json`. Every finding is
+in the HTML too, in whatever form fits its volume or behind a `<details>`
+for the tail of a very large section; the JSON exists so a script can
+consume the same findings without parsing HTML — see "Truncation is always
+declared, and never silent" below.
 
 ## The inventory always renders
 
@@ -164,6 +141,24 @@ An action must carry a real `file:line`, the same evidence rule as every
 other finding in this report. An action with no reachable instance to
 point at does not appear on the list.
 
+## At a glance
+
+Above the executive summary, one strip a reader takes in without reading:
+the stage as a six-tick ladder, the eight grades as one segmented bar,
+confirmed against blocked and unmeasured as another, leakage's three tiers
+as a third, the automatable share of the fix queue as a ring, and the
+token and family counts as tiles. Every mark carries its number; nothing
+is decorative. Inline SVG and CSS only — the report ships no script.
+
+## Decisions this run made
+
+Every close call the run flagged in a `note` — the kind that could have
+gone the other way — rendered as its own region rather than buried. Each
+line names the decision, what it moved, and the other reading. The reader
+becomes the tiebreak, the report stops claiming certainty it lacks, and
+the next run inherits an answer. The stage line sits in the executive
+summary; see `references/maturity.md`.
+
 ## The executive summary
 
 The first thing on the page, answering four questions in this order:
@@ -230,6 +225,7 @@ Per entry:
 | `occurrences`, `files` | The counts behind the ranking |
 | `confidence` | `exact static match`, `import-graph verified`, `compiled-runtime verified`, or `manual review` |
 | `safe_to_automate` | Whether the swap needs a person |
+| `effort` | `S` automatable under ten files · `M` automatable across more, or one file needing a call · `L` needs a decision first. Derived, never an hour estimate |
 
 **Safe to automate means the `redundant` tier at a confidence other than
 `manual review`** — a token already holds this exact value, so the change

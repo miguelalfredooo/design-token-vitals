@@ -40,9 +40,14 @@ tell "nothing wrong" from "nothing looked."
 Classify a finding with an ordered cascade. Evaluate the three tiers in this
 order, and the first one that matches wins:
 
-1. If the value exactly matches any token in your system, classify it
-   `redundant`. An exact match always wins, even when the value also sits
-   within the near-miss threshold of a different token.
+1. If the value exactly matches a **named** token in your system, classify
+   it `redundant`. An exact match always wins, even when the value also
+   sits within the near-miss threshold of a different token. Named means a
+   token the author can type in place of the value: `--space-4`, `$blue-500`.
+   A framework's derived scale is one token — the multiplier — and a step
+   generated from it has no name to swap to, so a value that only that
+   scale would cover is `uncovered`, never `redundant`. Two runs graded
+   leakage `attention` and `fail` on this one question; this settles it.
 2. Otherwise, if the value falls within the near-miss threshold of any token
    in the same category, classify it `near-miss`, reported against the
    single closest token.

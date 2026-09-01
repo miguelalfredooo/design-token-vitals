@@ -40,10 +40,41 @@ def read(rel):
         return fh.read()
 
 
+THEME_ROOT = re.compile(r"^\s*(:root|html|\[data-theme[^\]]*\]|\.dark|\.light|@theme|@media\s*\(prefers-color-scheme[^)]*\))\s*$")
+
+
+def theme_root_declarations(text):
+    """Custom properties declared under a theme root, by selector scope.
+
+    A property inside a component rule is local state, whichever file it
+    sits in — the rule vitals.md pins. This walks blocks and keeps only
+    what sits directly under :root, a scheme class, @theme, or a mode
+    media query.
+    """
+    text = re.sub(r"#\{[^}]*\}", "INTERP", text)  # #{$x} is a value, never a block
+    out, stack, buf = set(), [], ""
+    for ch in text:
+        if ch == "{":
+            stack.append(buf.strip().split("\n")[-1].strip())
+            buf = ""
+        elif ch == "}":
+            if stack:
+                stack.pop()
+            buf = ""
+        else:
+            buf += ch
+            if ch == ";" and stack and THEME_ROOT.match(stack[-1]):
+                m = re.match(r"\s*(--[a-z0-9-]+)\s*:", buf)
+                if m:
+                    out.add(m.group(1))
+                buf = ""
+    return out
+
+
 def declared_tokens():
     out = set()
     for rel in DEFINING:
-        out |= set(DECL.findall(read(rel)))
+        out |= theme_root_declarations(read(rel))
     return out
 
 
@@ -89,7 +120,7 @@ class TestImportGraph(unittest.TestCase):
         """globals.css imports "ui/theme.css"; the file is packages/ui/src/theme.css."""
         self.assertIn("packages/ui/src/theme.css", self.graph["reachable"])
         self.assertEqual(self.graph["workspace_packages"], {"ui": "packages/ui"})
-        self.assertEqual(self.graph["unresolved"], [])
+        self.assertEqual([u["spec"] for u in self.graph["unresolved"]], ["tailwindcss"])
 
     def test_excluded_directories_contribute_nothing(self):
         joined = " ".join(self.graph["reachable"]) + " ".join(self.graph["orphans"])
@@ -115,7 +146,7 @@ class TestTokenAccounting(unittest.TestCase):
     def test_counting_both_sides_would_give_the_wrong_answer(self):
         """The number the fixture exists to catch."""
         naive = len(declared_tokens()) + len(SCSS_VAR.findall(read("styles/_primitives.scss")))
-        self.assertEqual(naive, 22)
+        self.assertEqual(naive, 23)
         self.assertNotEqual(naive, EXPECTED["counts"]["token_count"])
 
     def test_the_orphan_token_is_the_only_unreferenced_one(self):
@@ -124,6 +155,47 @@ class TestTokenAccounting(unittest.TestCase):
             used |= set(USE.findall(read(rel)))
         unreferenced = sorted(declared_tokens() - used)
         self.assertEqual(unreferenced, EXPECTED["counts"]["orphan_tokens"])
+
+    def test_a_scoped_property_is_never_counted(self):
+        """--panel-gap is declared inside .panel; it is state, whichever file holds it."""
+        text = read("app/components.css")
+        self.assertIn("--panel-gap: 12px", text)
+        self.assertNotIn("--panel-gap", theme_root_declarations(text))
+        self.assertNotIn("--panel-gap", declared_tokens())
+        self.assertEqual(EXPECTED["counts"]["scoped_properties_not_counted"], ["--panel-gap"])
+
+    def test_a_theme_block_declaration_is_counted(self):
+        """--spacing sits in @theme, which is a theme root."""
+        self.assertIn("--spacing", declared_tokens())
+
+    def test_counting_by_file_would_give_the_wrong_answer(self):
+        """The trap the afternoon runs fell into, from both sides."""
+        by_file = set()
+        for rel in DEFINING + ["app/components.css"]:
+            by_file |= set(DECL.findall(read(rel)))
+        self.assertIn("--panel-gap", by_file)
+        self.assertGreater(len(by_file), EXPECTED["counts"]["token_count"])
+
+    def test_a_derived_scale_step_has_no_named_token(self):
+        """20px is covered only by --spacing x 5, which is not a name to swap to."""
+        self.assertIn("20px", read("components/card.tsx"))
+        named_values = re.findall(r"--[a-z0-9-]+\s*:\s*([^;]+);", read("app/globals.css"))
+        self.assertNotIn("20px", [v.strip() for v in named_values])
+        uncovered = [l["literal"] for l in EXPECTED["leaks"]["uncovered"]]
+        self.assertIn("20px", uncovered)
+
+    def test_a_name_at_two_theme_roots_counts_once(self):
+        """--spacing sits in @theme and again under .theme-compact. One token."""
+        text = read("app/globals.css")
+        self.assertEqual(text.count("--spacing:"), 2)
+        self.assertEqual(sum(1 for t in declared_tokens() if t == "--spacing"), 1)
+
+    def test_leakage_grades_on_findings_and_reports_occurrences(self):
+        """8px is one finding in two files: the grade reads 3, the blast radius reads 4."""
+        red = EXPECTED["leaks"]["redundant"]
+        self.assertEqual(len(red), EXPECTED["leaks"]["redundant_findings"])
+        self.assertEqual(sum(len(r["files"]) for r in red), EXPECTED["leaks"]["redundant_occurrences"])
+        self.assertEqual(EXPECTED["vitals"]["leakage"], "attention")
 
     def test_the_unreachable_source_holds_real_declarations(self):
         """An empty decoy would prove nothing about reachability."""
