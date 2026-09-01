@@ -4,6 +4,15 @@ An agent skill that grades the health of a codebase's design token layer —
 eight fixed checks, each backed by real evidence from your repository,
 never a guess and never an average.
 
+## Principles
+
+Every skill in this family holds itself to the eight in
+[`PRINCIPLES.md`](PRINCIPLES.md): render the thing as itself; say what is
+worst first; orient every section with what, why, and what to do; explain
+once and trust the reader; show the arithmetic; never let unknown read as
+zero; rules in code, teaching in prose; say where they are and where next
+is. Each names what it forbids and how it is checked.
+
 ## Status: a working skill, still evolving
 
 This skill is in active development and it is not finalized. Treat it as
