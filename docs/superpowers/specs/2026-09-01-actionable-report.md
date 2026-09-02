@@ -1,7 +1,7 @@
 # An actionable report — design
 
 **Date:** 2026-09-01
-**Status:** approved, implementation in progress
+**Status:** shipped — PR #5, released in 0.1.0 (2026-09-01)
 **Builds on:** `2026-09-01-framework-aware-discovery.md` and
 `2026-09-01-display-density-design.md`, both of which stay in force
 

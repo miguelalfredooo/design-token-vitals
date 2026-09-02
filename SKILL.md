@@ -13,7 +13,7 @@ allowed-tools: Read, Grep, Glob, Bash, Write
 
 You are grading a codebase's design token layer against eight fixed vitals
 and reporting what you found — with evidence, never an average. Work through
-the seven stages below in order.
+the eight stages below in order.
 
 ## Stage 1 — Framework and token-source discovery
 

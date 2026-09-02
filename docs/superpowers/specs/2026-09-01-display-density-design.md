@@ -1,7 +1,7 @@
 # Display density — design
 
 **Date:** 2026-09-01
-**Status:** approved, not yet implemented
+**Status:** shipped — PR #1, released in 0.1.0 (2026-09-01)
 **Supersedes:** the 40-row rule in `references/report.md`
 
 ---

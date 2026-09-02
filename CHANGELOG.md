@@ -6,6 +6,53 @@ that produced it.
 
 ## Unreleased
 
+### Wave 3 — framework-aware discovery, environment adapters, and component/literal-color analysis
+
+A required discovery stage now runs in front of grading. Source discovery
+stops matching one filename per framework and instead discovers every
+candidate, proves which are reachable from an owned production entry point,
+and classifies each as `canonical`, `alias`, `consumer`, `generated`, or
+`unverified` before anything is counted. Two blind runs against
+shadcn-ui/ui had already agreed on all eight grades and still disagreed on
+`files_scanned` (3,686 vs 3,400) and `family_count` (13 vs 24) — the grades
+survived, the measurements underneath them did not. See
+`docs/superpowers/specs/2026-09-01-framework-aware-discovery.md`.
+
+Added:
+
+- `tools/discover_environment.py` and `tools/framework_profiles.py` —
+  identify the framework and monorepo shape before any source search,
+  driven by executable profiles in `assets/framework-profiles.json` rather
+  than prose adapter guidance.
+- `tools/discover_tokens.py` rewritten to discover every candidate source,
+  build an import graph, and deduplicate a definition from its projection
+  into one token concept.
+- `tools/analyze_component_usage.py` and `tools/render_component_usage.py`
+  — rank which components use the confirmed token concepts, with real
+  locations and reference syntaxes measured vs. unresolved.
+- `tools/audit_literal_colors.py` — literal-color leakage as its own
+  auditable stage; exact-value matches stay manual-review candidates until
+  semantic equivalence is proven.
+- Six adapter references — Next.js, Vite, Storybook, Rails/Sprockets,
+  Discourse, and monorepo (`references/adapters/`) — plus
+  `references/component-usage.md` and `references/environment-adapters.md`
+  documenting the profile contract.
+- `tools/render_discovery.py` — merges discovery, capability, and
+  component-adoption evidence into the report template deterministically.
+
+Changed:
+
+- `validate_run.py` gained rules covering discovery evidence, reachability,
+  component-usage ranking, and literal-color measurement — a report can no
+  longer pass by presuming one token file with no discovery evidence
+  behind it.
+- `SKILL.md` Stage 1 is now required and runs before any inventory or
+  grading; Stage 2 (stack detection) narrows to only the adapters the
+  recorded environment makes plausible.
+
+No blind-pair run has been logged against this wave the way Waves 1–2
+were; the next entry should carry that result.
+
 ### Wave 2 — prose, and four rules pinned
 
 Net **-119 words** across `SKILL.md` and `references/`, with a new

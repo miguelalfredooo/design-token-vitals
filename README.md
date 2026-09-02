@@ -165,7 +165,10 @@ guardrail the run re-derives each time is a rule that drifts.
 | `tools/framework_profiles.py` | Loads and validates the built-in profile registry plus optional project profiles, then evaluates repository signals without turning partial matches into facts |
 | `tools/profile_extractors.py` | Executes validated profile-declared registration, config-array, and build-JSON root extractors for built-in and custom frameworks |
 | `tools/discover_tokens.py` | Finds CSS, Sass, DTCG, Style Dictionary, conservative JS/TS theme, and component-embedded declarations; classifies canonical sources, projections, overrides, and unverified candidates |
+| `tools/analyze_component_usage.py` | Measures which component surfaces reference the confirmed token concepts; ranks identified components before generic style surfaces, and states which reference syntaxes were measured versus left unresolved |
+| `tools/audit_literal_colors.py` | Finds hardcoded color values against the confirmed token set; exact-value matches stay manual-review candidates until semantic equivalence is proven |
 | `tools/render_discovery.py` | Rebuilds finished runs from the current template; keeps summaries, decisions, ownership, lineage, coverage, discovery, identity, token inventory, leakage, and provenance identical in report JSON and HTML; Color, Typography, and Foundation use accessible tabs while long token tables use a first-20 plus “See more” disclosure without dropping rows |
+| `tools/render_component_usage.py` | Merges the component-usage ranking into the report template's `component-usage` region, in the same first-N-plus-disclosure form as the token tables |
 | `tools/findings.py` | Stable, path-independent finding ids, and the priority score `(n + 2f + 3b) x c` over occurrences, affected owned files, breadth, and confidence in the fix |
 | `tools/trend.py` | New, resolved, count changes and regressions between two runs. Refuses when framework, adapters, owned paths, scope or token sources diverge |
 | `tools/import_graph.py` | Walks stylesheet and JS-entry imports from owned production entry points. Reports what is reachable, what is orphaned, and what resolves outside the repository. Reachability is what makes a candidate source an active one |
@@ -180,9 +183,11 @@ guardrail the run re-derives each time is a rule that drifts.
 ```bash
 python3 tools/discover_environment.py <repo> --owned 'src/**' --json discovery.json
 python3 tools/discover_tokens.py <repo> --discovery discovery.json --update-discovery --json tokens.json
+python3 tools/analyze_component_usage.py <repo> --discovery discovery.json --tokens tokens.json --json components.json
 python3 tools/audit_literal_colors.py <repo> --discovery discovery.json --tokens tokens.json --json literal-colors.json
 python3 tools/import_graph.py <repo> --entry app/globals.css --json graph.json
 python3 tools/render_discovery.py --refresh-template --discovery discovery.json --tokens tokens.json --leakage literal-colors.json --report-json report.json --html report.html
+python3 tools/render_component_usage.py --components components.json --report-json report.json --html report.html
 python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --components .token-vitals/components.json --leakage .token-vitals/literal-colors.json --current-skill
 python3 tools/compare_runs.py run-a/report.json run-b/report.json
 python3 tools/trend.py baseline/report.json .token-vitals/report.json
@@ -210,8 +215,9 @@ bundled tools directly against your repository.
 3. **Read what the project declares** — modes, categories, and any accessibility target, taken from the repository, never assumed.
 4. **Grade the eight vitals** — each one graded against the stack and declarations from the prior stages, with at least one real `file:line` attached to every grade.
 5. **Choose the rendering tier** — the token count decides how much evidence renders inline versus rolls up into a count.
-6. **Fill the template** — the self-contained report is built by filling named slots in a fixed template, never by writing free-form HTML.
-7. **Write the outputs** — the HTML report, a JSON working set that duplicates it for tooling, and a terminal summary naming one next step.
+6. **Rank, queue, and trace** — score every finding, build the fix queue, group by owner, rank component token usage, trace lineage, and fill the coverage matrix — the five layers that sit above the raw findings.
+7. **Fill the template** — the self-contained report is built by filling named slots in a fixed template, never by writing free-form HTML.
+8. **Write the outputs** — the HTML report, a JSON working set that duplicates it for tooling, and a terminal summary naming one next step.
 
 ## The eight vitals
 
