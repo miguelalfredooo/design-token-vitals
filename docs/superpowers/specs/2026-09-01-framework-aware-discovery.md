@@ -1,7 +1,7 @@
 # Framework-aware token discovery — design
 
 **Date:** 2026-09-01
-**Status:** approved, implementation in progress
+**Status:** implemented — framework-aware discovery, environment adapters, component-usage and literal-color analysis wave (2026-09-01)
 **Supersedes:** the "one file, 20 declarations" detection rule in
 `references/adapters/css-vars.md` and `references/adapters/scss.md`, and
 Stage 1 as written in `references/discovery.md`

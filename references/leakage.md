@@ -2,7 +2,7 @@
 
 This file is the depth behind the `leakage` vital in `references/vitals.md`.
 It defines how a hardcoded value in your codebase gets found, and which of
-three tiers it lands in once found.
+four evidence tiers it lands in once found.
 
 ## Why tiering, not just counting
 
@@ -37,39 +37,47 @@ tell "nothing wrong" from "nothing looked."
 
 ## Classifying a finding
 
-Classify a finding with an ordered cascade. Evaluate the three tiers in this
+Classify a finding with an ordered cascade. Evaluate the four tiers in this
 order, and the first one that matches wins:
 
-1. If the value exactly matches a **named** token in your system, classify
-   it `redundant`. An exact match always wins, even when the value also
-   sits within the near-miss threshold of a different token. Named means a
+1. If the value exactly matches a **named** token and the consumer's semantic
+   role is proven to match that token's role, classify it `redundant`.
+   Semantic proof can come from an existing alias/utility mapping, an
+   equivalent consumer in the same component contract, or an explicit
+   repository declaration. Value equality by itself is not semantic proof.
+2. If the value exactly matches a named token but semantic equivalence is
+   not proven, classify it `exact-value candidate`. An exact-value match
+   always wins over near-miss, even when the value also sits within the
+   near-miss threshold of a different token. Named means a
    token the author can type in place of the value: `--space-4`, `$blue-500`.
    A framework's derived scale is one token — the multiplier — and a step
    generated from it has no name to swap to, so a value that only that
    scale would cover is `uncovered`, never `redundant`. Two runs graded
    leakage `attention` and `fail` on this one question; this settles it.
-2. Otherwise, if the value falls within the near-miss threshold of any token
+3. Otherwise, if the value falls within the near-miss threshold of any token
    in the same category, classify it `near-miss`, reported against the
    single closest token.
-3. Otherwise, classify it `uncovered`.
+4. Otherwise, classify it `uncovered`.
 
 | Tier | Condition | What it means | Fix owner |
 |---|---|---|---|
-| `redundant` | An exact match to a token exists | The token existed but was not used | Component author — mechanical, no discussion |
+| `redundant` | Exact value and semantic role both match a token | The token existed and is proven equivalent here | Component author — verified mechanical change |
+| `exact-value candidate` | Exact value matches, semantic role is unresolved | A possible replacement that may encode a different decision | Component and system owners — verify intent |
 | `near-miss` | No exact match, but a token sits within the near-miss threshold | Value drift: invisible to search and to code review | Design — reconcile or accept |
 | `uncovered` | No token exists for this concept | A hole in the token layer | System owner — add the token |
 
 `redundant` is the tier `leakage`'s grading reads from — see
-`references/vitals.md` — since it is the count you can act on immediately: a
-grep-and-replace with no design decision attached. `near-miss` and
-`uncovered` still get reported, with at least one real `file:line` per tier,
-but they call for your judgment rather than a mechanical fix, so they do not
-drive the pass/attention/fail line.
+`references/vitals.md` — since it is the count backed by both value and
+semantic evidence. `exact-value candidate`, `near-miss`, and `uncovered`
+still get reported, with at least one real `file:line` per tier, but they
+call for judgment rather than a mechanical fix, so they do not drive the
+pass/attention/fail line.
 
-A `redundant` finding means the value already had a name it could carry in
-your token system — nothing stopped the component author from using it
-except that the token was not top of mind at the moment of writing. Tokens
-exist to make exactly this kind of gap cheap to fix, once you can see it.
+A `redundant` finding means the value already had a name for the same
+decision in the token system. An `exact-value candidate` means only that
+the numbers match. For example, white text, a white canvas, and a third-party
+brand mark may share `#fff` without being interchangeable. Never promote a
+candidate to `redundant` from value equality alone.
 
 ## Near-miss math
 
@@ -159,7 +167,8 @@ Rank findings with a total order, applying these keys in sequence until one
 of them breaks the tie:
 
 1. Blast radius — the count of files the value affects — descending.
-2. Tier, in this order: `redundant`, `near-miss`, `uncovered`.
+2. Tier, in this order: `redundant`, `exact-value candidate`, `near-miss`,
+   `uncovered`.
 3. Nearest token name, ascending. An `uncovered` finding has no token by
    definition, so it always sorts after every finding that has one.
 4. The literal value itself, ascending.
@@ -171,8 +180,8 @@ finding. Nothing about your codebase can leave two distinct findings tied
 all the way down, so a re-run of the report always shows you the same
 order.
 
-`assets/reference/small.html` renders all three tiers as tables, one row
+`assets/reference/small.html` renders the tiers as tables, one row
 per finding, inside the Leakage section. `assets/reference/large.html`
-shows the same three tiers ranked by blast radius, truncated to the largest
+shows the same tiers ranked by blast radius, truncated to the largest
 few with a summary line for the rest — the shape your report takes once
 your codebase has too many findings to show in full.

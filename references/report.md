@@ -104,7 +104,7 @@ produces enough of to matter:
 
 ## Deriving the next-steps list
 
-Eight grades and three leakage tiers are more than most readers can turn
+Eight grades and four leakage tiers are more than most readers can turn
 into a plan on their own. The `next-steps` region orders the findings
 already in the report into a concrete list of actions, so two runs against
 the same repository always produce the same plan.
@@ -116,15 +116,15 @@ Order by class first, then by blast radius descending within each class:
    a single rule both unblocks the check and stops every other finding in
    the report from regressing, so a `blocked` enforcement grade earns the
    first action even when another vital's raw finding count is larger.
-2. **Mechanical fixes.** `redundant` leaks from `references/leakage.md` —
-   a token already holds the value, so no judgment is required, only a
-   swap. Rank these by blast radius, highest first.
+2. **Verified mechanical fixes.** `redundant` leaks from
+   `references/leakage.md` — both the value and the semantic role match, so
+   no judgment remains. Rank these by blast radius, highest first.
 3. **System gaps.** `uncovered` leaks and any category missing from
    `coverage`. Someone has to decide on a token here, and that one
    decision typically unblocks many findings at once.
-4. **Judgment calls.** `near-miss` drift and naming-coherence
-   reconciliation. These need a person to decide what was intended, so
-   they carry the least certainty and sort last.
+4. **Judgment calls.** Exact-value candidates, `near-miss` drift, and
+   naming-coherence reconciliation. These need a person to decide what was
+   intended, so they carry the least certainty and sort last.
 
 Show five actions. This is the one section in the report where a small
 fixed number is correct, because its value comes from what it leaves out:
@@ -145,7 +145,7 @@ point at does not appear on the list.
 
 Above the executive summary, one strip a reader takes in without reading:
 the stage as a six-tick ladder, the eight grades as one segmented bar,
-confirmed against blocked and unmeasured as another, leakage's three tiers
+confirmed against blocked and unmeasured as another, leakage's four tiers
 as a third, the automatable share of the fix queue as a ring, and the
 token and family counts as tiles. Every mark carries its number; nothing
 is decorative. Inline SVG and CSS only — the report ships no script.
@@ -224,19 +224,20 @@ Per entry:
 | `locations` | Affected files, each a real `file:line` |
 | `occurrences`, `files` | The counts behind the ranking |
 | `confidence` | `exact static match`, `import-graph verified`, `compiled-runtime verified`, or `manual review` |
+| `semantic_role_verified` | Whether evidence proves the token expresses the consumer's decision, not merely the same value |
 | `safe_to_automate` | Whether the swap needs a person |
 | `effort` | `S` automatable under ten files · `M` automatable across more, or one file needing a call · `L` needs a decision first. Derived, never an hour estimate |
 
-**Safe to automate means the `redundant` tier at a confidence other than
-`manual review`** — a token already holds this exact value, so the change
-carries no decision. Near-miss drift and uncovered values are never
-automatable: one needs a person to decide what was intended, the other
-needs a token to exist first. `tools/validate_run.py` rule 7 fails a queue
+**Safe to automate requires `redundant`, `semantic_role_verified: true`, and
+a confidence other than `manual review`.** An exact static value match alone
+is never enough: identical colors and dimensions can represent different
+semantic decisions. Exact-value candidates, near-miss drift, and uncovered
+values are never automatable. `tools/validate_run.py` rule 7 fails a queue
 that says otherwise.
 
-Order the queue by priority. Lead with exact color replacements where they
-exist: they are the highest-confidence, highest-volume class of finding in
-most codebases, and they are what a follow-on agent can act on immediately.
+Order the queue by priority. Lead with verified color replacements where
+they exist. Keep exact-value candidates in a separate review list so a
+follow-on agent cannot mistake matching values for permission to edit.
 
 ## Grouping by owner
 
@@ -417,7 +418,7 @@ These are different jobs and they take opposite rules.
 
 **Inventory sections owe the reader everything.** Every color, every step,
 every orphan, every leak group, in whatever form fits. `inventory-color`,
-`inventory-type`, `inventory-space`, `families`, the three leakage tiers,
+`inventory-type`, `inventory-space`, `families`, the four leakage tiers,
 `modes-gaps`, and `orphans` all enumerate.
 
 **"Where to start" owes the reader the few that matter, in order.** The

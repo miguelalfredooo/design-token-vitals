@@ -1,0 +1,415 @@
+{
+  "schema_version": 1,
+  "capability_order": [
+    "detection",
+    "production_roots",
+    "import_resolution",
+    "token_source_discovery",
+    "ownership",
+    "mode_resolution",
+    "runtime_verification"
+  ],
+  "profiles": [
+    {
+      "id": "discourse",
+      "kind": "framework",
+      "priority": 100,
+      "adapter": "references/adapters/discourse.md",
+      "detection": {
+        "claim": "Discourse application and theme pipeline",
+        "confidence": "framework-registered",
+        "required": [
+          {"type": "path_any", "patterns": ["app/assets/stylesheets"]},
+          {"type": "path_any", "patterns": ["plugins"]}
+        ],
+        "supporting": [
+          {
+            "type": "content_any",
+            "patterns": ["app/assets/stylesheets/**/*.scss"],
+            "contains": ["schemeType(", "dark-light-choose(", "$light-theme-", "$dark-theme-"]
+          }
+        ],
+        "minimum_supporting": 1
+      },
+      "embedded_applications": ["app/assets/javascripts/discourse"],
+      "load_paths": ["app/assets/stylesheets"],
+      "capability_contributions": {
+        "mode_resolution": {
+          "state": "blocked",
+          "evidence": ["Discourse scheme-aware Sass mechanism detected"],
+          "limitation": "No compiled bundle-by-scheme output was inspected.",
+          "next_step": "Provide resolved output for every declared bundle and scheme."
+        }
+      },
+      "import_rewrites": [
+        {"regex": "^discourse/plugins/(?P<plugin>[^/]+)/(?P<rest>.+)$", "replacement": "plugins/{plugin}/assets/javascripts/{rest}"}
+      ],
+      "extractors": [
+        {"type": "regex_roots", "files": ["plugins/*/plugin.rb"], "line_comments": ["#"], "regex": "register_(?P<api>asset|css)\\s*(?:\\(\\s*)?['\\\"](?P<spec>[^'\\\"]+)['\\\"](?:\\s*,\\s*:(?P<kind>[a-zA-Z0-9_-]+))?", "path_template": "{file_dir}/assets/{spec}", "root_type_group": "kind", "style_only": true, "confidence": "framework-registered", "ownership": "unknown", "evidence": "register_{api} {spec}"}
+      ],
+      "roots": [
+        {"patterns": ["app/assets/stylesheets/common.scss"], "root_type": "common", "confidence": "framework-registered", "ownership": "owned", "evidence": "Discourse common bundle convention"},
+        {"patterns": ["app/assets/stylesheets/desktop.scss"], "root_type": "desktop", "confidence": "framework-registered", "ownership": "owned", "evidence": "Discourse desktop bundle convention"},
+        {"patterns": ["app/assets/stylesheets/mobile.scss"], "root_type": "mobile", "confidence": "framework-registered", "ownership": "owned", "evidence": "Discourse mobile bundle convention"},
+        {"patterns": ["app/assets/stylesheets/admin.scss"], "root_type": "admin", "confidence": "framework-registered", "ownership": "owned", "evidence": "Discourse admin bundle convention"},
+        {"patterns": ["app/assets/stylesheets/color_definitions.scss"], "root_type": "theme", "confidence": "framework-registered", "ownership": "owned", "evidence": "Discourse theme color-definition bundle"},
+        {"patterns": ["app/assets/stylesheets/common/foundation/variables.scss"], "root_type": "theme", "confidence": "framework-registered", "ownership": "owned", "evidence": "Discourse injects foundation variables into every theme bundle"}
+      ],
+      "component_roots": [
+        {"patterns": ["app/assets/javascripts/discourse/app/components", "app/assets/stylesheets/common/components", "app/assets/stylesheets/desktop/components", "app/assets/stylesheets/mobile/components"], "confidence": "framework-registered", "ownership": "owned", "evidence": "Discourse resolver-eligible component source and style conventions"},
+        {"patterns": ["plugins/*/assets/javascripts/discourse/components", "plugins/*/assets/stylesheets/components"], "confidence": "framework-registered", "ownership": "unknown", "evidence": "Discourse plugin component convention; ownership must be established before grading"}
+      ],
+      "surface_roots": [
+        {"patterns": ["app/assets/javascripts/discourse/app/routes/**/*.js", "app/assets/javascripts/discourse/app/routes/**/*.gjs"], "root_type": "route", "confidence": "static candidate", "scope": "supplemental", "evidence": "Discourse route module; inspect for lazy style imports"},
+        {"patterns": ["plugins/*/assets/javascripts/discourse/routes/**/*.js", "plugins/*/assets/javascripts/discourse/routes/**/*.gjs", "plugins/*/assets/javascripts/discourse/templates/**/*.hbs", "plugins/*/assets/javascripts/discourse/connectors/**/*.js", "plugins/*/assets/javascripts/discourse/connectors/**/*.gjs", "plugins/*/assets/javascripts/discourse/connectors/**/*.hbs"], "root_type": "route", "confidence": "static candidate", "scope": "supplemental", "evidence": "Discourse plugin route, template, or connector surface; inspect registrations and lazy style imports"}
+      ],
+      "guidance": {
+        "production_roots": "Read every core bundle and plugin register_asset/register_css call, including conditional registrations.",
+        "import_resolution": "Resolve Sass partials, @use and @forward; treat sass:* as built-in and registered plugin styles as roots.",
+        "token_source_discovery": "Search core and owned plugin Sass projections, maps, theme color definitions and CSS custom properties.",
+        "ownership": "Separate owned plugins from upstream plugins before grading consumers.",
+        "mode_resolution": "Require compiled per-site output for every bundle and color scheme; source only proves the mechanism.",
+        "runtime_verification": "Use a compiled theme stylesheet or running Discourse site to compare resolved custom properties."
+      }
+    },
+    {
+      "id": "nextjs",
+      "kind": "framework",
+      "priority": 90,
+      "adapter": "references/adapters/nextjs.md",
+      "detection": {
+        "claim": "Next.js application",
+        "confidence": "framework-registered",
+        "required": [
+          {"type": "path_any", "patterns": ["next.config.js", "next.config.mjs", "next.config.ts"]}
+        ],
+        "supporting": [],
+        "minimum_supporting": 0
+      },
+      "roots": [
+        {"patterns": ["app/layout.js", "app/layout.jsx", "app/layout.ts", "app/layout.tsx", "src/app/layout.js", "src/app/layout.jsx", "src/app/layout.ts", "src/app/layout.tsx"], "root_type": "common", "confidence": "framework-registered", "ownership": "owned", "evidence": "Next.js app-router root layout"},
+        {"patterns": ["pages/_app.js", "pages/_app.jsx", "pages/_app.ts", "pages/_app.tsx", "src/pages/_app.js", "src/pages/_app.jsx", "src/pages/_app.ts", "src/pages/_app.tsx"], "root_type": "common", "confidence": "framework-registered", "ownership": "owned", "evidence": "Next.js pages-router application root"},
+        {"patterns": ["app/**/page.js", "app/**/page.jsx", "app/**/page.ts", "app/**/page.tsx", "app/**/layout.js", "app/**/layout.jsx", "app/**/layout.ts", "app/**/layout.tsx", "src/app/**/page.js", "src/app/**/page.jsx", "src/app/**/page.ts", "src/app/**/page.tsx", "src/app/**/layout.js", "src/app/**/layout.jsx", "src/app/**/layout.ts", "src/app/**/layout.tsx", "pages/**/*.js", "pages/**/*.jsx", "pages/**/*.ts", "pages/**/*.tsx", "src/pages/**/*.js", "src/pages/**/*.jsx", "src/pages/**/*.ts", "src/pages/**/*.tsx"], "root_type": "route", "confidence": "framework-registered", "ownership": "owned", "evidence": "Next.js filesystem route registration"},
+        {"patterns": ["app/globals.css", "src/app/globals.css", "styles/globals.css", "src/styles/globals.css"], "root_type": "common", "confidence": "static candidate", "ownership": "owned", "evidence": "Conventional Next.js global stylesheet; layout import proves reachability"}
+      ],
+      "component_roots": [
+        {"patterns": ["components", "src/components", "app/**/components", "src/app/**/components"], "confidence": "static candidate", "ownership": "owned", "evidence": "Common Next.js component directory; imports must prove product use"}
+      ],
+      "surface_roots": [],
+      "guidance": {
+        "production_roots": "Compose root layouts, _app, filesystem routes, global CSS and route-local CSS modules.",
+        "import_resolution": "Follow JS/TS, dynamic and CSS-module imports using tsconfig/jsconfig aliases and workspace packages.",
+        "token_source_discovery": "Inspect global CSS, CSS modules, theme providers, JS/TS theme objects and framework configuration.",
+        "ownership": "Keep Storybook, generated .next output and external workspace packages outside product scope unless selected.",
+        "mode_resolution": "Inspect each route shell and theme-provider path; declarations alone do not prove rendered values.",
+        "runtime_verification": "Use built or rendered routes for every declared scheme when available."
+      }
+    },
+    {
+      "id": "sveltekit",
+      "kind": "framework",
+      "priority": 90,
+      "adapter": "references/environment-adapters.md",
+      "detection": {
+        "claim": "SvelteKit application",
+        "confidence": "framework-registered",
+        "required": [{"type": "path_any", "patterns": ["svelte.config.js", "svelte.config.ts"]}],
+        "supporting": [{"type": "path_any", "patterns": ["src/routes"]}],
+        "minimum_supporting": 1
+      },
+      "roots": [
+        {"patterns": ["src/routes/**/+layout.svelte", "src/routes/**/+page.svelte", "src/routes/**/+layout.js", "src/routes/**/+layout.ts", "src/routes/**/+page.js", "src/routes/**/+page.ts"], "root_type": "route", "confidence": "framework-registered", "ownership": "owned", "evidence": "SvelteKit filesystem route registration"},
+        {"patterns": ["src/app.html"], "root_type": "common", "confidence": "framework-registered", "ownership": "owned", "evidence": "SvelteKit application shell"}
+      ],
+      "component_roots": [{"patterns": ["src/lib/components", "src/components"], "confidence": "static candidate", "ownership": "owned", "evidence": "Common SvelteKit component directory; imports must prove product use"}],
+      "surface_roots": [],
+      "guidance": {
+        "production_roots": "Use +layout, +page and app.html registrations, including route-local style blocks.",
+        "import_resolution": "Follow Svelte module imports, style src attributes, Vite aliases and workspace packages.",
+        "token_source_discovery": "Inspect global styles, Svelte style blocks, CSS modules and JS/TS theme objects.",
+        "ownership": "Exclude .svelte-kit and build output; separate package-owned component libraries.",
+        "mode_resolution": "Trace class/data-attribute stores and resolved route output per scheme.",
+        "runtime_verification": "Use built or rendered routes when static style blocks cannot prove final values."
+      }
+    },
+    {
+      "id": "nuxt",
+      "kind": "framework",
+      "priority": 90,
+      "adapter": "references/environment-adapters.md",
+      "detection": {
+        "claim": "Nuxt application",
+        "confidence": "framework-registered",
+        "required": [{"type": "path_any", "patterns": ["nuxt.config.js", "nuxt.config.ts", "nuxt.config.mjs"]}],
+        "supporting": [],
+        "minimum_supporting": 0
+      },
+      "extractors": [
+        {"type": "config_array_roots", "files": ["nuxt.config.js", "nuxt.config.ts", "nuxt.config.mjs"], "key": "css", "strip_prefixes": ["~/", "@/"], "style_only": true, "root_type": "theme", "confidence": "framework-registered", "ownership": "owned", "evidence": "Nuxt css config registration: {spec}"}
+      ],
+      "roots": [
+        {"patterns": ["app.vue", "pages/**/*.vue", "layouts/**/*.vue", "app/pages/**/*.vue", "app/layouts/**/*.vue"], "root_type": "route", "confidence": "framework-registered", "ownership": "owned", "evidence": "Nuxt application and filesystem route registration"}
+      ],
+      "component_roots": [{"patterns": ["components", "app/components"], "confidence": "framework-registered", "ownership": "owned", "evidence": "Nuxt auto-imported component convention"}],
+      "surface_roots": [],
+      "guidance": {
+        "production_roots": "Read app.vue, layouts, pages and CSS registered in nuxt.config.",
+        "import_resolution": "Follow Vue SFC imports, style src attributes, aliases and Nuxt modules.",
+        "token_source_discovery": "Inspect registered CSS, Vue style blocks, runtime config and theme modules.",
+        "ownership": "Exclude .nuxt and output; classify module-provided styles separately.",
+        "mode_resolution": "Trace color-mode modules, selectors and rendered app shells per scheme.",
+        "runtime_verification": "Use generated or rendered routes for every declared scheme."
+      }
+    },
+    {
+      "id": "astro",
+      "kind": "framework",
+      "priority": 88,
+      "adapter": "references/environment-adapters.md",
+      "detection": {
+        "claim": "Astro application",
+        "confidence": "framework-registered",
+        "required": [{"type": "path_any", "patterns": ["astro.config.js", "astro.config.mjs", "astro.config.ts"]}],
+        "supporting": [],
+        "minimum_supporting": 0
+      },
+      "roots": [
+        {"patterns": ["src/pages/**/*.astro", "src/layouts/**/*.astro"], "root_type": "route", "confidence": "framework-registered", "ownership": "owned", "evidence": "Astro filesystem page and layout registration"}
+      ],
+      "component_roots": [{"patterns": ["src/components"], "confidence": "static candidate", "ownership": "owned", "evidence": "Common Astro component directory; imports must prove product use"}],
+      "surface_roots": [],
+      "guidance": {
+        "production_roots": "Use pages and layouts, then follow component and global-style imports.",
+        "import_resolution": "Follow Astro frontmatter imports, style src references, Vite aliases and integrations.",
+        "token_source_discovery": "Inspect global CSS, scoped style blocks, integrations and imported theme objects.",
+        "ownership": "Exclude dist and generated assets; keep framework integration output separate.",
+        "mode_resolution": "Trace layout selectors and rendered pages for every declared scheme.",
+        "runtime_verification": "Use built pages when scoped-style compilation changes the final output."
+      }
+    },
+    {
+      "id": "angular",
+      "kind": "framework",
+      "priority": 88,
+      "adapter": "references/environment-adapters.md",
+      "detection": {
+        "claim": "Angular workspace",
+        "confidence": "framework-registered",
+        "required": [{"type": "path_any", "patterns": ["angular.json"]}],
+        "supporting": [],
+        "minimum_supporting": 0
+      },
+      "extractors": [
+        {"type": "json_build_roots", "files": ["angular.json"], "target_names": ["build"], "entry_keys": ["main", "browser"], "style_key": "styles", "confidence": "framework-registered", "ownership": "owned", "evidence": "Angular build target registration"}
+      ],
+      "roots": [
+        {"patterns": ["src/main.ts", "projects/*/src/main.ts"], "root_type": "common", "confidence": "framework-registered", "ownership": "owned", "evidence": "Angular application bootstrap"}
+      ],
+      "component_roots": [{"patterns": ["src/app", "projects/*/src/app"], "confidence": "static candidate", "ownership": "owned", "evidence": "Angular component source convention; module and bootstrap imports prove product use"}],
+      "surface_roots": [],
+      "guidance": {
+        "production_roots": "Read every build target's main and styles entries from angular.json.",
+        "import_resolution": "Follow TS modules, styleUrls, inline styles, workspace libraries and tsconfig paths.",
+        "token_source_discovery": "Inspect global styles, component styles, Sass configuration and theme objects.",
+        "ownership": "Separate application projects, workspace libraries and generated output.",
+        "mode_resolution": "Trace theme classes and compiled build targets for every scheme.",
+        "runtime_verification": "Use browser or build artifacts because component encapsulation rewrites selectors."
+      }
+    },
+    {
+      "id": "remix",
+      "kind": "framework",
+      "priority": 87,
+      "adapter": "references/environment-adapters.md",
+      "detection": {
+        "claim": "Remix application",
+        "confidence": "framework-registered",
+        "required": [],
+        "supporting": [
+          {"type": "path_any", "patterns": ["remix.config.js", "remix.config.ts", "vite.config.js", "vite.config.ts"]},
+          {"type": "package_dependency_any", "packages": ["@remix-run/dev", "@remix-run/react"]}
+        ],
+        "minimum_supporting": 2
+      },
+      "roots": [
+        {"patterns": ["app/root.js", "app/root.jsx", "app/root.ts", "app/root.tsx", "app/routes/**/*.js", "app/routes/**/*.jsx", "app/routes/**/*.ts", "app/routes/**/*.tsx"], "root_type": "route", "confidence": "framework-registered", "ownership": "owned", "evidence": "Remix root and filesystem route registration"}
+      ],
+      "component_roots": [{"patterns": ["app/components"], "confidence": "static candidate", "ownership": "owned", "evidence": "Common Remix component directory; route imports must prove product use"}],
+      "surface_roots": [],
+      "guidance": {
+        "production_roots": "Use root and route modules, then follow links exports and direct style imports.",
+        "import_resolution": "Follow route modules, Vite aliases, CSS modules and workspace packages.",
+        "token_source_discovery": "Inspect root links, global CSS, CSS modules and JS/TS theme objects.",
+        "ownership": "Separate route code, shared packages and generated public assets.",
+        "mode_resolution": "Trace root document attributes and rendered route links per scheme.",
+        "runtime_verification": "Use rendered routes when links exports or server data select styles."
+      }
+    },
+    {
+      "id": "ember",
+      "kind": "framework",
+      "priority": 86,
+      "adapter": "references/environment-adapters.md",
+      "detection": {
+        "claim": "Ember CLI application",
+        "confidence": "framework-registered",
+        "required": [{"type": "path_any", "patterns": ["ember-cli-build.js", ".ember-cli"]}],
+        "supporting": [{"type": "path_any", "patterns": ["app/app.js", "app/router.js", "app/styles"]}],
+        "minimum_supporting": 1
+      },
+      "extractors": [
+        {"type": "regex_roots", "files": ["ember-cli-build.js"], "regex": "\\bapp\\.import\\(\\s*['\\\"](?P<spec>[^'\\\"]+)['\\\"]", "path_template": "{spec}", "style_only": true, "root_type": "theme", "confidence": "framework-registered", "ownership": "owned", "evidence": "Ember app.import registration: {spec}"}
+      ],
+      "load_paths": ["app/styles"],
+      "roots": [
+        {"patterns": ["app/app.js", "app/styles/app.css", "app/styles/app.scss", "app/styles/app.sass"], "root_type": "common", "confidence": "framework-registered", "ownership": "owned", "evidence": "Ember application and style bundle convention"}
+      ],
+      "component_roots": [{"patterns": ["app/components", "app/templates/components"], "confidence": "framework-registered", "ownership": "owned", "evidence": "Ember resolver-eligible colocated and template component conventions"}],
+      "surface_roots": [{"patterns": ["app/routes/**/*.js", "app/templates/**/*.hbs"], "root_type": "route", "confidence": "static candidate", "scope": "supplemental", "evidence": "Ember route/template surface; inspect lazy assets"}],
+      "guidance": {
+        "production_roots": "Read app styles, ember-cli-build imports, addons and engine registrations.",
+        "import_resolution": "Follow app/addon trees, preprocessors, module imports and engine boundaries.",
+        "token_source_discovery": "Inspect app styles, addon styles, CSS custom properties and theme services.",
+        "ownership": "Separate application, in-repo addons, engines and installed addons.",
+        "mode_resolution": "Trace services, body classes and built assets per theme.",
+        "runtime_verification": "Use the built app when preprocessors or engines alter final styles."
+      }
+    },
+    {
+      "id": "rails-sprockets",
+      "kind": "asset-pipeline",
+      "priority": 80,
+      "adapter": "references/adapters/rails-sprockets.md",
+      "detection": {
+        "claim": "Rails asset pipeline",
+        "confidence": "static candidate",
+        "required": [
+          {"type": "path_any", "patterns": ["Gemfile"]},
+          {"type": "path_any", "patterns": ["app/assets/stylesheets"]}
+        ],
+        "supporting": [],
+        "minimum_supporting": 0
+      },
+      "load_paths": ["app/assets/stylesheets"],
+      "roots": [
+        {"patterns": ["app/assets/stylesheets/application.css", "app/assets/stylesheets/application.scss", "app/assets/stylesheets/application.sass"], "root_type": "common", "confidence": "framework-registered", "ownership": "owned", "evidence": "Rails application stylesheet bundle"},
+        {"patterns": ["app/assets/config/manifest.js"], "root_type": "manifest", "confidence": "framework-registered", "ownership": "owned", "evidence": "Sprockets manifest registration"}
+      ],
+      "component_roots": [{"patterns": ["app/components", "app/views/components", "app/assets/stylesheets/components"], "confidence": "static candidate", "ownership": "owned", "evidence": "Rails component and stylesheet conventions; render/import evidence must prove product use"}],
+      "surface_roots": [{"patterns": ["app/views/**/*.erb", "app/views/**/*.haml", "app/views/**/*.slim"], "root_type": "template", "confidence": "static candidate", "scope": "supplemental", "evidence": "Rails view surface; inspect conditional stylesheet tags"}],
+      "guidance": {
+        "production_roots": "Read Sprockets manifests, application bundles, engine registrations and asset helpers.",
+        "import_resolution": "Resolve Sprockets require/link directives, Sass imports and engine asset paths.",
+        "token_source_discovery": "Inspect app and owned-engine styles plus JS theme configuration.",
+        "ownership": "Separate app assets, owned engines, gems and vendor assets.",
+        "mode_resolution": "Inspect compiled assets or a running development build per scheme.",
+        "runtime_verification": "Use precompiled or development assets when manifest processing changes output."
+      }
+    },
+    {
+      "id": "vite",
+      "kind": "build-tool",
+      "priority": 60,
+      "adapter": "references/adapters/vite.md",
+      "detection": {
+        "claim": "Vite build layer",
+        "confidence": "framework-registered",
+        "required": [{"type": "path_any", "patterns": ["vite.config.js", "vite.config.mjs", "vite.config.ts"]}],
+        "supporting": [{"type": "path_any", "patterns": ["index.html", "src/main.js", "src/main.jsx", "src/main.ts", "src/main.tsx"]}],
+        "minimum_supporting": 0
+      },
+      "roots": [
+        {"patterns": ["index.html"], "root_type": "common", "confidence": "framework-registered", "ownership": "owned", "evidence": "Vite HTML entry"},
+        {"patterns": ["src/main.js", "src/main.jsx", "src/main.ts", "src/main.tsx"], "root_type": "common", "confidence": "static candidate", "ownership": "owned", "evidence": "Conventional Vite application entry; HTML import proves reachability"}
+      ],
+      "component_roots": [{"patterns": ["src/components"], "confidence": "static candidate", "ownership": "owned", "evidence": "Common Vite component convention; framework profile and imports may refine it"}],
+      "surface_roots": [],
+      "guidance": {
+        "production_roots": "Start from HTML and application entries, then compose the UI framework profile.",
+        "import_resolution": "Read configured aliases and follow JS/TS, dynamic, CSS-module and preprocessor imports.",
+        "token_source_discovery": "Inspect imported styles, theme objects and build plugins that generate tokens.",
+        "ownership": "Exclude dist and dependency output; resolve workspace packages to their sources.",
+        "mode_resolution": "Inspect the built application per declared scheme when plugins transform CSS.",
+        "runtime_verification": "Use Vite build or preview output to verify transformed values."
+      }
+    },
+    {
+      "id": "react-scripts",
+      "kind": "build-tool",
+      "priority": 55,
+      "adapter": "references/environment-adapters.md",
+      "detection": {
+        "claim": "Create React App build layer",
+        "confidence": "framework-registered",
+        "required": [{"type": "package_dependency_any", "packages": ["react-scripts"]}],
+        "supporting": [{"type": "path_any", "patterns": ["src/index.js", "src/index.jsx", "src/index.ts", "src/index.tsx"]}],
+        "minimum_supporting": 1
+      },
+      "roots": [{"patterns": ["src/index.js", "src/index.jsx", "src/index.ts", "src/index.tsx"], "root_type": "common", "confidence": "framework-registered", "ownership": "owned", "evidence": "Create React App entry convention"}],
+      "component_roots": [{"patterns": ["src/components"], "confidence": "static candidate", "ownership": "owned", "evidence": "Common React component convention; imports must prove product use"}],
+      "surface_roots": [],
+      "guidance": {
+        "production_roots": "Start from src/index and follow application/component imports.",
+        "import_resolution": "Follow JS/TS and CSS-module imports; record unsupported aliases.",
+        "token_source_discovery": "Inspect global CSS, CSS modules, theme providers and JS/TS theme objects.",
+        "ownership": "Exclude build output and dependencies.",
+        "mode_resolution": "Trace provider state and rendered root classes per scheme.",
+        "runtime_verification": "Use a production build or browser when provider state selects values."
+      }
+    },
+    {
+      "id": "storybook",
+      "kind": "supplemental",
+      "priority": 20,
+      "adapter": "references/adapters/storybook.md",
+      "detection": {
+        "claim": "Storybook supplemental surface",
+        "confidence": "static candidate",
+        "required": [{"type": "path_any", "patterns": [".storybook"]}],
+        "supporting": [],
+        "minimum_supporting": 0
+      },
+      "roots": [],
+      "component_roots": [],
+      "surface_roots": [
+        {"patterns": [".storybook/preview.js", ".storybook/preview.jsx", ".storybook/preview.ts", ".storybook/preview.tsx", ".storybook/manager.js", ".storybook/manager.ts"], "root_type": "demo", "confidence": "framework-registered", "scope": "demo", "evidence": "Storybook preview/manager registration"},
+        {"patterns": ["**/*.stories.js", "**/*.stories.jsx", "**/*.stories.ts", "**/*.stories.tsx"], "root_type": "demo", "confidence": "static candidate", "scope": "demo", "evidence": "Storybook story surface"}
+      ],
+      "guidance": {
+        "production_roots": "Never promote Storybook-only assets to product roots without product reachability.",
+        "import_resolution": "Follow preview and story imports in demo scope only.",
+        "token_source_discovery": "Use stories to observe coverage, not to prove product inclusion.",
+        "ownership": "Label Storybook-only files as demo even when project-authored.",
+        "mode_resolution": "Storybook themes supplement product mode evidence and never replace it.",
+        "runtime_verification": "Use Storybook for component-state checks after product roots are established."
+      }
+    },
+    {
+      "id": "monorepo",
+      "kind": "structure",
+      "priority": 10,
+      "adapter": "references/adapters/monorepo.md",
+      "detection": {
+        "claim": "Workspace or monorepo layout",
+        "confidence": "framework-registered",
+        "required": [],
+        "supporting": [
+          {"type": "path_any", "patterns": ["pnpm-workspace.yaml", "turbo.json", "nx.json", "lerna.json"]},
+          {"type": "package_json_key", "key": "workspaces"}
+        ],
+        "minimum_supporting": 1
+      },
+      "roots": [],
+      "component_roots": [],
+      "surface_roots": [],
+      "guidance": {
+        "production_roots": "Identify application candidates and require a selection when several could change scope.",
+        "import_resolution": "Resolve workspace package names to source directories before calling them external.",
+        "token_source_discovery": "Trace shared token packages from the selected application rather than inventorying every workspace.",
+        "ownership": "Record the selected app and which workspace packages it owns or consumes.",
+        "mode_resolution": "Audit bundle-by-scheme output for the selected app only.",
+        "runtime_verification": "Run or build the selected app, not an arbitrary workspace package."
+      }
+    }
+  ]
+}

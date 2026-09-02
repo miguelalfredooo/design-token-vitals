@@ -24,7 +24,8 @@ CONFIDENCE = {
     "manual review": 0.4,
 }
 
-# Only a value a token already holds can be swapped without a decision.
+# A value match is necessary but not sufficient. Semantic equivalence must
+# be established at the consumer before a replacement can be mechanical.
 AUTOMATABLE_TIERS = {"redundant"}
 
 HEX3 = re.compile(r"^#([0-9a-f])([0-9a-f])([0-9a-f])$", re.I)
@@ -67,19 +68,23 @@ def confidence_weight(confidence):
     return CONFIDENCE.get(confidence, CONFIDENCE["manual review"])
 
 
-def is_automatable(tier, confidence):
+def is_automatable(tier, confidence, semantic_role_verified=False):
     """Safe to apply without a person deciding what was intended."""
-    return tier in AUTOMATABLE_TIERS and confidence != "manual review"
+    return (
+        tier in AUTOMATABLE_TIERS
+        and semantic_role_verified is True
+        and confidence != "manual review"
+    )
 
 
-def effort(tier, confidence, files):
+def effort(tier, confidence, files, semantic_role_verified=False):
     """S, M or L — derived from what the run already holds, never hours.
 
     S: safe to automate and under ten files. M: safe to automate across
     more, or a single file that needs a person's call. L: needs a decision
     before any edit — drift to reconcile, or a token to design.
     """
-    auto = is_automatable(tier, confidence)
+    auto = is_automatable(tier, confidence, semantic_role_verified)
     f = int(files or 0)
     if auto and f < 10:
         return "S"

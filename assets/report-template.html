@@ -7,9 +7,9 @@
   each region below with real findings. Everything else on this page is
   static chrome and ships unchanged in every report.
 
-  Eighteen regions are marked with a pair of HTML comments naming a region,
+  Regions are marked with a pair of HTML comments naming a region,
   for example a "runhead-meta" region wraps the run metadata list. The
-  eighteen region names are: doc-title, runhead-tag, runhead-meta,
+  region names include: doc-title, runhead-tag, runhead-meta,
   vitals-grid, next-steps, inventory-color, inventory-type, inventory-space,
   families, leak-redundant, leak-near-miss, leak-uncovered, modes-coverage,
   modes-gaps, orphans, enforcement, measurement, and footer-meta. This file
@@ -134,6 +134,7 @@
     --warn: #895F10;
     --warn-bg: #FAF1DF;
     --block: #5B5B7A;
+    --block-line: #C86D84;
     --block-bg: #EEEEF3;
     --na: #646776;
     --na-bg: #F2F3F5;
@@ -158,7 +159,7 @@
       --pass: #78C08B;  --pass-bg: #1B2A20;
       --fail: #E58A78;  --fail-bg: #2E1D1A;
       --warn: #D9AE5E;  --warn-bg: #2C2416;
-      --block: #A0A2C0; --block-bg: #22232F;
+      --block: #A0A2C0; --block-line: #C86D84; --block-bg: #22232F;
       --na: #858A9B;    --na-bg: #1C1E27;
     }
   }
@@ -177,7 +178,7 @@
     --pass: #78C08B;  --pass-bg: #1B2A20;
     --fail: #E58A78;  --fail-bg: #2E1D1A;
     --warn: #D9AE5E;  --warn-bg: #2C2416;
-    --block: #A0A2C0; --block-bg: #22232F;
+    --block: #A0A2C0; --block-line: #C86D84; --block-bg: #22232F;
     --na: #858A9B;    --na-bg: #1C1E27;
   }
 
@@ -248,7 +249,7 @@
   .vital[data-grade="attention"]::before { background: var(--warn); }
   .vital[data-grade="not_applicable"]::before   { background: var(--line-strong); }
   .vital[data-grade="blocked"]::before {
-    background: repeating-linear-gradient(135deg, var(--block) 0 3px, transparent 3px 6px);
+    background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 6px);
   }
   .vital h3 { margin: 0 0 7px; font-size: 14.5px; font-weight: 550; letter-spacing: -0.005em; }
   .vital p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
@@ -271,7 +272,7 @@
   .grade[data-g="not_applicable"]::before { background: transparent; border: 1px dashed var(--na); }
   .grade[data-g="blocked"] { color: var(--block); background: var(--block-bg); }
   .grade[data-g="blocked"]::before {
-    background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px);
+    background: repeating-linear-gradient(135deg, var(--block-line) 0 2px, transparent 2px 4px);
   }
 
   /* ---------- legend ---------- */
@@ -324,7 +325,7 @@
   .pip[data-s="fail"]  { background: var(--fail); }
   .pip[data-s="not_applicable"]   { background: transparent; border: 1px dashed var(--line-strong); }
   .pip[data-s="blocked"] {
-    background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px);
+    background: repeating-linear-gradient(135deg, var(--block-line) 0 2px, transparent 2px 4px);
   }
 
   code, .path { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
@@ -543,11 +544,10 @@
   /* ---------- print ---------- */
 
   /* The docs say this file gets attached to CI and forwarded by email.
-     Definitions that live in hover tooltips do not print, and neither
-     does anything behind a scroll container. CSS cannot open a closed
-     <details> — its content is hidden inside the element's own shadow
-     tree — so those stay closed on paper; the summary line still prints
-     with its count. */
+     Definitions that live in hover tooltips must print, and neither panels
+     nor disclosure tails may disappear. CSS cannot open a closed <details>,
+     so the fixed report controller opens every disclosure for beforeprint
+     and restores the reader's exact open/closed state afterprint. */
   @media print {
     body { background: #fff; color: #000; }
     .contents, .ihelp .info { display: none; }
@@ -565,6 +565,8 @@
     section + section { break-before: auto; }
     h2 { break-after: avoid; }
     details { border: 1px solid #bbb; }
+    .token-tabs__list { display: none !important; }
+    .token-tabs__panel { display: block !important; padding-top: 12px; }
     summary::before { display: none; }
     a { color: inherit; text-decoration: none; }
     .sw i, .ramp i, .out i, .pair i, .cell, .c, .pip, .track i, .gbar i, .bar-row i {
@@ -633,6 +635,32 @@
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 26px;
   }
+
+  .token-tabs { margin-top: 22px; }
+  .token-tabs__list {
+    position: sticky; top: 0; z-index: 4;
+    display: none; gap: 4px; padding: 6px;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(10px);
+  }
+  .token-tabs--ready .token-tabs__list { display: flex; }
+  .token-tabs__tab {
+    flex: 1 1 0; min-width: 0; padding: 9px 12px;
+    border: 1px solid transparent; border-radius: 4px;
+    background: transparent; color: var(--ink-soft);
+    font: 600 12px/1.2 var(--mono); cursor: pointer;
+  }
+  .token-tabs__tab:hover { color: var(--ink); background: var(--surface-sunk); }
+  .token-tabs__tab[aria-selected="true"] {
+    border-color: var(--line); background: var(--surface); color: var(--accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+  .token-tabs__tab:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .token-tabs__panel { padding-top: 18px; }
+  .token-tabs--ready .token-tabs__panel[hidden] { display: none; }
 
   .swatches {
     display: grid;
@@ -783,8 +811,8 @@
 
   /* One strip a reader takes in without reading. Cards in the shadcn shape
      — title, value, a mark — with segmented bars for distributions and a
-     ring for a share. Every mark carries its number. Inline SVG and CSS
-     only: the report ships no script, and rule 9 checks. */
+     ring for a share. Every mark carries its number. Rule 9 permits only
+     the skill-owned inventory tab controller. */
   .glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 0 0 36px; }
   .gcard { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
   .gcard .gt { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-mute); display: flex; justify-content: space-between; gap: 8px; }
@@ -796,8 +824,9 @@
   .seg i { display: block; height: 100%; }
   .seg i[data-g="pass"], .seg i[data-k="confirmed"], .seg i[data-t="auto"]  { background: var(--pass); }
   .seg i[data-g="attention"], .seg i[data-t="near-miss"] { background: var(--warn); }
+  .seg i[data-t="candidate"] { background: var(--warn); }
   .seg i[data-g="fail"], .seg i[data-t="redundant"] { background: var(--fail); }
-  .seg i[data-g="blocked"], .seg i[data-k="blocked"] { background: repeating-linear-gradient(135deg, var(--block) 0 3px, transparent 3px 6px), var(--surface-sunk); }
+  .seg i[data-g="blocked"], .seg i[data-k="blocked"] { background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 6px), var(--surface-sunk); }
   .seg i[data-g="not_applicable"], .seg i[data-k="unmeasured"], .seg i[data-t="uncovered"] { background: var(--line-strong); }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
   .legend b { font-weight: 600; color: var(--ink-soft); }
@@ -854,7 +883,7 @@
     font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums;
   }
   .split .ok    { background: var(--pass-bg); color: var(--pass); }
-  .split .block { background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px),
+  .split .block { background: repeating-linear-gradient(135deg, var(--block-line) 0 2px, transparent 2px 4px),
                               var(--surface-sunk); color: var(--ink-soft); }
   .split .unk   { background: var(--surface-sunk); color: var(--ink-mute); }
 
@@ -897,7 +926,7 @@
   .cm .c[data-s="measured"]       { background: var(--pass-bg); color: var(--pass); }
   .cm .c[data-s="unmeasured"]     { background: var(--surface-sunk); color: var(--ink-mute); }
   .cm .c[data-s="blocked"]        { color: var(--ink-soft);
-    background: repeating-linear-gradient(135deg, var(--block) 0 3px, transparent 3px 6px); }
+    background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 6px); }
   .cm .c[data-s="not_applicable"] { color: var(--na); }
   .cm th.fam { text-align: center; font-size: 9.5px; }
   .cm td:first-child { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
@@ -993,7 +1022,7 @@
     <div class="eyebrow">At a glance</div>
     <h2>The whole run in one strip</h2>
     <p class="lede">
-      Six marks you can read without reading: where the system stands, how the eight grades split, how much of this is confirmed against blocked or unmeasured, how leakage divides across its three tiers, how much of the fix queue a machine can do, and what was counted. Every mark carries its number. Start here, then read down for the evidence.
+      Six marks you can read without reading: where the system stands, how the eight grades split, how much of this is confirmed against blocked or unmeasured, how leakage divides across its four evidence tiers, how much of the fix queue has verified semantic equivalence, and what was counted. Every mark carries its number. Start here, then read down for the evidence.
     </p>
     <!-- SLOT:at-a-glance -->
     <div class="glance">
@@ -1022,7 +1051,7 @@
         <div class="gt"><span>Fix queue</span><span>7 entries</span></div>
         <div class="ring">
           <svg viewBox="0 0 52 52" aria-hidden="true"><circle class="track" cx="26" cy="26" r="20"></circle><circle class="fill" cx="26" cy="26" r="20" stroke-dasharray="89.8 125.7"></circle></svg>
-          <div><div class="rv">5<small> / 7</small></div><div class="rd">safe to automate</div></div>
+          <div><div class="rv">5<small> / 7</small></div><div class="rd">semantically verified</div></div>
         </div>
       </div>
       <div class="gcard">
@@ -1045,7 +1074,7 @@
     <div class="exec">
       <div>
         <dt>Highest impact</dt>
-        <dd><b>One brand color is hardcoded past the token that holds it.</b> <span class="lit">#0F8A83</span> appears where <span class="tok">--brand</span> already carries the same value.</dd>
+        <dd><b>One brand color is hardcoded past a semantically equivalent token.</b> <span class="lit">#0F8A83</span> appears where evidence proves <span class="tok">--brand</span> carries the same design role.</dd>
       </div>
       <div>
         <dt>Affected</dt>
@@ -1053,7 +1082,7 @@
       </div>
       <div>
         <dt>Fix first</dt>
-        <dd>Swap <span class="lit">#0F8A83</span> for <span class="tok">--brand</span> — mechanical, no decision needed.<br><span class="path">components/Link.tsx:11</span></dd>
+        <dd>Swap <span class="lit">#0F8A83</span> for <span class="tok">--brand</span> — its value and semantic role are both verified.<br><span class="path">components/Link.tsx:11</span></dd>
       </div>
       <div>
         <dt>Confidence of these results</dt>
@@ -1512,7 +1541,7 @@
       </table>
     </div>
     <div class="note stack-16">
-      <b>Five of these seven are safe to automate.</b> Each is a value one of your tokens already holds, so the swap carries no decision. The two marked as needing a person are drift — someone has to decide whether the near-miss was deliberate before it gets reconciled.
+      <b>Five of these seven have verified semantic equivalence and can be automated.</b> A matching value alone is not enough. The other two need a person to decide whether the apparent match or near-miss expresses the same design role.
     </div>
     <!-- /SLOT:fix-queue -->
   </section>
@@ -1539,6 +1568,33 @@
       </table>
     </div>
     <!-- /SLOT:groups -->
+  </section>
+
+  <section id="component-usage">
+    <div class="eyebrow">Token adoption</div>
+    <h2>The 20 components using the most tokens</h2>
+    <p class="lede">
+      Ranked by confirmed token-reference occurrences, then distinct tokens. High usage is context, not a defect: use the token and family detail to see whether a component is a healthy system anchor or a surface worth investigating.
+    </p>
+    <!-- SLOT:component-usage -->
+    <div class="note">
+      <b>Measurement boundary:</b> CSS custom properties and Sass variables are measured. Framework-generated utilities remain unmeasured until their adapter resolves them to canonical concepts.
+    </div>
+    <div class="tbl-scroll stack-16">
+      <table>
+        <thead>
+          <tr><th class="num">Rank</th><th>Component or surface</th><th class="num">References</th><th class="num">Tokens</th><th>Families</th><th>Most-used tokens</th></tr>
+        </thead>
+        <tbody>
+          <tr data-component="component0001"><td class="num">1</td><td><code>app / button</code><br><span class="path">src/components/button.css</span></td><td class="num">42</td><td class="num">8</td><td>color 20 · spacing 12 · typography 10</td><td><span class="tok">--surface-raised</span> · <span class="tok">--space-sm</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <details class="stack-16">
+      <summary>Every token and evidence location for the Top 20</summary>
+      <div class="details-body"><p>Replace this sample with one disclosure per ranked component, including every token, family, count and file:line location.</p></div>
+    </details>
+    <!-- /SLOT:component-usage -->
   </section>
 
   <section id="lineage">
@@ -1587,6 +1643,14 @@
       Color is shown as color, the type scale is set at its real sizes, and spacing is drawn to width. Seeing your system the way it was designed makes most problems obvious before you read a single number.
     </p>
 
+    <div class="token-tabs" data-token-inventory-tabs>
+      <div class="token-tabs__list" role="tablist" aria-label="Token inventory families">
+        <button class="token-tabs__tab" type="button" role="tab" id="inventory-tab-color" aria-selected="true" aria-controls="inventory-panel-color" tabindex="0">Color</button>
+        <button class="token-tabs__tab" type="button" role="tab" id="inventory-tab-typography" aria-selected="false" aria-controls="inventory-panel-typography" tabindex="-1">Typography</button>
+        <button class="token-tabs__tab" type="button" role="tab" id="inventory-tab-foundation" aria-selected="false" aria-controls="inventory-panel-foundation" tabindex="-1">Foundation</button>
+      </div>
+
+      <div class="token-tabs__panel" role="tabpanel" id="inventory-panel-color" aria-labelledby="inventory-tab-color">
     <!-- SLOT:inventory-color -->
     <div class="panel" data-tier="full">
       <h3>Semantic color</h3>
@@ -1823,26 +1887,24 @@
       </div>
     </div>
     <!-- /SLOT:inventory-color -->
+      </div>
 
-    <div class="inv-grid stack-26">
+      <div class="token-tabs__panel" role="tabpanel" id="inventory-panel-typography" aria-labelledby="inventory-tab-typography">
       <!-- SLOT:inventory-type -->
       <div class="panel">
         <h3>Type scale</h3>
         <p class="sub">6 steps · 1.25 ratio · one step off</p>
         <div class="typescale">
-          <div class="ts-row"><span class="tk">--text-xs / 12</span><span class="spec" style="font-size:12px">Grotesque</span></div>
-          <div class="ts-row"><span class="tk">--text-sm / 14</span><span class="spec" style="font-size:14px">Grotesque</span></div>
-          <div class="ts-row"><span class="tk">--text-base / 16</span><span class="spec" style="font-size:16px">Grotesque</span></div>
-          <div class="ts-row"><span class="tk">--text-lg / 20</span><span class="spec" style="font-size:20px">Grotesque</span></div>
-          <div class="ts-row"><span class="tk">--text-xl / 26</span><span class="spec" style="font-size:26px;color:var(--warn)">Grotesque</span></div>
-          <div class="ts-row"><span class="tk">--text-2xl / 32</span><span class="spec" style="font-size:32px">Grotesque</span></div>
+          <div class="ts-row"><span class="tk">font-size token</span><span class="spec" style="font-size:16px">Detected font family</span></div>
         </div>
         <div class="note stack-16">
-          <b>Step 5 does not fit the ratio.</b> A 1.25 scale from 20 should give 25, but this one is 26. Someone hand-tuned a step and the rest of the scale was never recalculated to match.
+          <b>Generated from repository evidence.</b> The completed report replaces this neutral placeholder with reachable font-family and font-size token values.
         </div>
       </div>
       <!-- /SLOT:inventory-type -->
+      </div>
 
+      <div class="token-tabs__panel" role="tabpanel" id="inventory-panel-foundation" aria-labelledby="inventory-tab-foundation">
       <!-- SLOT:inventory-space -->
       <div class="panel">
         <h3>Spacing scale</h3>
@@ -1862,6 +1924,7 @@
         </div>
       </div>
       <!-- /SLOT:inventory-space -->
+      </div>
     </div>
 
     <!-- SLOT:family-coverage -->
@@ -1943,7 +2006,7 @@
     <div class="eyebrow">Leakage</div>
     <h2>Hardcoded values, and whether a token already existed</h2>
     <p class="lede">
-      Not every hardcoded value is a mistake — a 1px hairline rarely needs a token. What matters is when your system already had an answer and the code went around it. These are sorted into three groups, because each one needs a different fix from a different person.
+      Not every hardcoded value is a mistake — a 1px hairline rarely needs a token. What matters is whether the system had the same semantic answer, only the same raw value, a nearby answer, or no answer. These are sorted into four groups because each requires different evidence and ownership.
     </p>
 
     <!-- SLOT:leak-ranked -->
@@ -2170,10 +2233,11 @@
           <div class="tbl-scroll">
             <table>
               <thead>
-              <tr><th>Tier<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is one of the three leakage groups, with its totals and who is best placed to fix it.</span></span></th><th class="num">Findings<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">How many distinct values fall into this group.</span></span></th><th class="num">Occurrences<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">How many times those values appear in total. The gap between this and Findings tells you how concentrated the problem is.</span></span></th><th class="num">Median blast<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The typical number of files a single finding in this group touches.</span></span></th><th>Owner of the fix<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Who can realistically resolve this group: whoever writes components, the design team, or whoever owns the token system.</span></span></th></tr>
+              <tr><th>Tier<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is one of the four leakage groups, with its totals and who is best placed to fix it.</span></span></th><th class="num">Findings<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">How many distinct values fall into this group.</span></span></th><th class="num">Occurrences<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">How many times those values appear in total. The gap between this and Findings tells you how concentrated the problem is.</span></span></th><th class="num">Median blast<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The typical number of files a single finding in this group touches.</span></span></th><th>Owner of the fix<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Who can realistically resolve this group: whoever writes components, the design team, or whoever owns the token system.</span></span></th></tr>
             </thead>
               <tbody>
-                <tr><td>Redundant</td><td class="num">412</td><td class="num">1,988</td><td class="num">3</td><td>Component author — mechanical</td></tr>
+                <tr><td>Redundant</td><td class="num">412</td><td class="num">1,988</td><td class="num">3</td><td>Component author — semantic equivalence verified</td></tr>
+                <tr><td>Exact-value candidate</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td>Component and system owners — verify intent</td></tr>
                 <tr><td>Near miss</td><td class="num">87</td><td class="num">304</td><td class="num">2</td><td>Design — reconcile or accept</td></tr>
                 <tr><td>Uncovered</td><td class="num">1,146</td><td class="num">3,517</td><td class="num">6</td><td>System — add the token</td></tr>
               </tbody>
@@ -2190,12 +2254,12 @@
         <div class="tier-head">
           <h3>Redundant</h3>
           <span class="count">18</span>
-          <p>A token already holds this exact value, so swapping it in is safe and needs no discussion.</p>
+          <p>A token holds this exact value and evidence proves the same semantic role, so the replacement is mechanical.</p>
         </div>
         <div class="tbl-scroll">
           <table>
             <thead>
-              <tr><th>Literal<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is a hardcoded value that one of your tokens already holds. Swapping it in is a safe, mechanical change.</span></span></th><th>Should be<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The token that already holds this exact value — what the code should reference instead.</span></span></th><th>Category<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Which part of the system this value belongs to. Color matters most, because it is what breaks theming.</span></span></th><th>Location<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The first place this appears. Every occurrence of this value is listed in the JSON working set too.</span></span></th></tr>
+              <tr><th>Literal<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Each row is a hardcoded value whose value and semantic role match a token.</span></span></th><th>Should be<span class="ihelp"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The token proven to express the same decision at this consumer.</span></span></th><th>Category<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">Which part of the system this value belongs to. Color matters most, because it is what breaks theming.</span></span></th><th>Location<span class="ihelp ihelp--end"><button type="button" class="info" aria-label="What this column means"></button><span class="tip" role="tooltip">The first place this appears. Every occurrence of this value is listed in the JSON working set too.</span></span></th></tr>
             </thead>
             <tbody>
               <tr>
@@ -2220,6 +2284,19 @@
           </table>
         </div>
         <!-- /SLOT:leak-redundant -->
+      </div>
+
+      <div class="tier">
+        <!-- SLOT:leak-exact-value-candidates -->
+        <div class="tier-head">
+          <h3>Exact-value candidates</h3>
+          <span class="count">0</span>
+          <p>These literals equal one or more token values, but their semantic role is not yet proven. Keep them out of automated replacement queues until a person or repository rule verifies intent.</p>
+        </div>
+        <div class="note">
+          No exact-value candidates in this sample. In a real run, render every candidate with its possible tokens, properties, locations, and the evidence still needed.
+        </div>
+        <!-- /SLOT:leak-exact-value-candidates -->
       </div>
 
       <div class="tier">
@@ -2707,6 +2784,21 @@
     </p>
 
     <!-- SLOT:measurement -->
+    <!-- SLOT:discovery-capabilities -->
+    <div class="panel">
+      <h3>Discovery capabilities</h3>
+      <p class="sub">what this run proved, measured, or could not inspect</p>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Capability</th><th>State</th><th>Evidence</th><th>Limitation</th></tr></thead>
+          <tbody>
+            <tr><td>production roots</td><td>verified</td><td><code>app/layout.tsx:1</code></td><td>none</td></tr>
+            <tr><td>runtime verification</td><td>unmeasured</td><td>—</td><td>no preview was supplied</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <!-- /SLOT:discovery-capabilities -->
     <div class="grid2">
       <div class="panel">
         <h3>Token sources</h3>
@@ -2846,5 +2938,7 @@
   </footer>
 
 </div>
+<!-- SLOT:inventory-tabs-script -->
+<!-- /SLOT:inventory-tabs-script -->
 </body>
 </html>

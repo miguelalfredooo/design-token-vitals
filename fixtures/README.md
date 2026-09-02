@@ -4,7 +4,7 @@ A small codebase with a known token layer, and `expected.json` recording
 what a correct run must find. Every number in that file is derivable from
 these files by hand.
 
-The skill ships 122 tests for its tools and, before this, none for itself.
+The skill ships 344 tests for its tools and, before this, none for itself.
 Every rule in `references/` was prose that nothing verified. This is where a
 change to those rules gets checked rather than reasoned about.
 

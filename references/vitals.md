@@ -86,11 +86,12 @@ instance is graded `blocked`, never `fail`.
 to express the same thing.
 
 **Signal:** see `references/leakage.md` for how findings are classified —
-redundant (an exact match to an existing token), near miss (close to a
-token without matching it), and uncovered (no token exists yet).
+redundant (an exact match with verified semantic equivalence), exact-value
+candidate (same value, unresolved role), near miss (close to a token without
+matching it), and uncovered (no token exists yet).
 
-**Grading:** driven by the redundant tier, since that is the count you can
-act on immediately: `pass` at zero redundant findings; `attention` from 1
+**Grading:** driven by the redundant tier, since that is the count whose
+value and semantic role are both proven: `pass` at zero redundant findings; `attention` from 1
 to 10 inclusive; `fail` at 11 or more. **A finding is one distinct
 literal-to-token pair** — `8px` to `--space-2` is one finding whether it
 appears twice or seventy times. Occurrences and files are its blast

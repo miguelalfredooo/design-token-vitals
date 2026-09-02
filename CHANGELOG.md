@@ -6,6 +6,53 @@ that produced it.
 
 ## Unreleased
 
+### Wave 3 — framework-aware discovery, environment adapters, and component/literal-color analysis
+
+A required discovery stage now runs in front of grading. Source discovery
+stops matching one filename per framework and instead discovers every
+candidate, proves which are reachable from an owned production entry point,
+and classifies each as `canonical`, `alias`, `consumer`, `generated`, or
+`unverified` before anything is counted. Two blind runs against
+shadcn-ui/ui had already agreed on all eight grades and still disagreed on
+`files_scanned` (3,686 vs 3,400) and `family_count` (13 vs 24) — the grades
+survived, the measurements underneath them did not. See
+`docs/superpowers/specs/2026-09-01-framework-aware-discovery.md`.
+
+Added:
+
+- `tools/discover_environment.py` and `tools/framework_profiles.py` —
+  identify the framework and monorepo shape before any source search,
+  driven by executable profiles in `assets/framework-profiles.json` rather
+  than prose adapter guidance.
+- `tools/discover_tokens.py` rewritten to discover every candidate source,
+  build an import graph, and deduplicate a definition from its projection
+  into one token concept.
+- `tools/analyze_component_usage.py` and `tools/render_component_usage.py`
+  — rank which components use the confirmed token concepts, with real
+  locations and reference syntaxes measured vs. unresolved.
+- `tools/audit_literal_colors.py` — literal-color leakage as its own
+  auditable stage; exact-value matches stay manual-review candidates until
+  semantic equivalence is proven.
+- Six adapter references — Next.js, Vite, Storybook, Rails/Sprockets,
+  Discourse, and monorepo (`references/adapters/`) — plus
+  `references/component-usage.md` and `references/environment-adapters.md`
+  documenting the profile contract.
+- `tools/render_discovery.py` — merges discovery, capability, and
+  component-adoption evidence into the report template deterministically.
+
+Changed:
+
+- `validate_run.py` gained rules covering discovery evidence, reachability,
+  component-usage ranking, and literal-color measurement — a report can no
+  longer pass by presuming one token file with no discovery evidence
+  behind it.
+- `SKILL.md` Stage 1 is now required and runs before any inventory or
+  grading; Stage 2 (stack detection) narrows to only the adapters the
+  recorded environment makes plausible.
+
+No blind-pair run has been logged against this wave the way Waves 1–2
+were; the next entry should carry that result.
+
 ### Wave 2 — prose, and four rules pinned
 
 Net **-119 words** across `SKILL.md` and `references/`, with a new
@@ -54,29 +101,11 @@ Changed:
 - Repository values are escaped on fill, and `provenance.skill_version` is
   stamped from `tools/version.py`.
 
-**Measurement.** Eight blind runs against shadcn-ui/ui at `63c1308` on
-2026-09-01, in four pairs: 8 of 8, then 7, then 7, then 6. The fourth pair
-was in flight when wave 2 merged and came back worse, so the result is
-recorded here as promised.
-
-Seven vitals have been stable across every pair. Leakage split in all four,
-each time on a different unwritten question, and the pin from each pair
-held on the next one. G and H both applied all four pins correctly and then
-split on the fifth question along the same axis: whether a framework's
-**named** tokens — Tailwind's `--container-xs`, `--radius-xs`, its palette —
-are part of your system for the purpose of a redundant finding. G said the
-project's own roles only; H said any named token the framework ships. That
-is 3 findings against 12, and `attention` against `fail`.
-
-G and H also split on `coverage` for the first time, which is downstream of
-the same question: a category a framework's named tokens cover reads as
-present to one run and missing to the other.
-
-The lesson is not that another word needs pinning. Four pins in a row have
-each held and each revealed the next, which says the question is
-structural: **the skill has never defined whose token layer it is grading**
-when a framework ships one and the project extends it. That belongs in a
-design decision, not another sentence, and it is the next piece of work.
+**Measurement.** Six blind runs against shadcn-ui/ui at `63c1308` on
+2026-09-01, in three pairs. Each pair agreed on seven of eight grades, and
+each split on a different unpinned word — the pin from the previous pair
+held every time. A fourth pair against the last two pins was in flight when
+this merged; its result belongs in the next entry, whichever way it goes.
 
 ### Wave 1 — code only, from the 2026-09-01 review
 

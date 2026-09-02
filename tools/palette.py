@@ -17,6 +17,7 @@ import re
 import sys
 
 AA = 4.5
+GRAPHIC_AA = 3.0
 
 # foreground token -> the backgrounds it must be legible on
 PAIRS = {
@@ -24,12 +25,20 @@ PAIRS = {
     "--warn": ["--warn-bg"],
     "--fail": ["--fail-bg"],
     "--na": ["--na-bg"],
-    "--block": ["--surface"],
+    "--block": ["--block-bg"],
     "--ink": ["--ground", "--surface"],
     "--ink-soft": ["--ground", "--surface"],
     "--ink-mute": ["--ground", "--surface"],
     "--accent": ["--ground", "--surface"],
 }
+
+GRAPHIC_PAIRS = {
+    "--block-line": ["--ground", "--surface", "--surface-sunk", "--block-bg"],
+}
+
+
+def minimum_contrast(foreground):
+    return GRAPHIC_AA if foreground in GRAPHIC_PAIRS else AA
 
 HEX = re.compile(r"(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{6})")
 BLOCK = re.compile(r"(:root(?:[^{]*)\{)(.*?)\n  \}", re.S)
@@ -60,7 +69,9 @@ def check(html):
     """Every (theme, fg, bg, ratio) below AA, plus the full table."""
     table, failures = [], []
     for label, tokens in theme_blocks(html):
-        for fg, bgs in PAIRS.items():
+        pairs = dict(PAIRS)
+        pairs.update(GRAPHIC_PAIRS)
+        for fg, bgs in pairs.items():
             if fg not in tokens:
                 continue
             for bg in bgs:
@@ -69,7 +80,7 @@ def check(html):
                 ratio = contrast(tokens[fg], tokens[bg])
                 row = (label, fg, tokens[fg], bg, tokens[bg], ratio)
                 table.append(row)
-                if ratio < AA:
+                if ratio < minimum_contrast(fg):
                     failures.append(row)
     return table, failures
 
@@ -80,12 +91,13 @@ def main(argv):
         html = fh.read()
     table, failures = check(html)
     for label, fg, fh_, bg, bh, ratio in table:
-        mark = "  ok " if ratio >= AA else " LOW "
+        mark = "  ok " if ratio >= minimum_contrast(fg) else " LOW "
         print("%s %-34s %-10s %s on %-10s %s  %.2f:1" % (mark, label[:34], fg, fh_, bg, bh, ratio))
     if failures:
         print("\n%d pair(s) below %.1f:1. The report grades others on this." % (len(failures), AA))
         return 1
-    print("\npalette: every pair clears %.1f:1 in every theme" % AA)
+    print("\npalette: text clears %.1f:1 and status graphics clear %.1f:1 in every theme" % (
+        AA, GRAPHIC_AA))
     return 0
 
 

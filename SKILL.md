@@ -13,11 +13,66 @@ allowed-tools: Read, Grep, Glob, Bash, Write
 
 You are grading a codebase's design token layer against eight fixed vitals
 and reporting what you found — with evidence, never an average. Work through
-the seven stages below in order.
+the eight stages below in order.
 
 ## Stage 1 — Framework and token-source discovery
 
-**Required, and it runs before any inventory or grading.** Do the six jobs
+**Required, and it runs before any inventory or grading.** Start with:
+
+```
+python3 tools/discover_environment.py <root> [--owned <glob>]... [--app <workspace-app>] [--profile <id>]... [--profile-file <profiles.json>]... --json .token-vitals/discovery.json
+```
+
+Then discover reachable sources and collapse projections with:
+
+```
+python3 tools/discover_tokens.py <root> --discovery .token-vitals/discovery.json [--source <confirmed-source>]... --update-discovery --json .token-vitals/tokens.json
+```
+
+Then measure which component surfaces use those confirmed concepts:
+
+```
+python3 tools/analyze_component_usage.py <root> --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --json .token-vitals/components.json
+```
+
+Use the framework-neutral component definition and measurement boundaries in
+`references/component-usage.md`. Framework adapters may add resolvers for
+utility classes or runtime styling, but may not replace the universal output
+shape or silently count an unresolved class as a token reference. Adoption
+analysis starts from proven production reachability; ownership alone never
+admits a file. Adapters may publish evidenced `component_roots` for framework
+component trees that the style import graph cannot see.
+
+For color leakage, run:
+
+```
+python3 tools/audit_literal_colors.py <root> --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --json .token-vitals/literal-colors.json
+```
+
+Its exact-value
+matches remain manual-review candidates until semantic equivalence is
+proven; value equality alone never authorizes a replacement.
+
+Typography and brand color are identity-critical outputs, not decorative
+examples. Token discovery must produce `identity.typography` and
+`identity.brand_colors` with a state, confidence, and real evidence. Select a
+font only from the strongest concrete reachable `font-family` token; if two
+equally strong declarations disagree, mark identity `blocked` and do not
+render an inherited or substitute specimen. A verified specimen must embed a
+reachable repository-owned WOFF2, WOFF, TTF, or OTF asset whose format, magic
+bytes, size, and hash were checked; otherwise keep the family evidence visible
+but mark the specimen `blocked`. Select brand colors only when a
+concrete reachable value has an explicit `brand` token name or lives under a
+source heading that explicitly says brand or visual identity. Never infer a
+brand palette from broad names such as `primary`, `secondary`, or `accent`
+alone. Infer audited-product namespaces from repository, package, and repeated
+owned-package evidence; use that recorded evidence to exclude known third-party
+service namespaces without suppressing the audited product's own name. Keep
+every color tied to the exact definition, site, and heading that qualified it.
+If one brand token has multiple concrete values without explicit mode
+provenance, render it as a blocked conflict rather than choosing one.
+
+Then do the six jobs
 in `references/discovery.md`, in order — detect the framework, discover
 every candidate source, build the import graph with `tools/import_graph.py`
 and prove reachability, classify every source, deduplicate projections and
@@ -25,15 +80,29 @@ derive the scope, discover modes and whether they resolve. The rule under
 all six: discover sources from evidence, and prove they ship before grading
 them.
 
-Record the whole `discovery` block of `assets/capability-map.yml` before
-moving on. Where the scope is ambiguous, say so to the reader rather than
-guessing; where no framework matches, use `references/adapters/generic.md`.
+The tool returns capability facts in one universal shape. Executable,
+composable profiles in `assets/framework-profiles.json` teach it where to
+find evidence. Profile-declared extractor hooks read config arrays, build
+JSON, and registration calls, so framework registration is executable rather
+than prose guidance. Static roots that cannot be reached stay visible as
+`root_candidates`; component locations outside owned scope stay visible as
+`component_root_candidates`. Adapters explain how to investigate what each
+profile finds.
+Use `references/environment-adapters.md` for the profile contract and read
+only the adapters listed in the discovery output. When a monorepo has
+several plausible applications, stop at the engine's blocked selection and
+ask which `--app` to audit. Record the whole `discovery` block of
+`assets/capability-map.yml`; use `references/adapters/generic.md` when no
+profile matches.
 
 ## Stage 2 — Detect the stack
 
 Match the repository against `references/adapters/css-vars.md`,
 `references/adapters/tailwind.md`, `references/adapters/scss.md`, and
-`references/adapters/dtcg.md`, using each file's own Detection section. An adapter says where to look; **no adapter names a token file**, and Stage
+`references/adapters/dtcg.md`, plus every active framework profile and
+adapter returned by Stage 1. Built-in profiles cover Discourse,
+Rails/Sprockets, Next.js, Vite, SvelteKit, Nuxt, Astro, Angular, Remix,
+Ember, React Scripts, Storybook, and monorepos. An adapter says where to look; **no adapter names a token file**, and Stage
 1 decides which sources are real.
 More than one adapter can apply at once — Tailwind sits on top of custom
 properties in most repositories, and both should run. The environment you
@@ -70,8 +139,11 @@ Grade each vital in `references/vitals.md` — tier-integrity, leakage,
 coverage, mode-completeness, naming-coherence, single-source, orphans,
 enforcement — against the stack and declarations from Stages 2 and 3. For
 leakage, classify every hardcoded value through the cascade in
-`references/leakage.md`: `redundant`, `near-miss`, then `uncovered`, in that
-order, and rank findings by the six-key total order there.
+`references/leakage.md`: `redundant`, `exact-value candidate`, `near-miss`,
+then `uncovered`, in that order, and rank findings by the six-key total
+order there. Equal values alone prove only an `exact-value candidate`;
+`redundant` additionally requires evidence that the token and literal carry
+the same semantic role at that consumer.
 
 For `coverage`, when the active adapter says a category can come from a
 framework's own default theme, checking that framework's installed version
@@ -121,7 +193,7 @@ diverged, and `rendering.forms` is where that shows up.
 
 ## Stage 5b — Rank, queue, and trace
 
-Before writing anything, build the four layers that sit above the raw
+Before writing anything, build the five layers that sit above the raw
 findings. All of them go into both the HTML and the JSON.
 
 - **Score every finding** with `tools/findings.py`: occurrences, affected
@@ -129,12 +201,21 @@ findings. All of them go into both the HTML and the JSON.
   confidence in the fix. The formula is `(n + 2f + 3b) x c` and it is fixed,
   so two runs rank identically. **Render the inputs beside the score** — an
   opaque number cannot be argued with or re-weighted.
-- **Build the fix queue** from every finding with a canonical replacement.
-  Mark `safe_to_automate` only for the `redundant` tier at a confidence
-  other than `manual review`; drift and uncovered values always need a
-  person. Lead with exact color replacements.
+- **Build the fix queue** from findings with a canonical replacement.
+  Mark `safe_to_automate` only when the finding is `redundant`, its
+  `semantic_role_verified` flag is true, and its confidence is not
+  `manual review`. A raw exact-value match is a review candidate, not a
+  replacement instruction. Lead with the highest-impact verified fixes;
+  list unverified exact matches separately as decisions.
 - **Group by owner** as well as by value — component, plugin, route or
   bundle — so an engineer can start from what they maintain.
+- **Rank component token usage** with `tools/analyze_component_usage.py`.
+  Show identified components before generic style surfaces, then rank within
+  each kind by reference occurrences, distinct token count, and stable key.
+  Use generic surfaces only to fill a list shorter than 20 and label the
+  fallback. Render every token used by each entry, its family, syntax, count,
+  and real locations. State which reference syntaxes were measured and which
+  remain unresolved.
 - **Trace lineage** from primitive to semantic alias to projection to
   consumers. A lineage edge is what separates a deliberate alias from a
   duplicate definition; mark an untraced link as untraced rather than
@@ -170,7 +251,7 @@ Remove every element whose `data-tier` list excludes the chosen tier. A
 region that belongs to a section the chosen tier removed is gone along with
 its section — that is expected, not an omission.
 
-Work through the eighteen regions below as a checklist. Every region still
+Work through the regions below as a checklist. Every region still
 present after tier removal must be filled with real findings from this run
 — leaving every other line of the template — headings, ledes, legend, panel
 titles — unchanged. A region that still holds the template's own sample
@@ -179,13 +260,36 @@ report ships describing a codebase that was never scanned.
 
 Every region that lists findings — `inventory-color`, `inventory-type`,
 `inventory-space`, `family-coverage`, `families`, `leak-ranked`,
-`leak-redundant`, `leak-near-miss`, `leak-uncovered`, `modes-gaps`, and
+`leak-redundant`, `leak-exact-value-candidates`, `leak-near-miss`,
+`leak-uncovered`, `modes-gaps`, and
 `orphans` — enumerates
 what the run found, in the form you chose for it in Stage 5. When a section
 outgrows its form, move to the denser form from the table in
 `references/report.md`; showing fewer findings is the wrong answer to more
 data. The template carries markup for every form, so this is a choice of
 which block to keep, never a rewrite.
+
+After filling the template, merge and render the deterministic discovery and
+component-adoption views:
+
+```
+python3 tools/render_discovery.py --refresh-template --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --leakage .token-vitals/literal-colors.json --report-json .token-vitals/report.json --html .token-vitals/report.html
+```
+
+```
+python3 tools/render_component_usage.py --components .token-vitals/components.json --report-json .token-vitals/report.json --html .token-vitals/report.html
+```
+
+These replace existing regions when present and insert them into older report
+shells. Run both before the validation gate so profiles, capability states,
+roots, unresolved imports, components, and token details are checked for
+HTML/JSON parity.
+
+`--refresh-template` is required for a finished stakeholder report. It starts
+from the installed current template, strips its contributor-only instruction
+comment, fills the mandatory summary, decision, ownership, lineage, coverage,
+mode, orphan, and enforcement regions from `report.json`, and prevents an old
+partial shell from silently dropping rich JSON-only evidence.
 
 `next-steps` is the one exception, and it goes the other way: it shows five
 ranked actions, because its value comes from what it leaves out.
@@ -195,6 +299,17 @@ same page holds the tail, and the truncation line above it characterizes
 the remainder using the `truncation` slot in `references/voice.md` — what
 the hidden findings are, never only how many. Never point a reader at the
 JSON for something the page itself has room to show.
+
+Canonical token inventory tables show the first 20 rows and place every
+remaining row in a collapsed `<details>` disclosure labeled “See N more
+tokens.” This is progressive disclosure, not data truncation: every token and
+its structured parity attributes remain in the HTML. Present Color,
+Typography, and Foundation as inventory-family tabs with tablist/tabpanel
+relationships, Arrow/Home/End keyboard navigation, hash deep links, all panels
+visible without scripting and all panels visible in print. Before printing,
+open every report disclosure so no evidence tail is omitted; after printing,
+restore each disclosure's prior state. Tabs select token families; they never
+paginate arbitrary table rows.
 
 - [ ] `doc-title`, `runhead-tag`, `runhead-meta` — the subject, never
       "Sample report · representative data"
@@ -208,15 +323,25 @@ JSON for something the page itself has room to show.
 - [ ] `vitals-grid`, `next-steps` (five, in the documented order)
 - [ ] `fix-queue` — priority inputs beside the score, confidence, effort,
       `safe_to_automate`, `data-finding` on every row
-- [ ] `groups`, `lineage`, `coverage-matrix`
+- [ ] `groups`, `discovery-engine`, `component-usage`, `lineage`, `coverage-matrix`
 - [ ] `inventory-color`, `inventory-type`, `inventory-space`,
       `family-coverage` — every taxonomy family as measured, unmeasured or
       absent; never `0` for unmeasured
-- [ ] `families`, `leak-ranked`, `leak-redundant`, `leak-near-miss`,
-      `leak-uncovered`, `modes-coverage`, `modes-gaps`, `orphans`,
+- [ ] identity — render the verified font family and every explicitly declared
+      brand color prominently, with confidence and source evidence; embed only
+      a repository font proven by its reachable `@font-face`; show all competing
+      typography candidates and brand-value conflicts; if identity or its
+      specimen is blocked, show the block and render no generic substitute
+- [ ] `families`, `leak-ranked`, `leak-redundant`,
+      `leak-exact-value-candidates`, `leak-near-miss`, `leak-uncovered`,
+      `modes-coverage`, `modes-gaps`, `orphans`,
       `enforcement`
-- [ ] `measurement` — everything in `provenance` and `discovery`, the
+- [ ] `measurement` — everything in `provenance` and `discovery`, including
+      the capability table, root evidence, ownership split, unresolved
+      imports by reason, and bundle × scheme verification; plus the
       rendering tier and forms, read back from the capability map
+- [ ] `discovery-capabilities` — the seven universal capabilities, each
+      with state, strongest evidence, and current limitation
 - [ ] `footer-meta`
 
 For a generated sentence, use the slot templates in
@@ -230,21 +355,33 @@ skill exists to catch.
 
 ### Validation gate — required before writing the report
 
-Run the eight rules as code, rather than checking yourself against them:
+Run the sixteen rules as code, rather than checking yourself against them. The
+source-artifact inputs prevent an internally consistent but stale report from
+passing after a newer discovery or analysis step:
 
 ```
-python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html
+python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --components .token-vitals/components.json --leakage .token-vitals/literal-colors.json --current-skill
 ```
 
 It fails an audit that uses one presumed token file with no discovery
 evidence; inventories a source with no path to an owned production import
 root; claims complete mode coverage without resolved output for every
-audited scheme; reports zero for an unmeasured category; omits typography
+audited scheme; reports zero for an unmeasured category or grades leakage
+while semantic equivalence is unmeasured; omits typography
 or any foundational family from the taxonomy; truncates findings in the
 HTML while the JSON holds more; ships a fix-queue entry with no replacement
 token, no locations, an unrecognized confidence level, or a safe-to-automate
-flag on a tier that needs a person's decision; or renders less in the HTML
-than the JSON holds, checked by finding id.
+flag without verified semantic equivalence; renders less in the HTML than
+the JSON holds, checked by finding id; publishes a Top 20 component list
+without deterministic ranking, token details, paths, and locations; or lets
+the discovery profile stack, capability ladder, production roots,
+supplemental surfaces, and rendered evidence drift apart.
+It also fails when typography or brand colors are generic, inferred without
+explicit semantic evidence, missing from the visible HTML, or inconsistent
+with the source token artifact.
+With `--current-skill`, it also refuses a report stamped by an older copy of
+the skill, which prevents a stale report from passing after discovery logic
+changes.
 
 A non-zero exit means the report claims more than the run established. Fix
 the run, never the assertion — and never write the report while it fails.
