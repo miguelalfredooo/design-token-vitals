@@ -11,9 +11,10 @@ from the start; nothing supplied it until now.
 
 The version is the nearest tag plus the short commit, read from the
 skill's own checkout. With no tag yet it is 0.0.0 plus the commit. Outside
-a git checkout it is "unknown", and the report says so rather than
-guessing.
+a git checkout it is a deterministic hash of the installed skill contents,
+prefixed with `local-`, so changed local code cannot reuse stale provenance.
 """
+import hashlib
 import json
 import os
 import subprocess
@@ -31,14 +32,31 @@ def git(*args):
         return None
 
 
+def local_version():
+    digest = hashlib.sha256()
+    for current, dirs, files in os.walk(ROOT):
+        dirs[:] = sorted(name for name in dirs if name not in (".git", "__pycache__"))
+        for name in sorted(files):
+            if name.endswith((".pyc", ".pyo")):
+                continue
+            path = os.path.join(current, name)
+            relative = os.path.relpath(path, ROOT).replace(os.sep, "/")
+            digest.update(relative.encode("utf-8"))
+            with open(path, "rb") as handle:
+                for chunk in iter(lambda: handle.read(65536), b""):
+                    digest.update(chunk)
+    return "local-" + digest.hexdigest()[:12]
+
+
 def describe():
     commit = git("rev-parse", "--short", "HEAD")
     if not commit:
-        return {"version": "unknown", "commit": None, "tag": None, "dirty": None}
+        return {"version": local_version(), "commit": None, "tag": None, "dirty": None}
     tag = git("describe", "--tags", "--abbrev=0")
     dirty = bool(git("status", "--porcelain"))
     base = tag.lstrip("v") if tag else "0.0.0"
-    version = "%s+%s%s" % (base, commit, ".dirty" if dirty else "")
+    dirty_suffix = ".dirty.%s" % local_version().split("-", 1)[1] if dirty else ""
+    version = "%s+%s%s" % (base, commit, dirty_suffix)
     return {"version": version, "commit": commit, "tag": tag, "dirty": dirty}
 
 

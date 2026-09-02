@@ -54,29 +54,11 @@ Changed:
 - Repository values are escaped on fill, and `provenance.skill_version` is
   stamped from `tools/version.py`.
 
-**Measurement.** Eight blind runs against shadcn-ui/ui at `63c1308` on
-2026-09-01, in four pairs: 8 of 8, then 7, then 7, then 6. The fourth pair
-was in flight when wave 2 merged and came back worse, so the result is
-recorded here as promised.
-
-Seven vitals have been stable across every pair. Leakage split in all four,
-each time on a different unwritten question, and the pin from each pair
-held on the next one. G and H both applied all four pins correctly and then
-split on the fifth question along the same axis: whether a framework's
-**named** tokens — Tailwind's `--container-xs`, `--radius-xs`, its palette —
-are part of your system for the purpose of a redundant finding. G said the
-project's own roles only; H said any named token the framework ships. That
-is 3 findings against 12, and `attention` against `fail`.
-
-G and H also split on `coverage` for the first time, which is downstream of
-the same question: a category a framework's named tokens cover reads as
-present to one run and missing to the other.
-
-The lesson is not that another word needs pinning. Four pins in a row have
-each held and each revealed the next, which says the question is
-structural: **the skill has never defined whose token layer it is grading**
-when a framework ships one and the project extends it. That belongs in a
-design decision, not another sentence, and it is the next piece of work.
+**Measurement.** Six blind runs against shadcn-ui/ui at `63c1308` on
+2026-09-01, in three pairs. Each pair agreed on seven of eight grades, and
+each split on a different unpinned word — the pin from the previous pair
+held every time. A fourth pair against the last two pins was in flight when
+this merged; its result belongs in the next entry, whichever way it goes.
 
 ### Wave 1 — code only, from the 2026-09-01 review
 

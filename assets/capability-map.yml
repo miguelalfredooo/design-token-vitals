@@ -7,6 +7,7 @@ provenance:
   report_schema_version: 2
   skill_version: null       # the skill's released version or commit
   adapter_versions: {}      # adapter name -> version or commit
+  profile_registry_sources: [] # ordered [{path, sha256}] executable profile inputs
   generated_at: null        # ISO 8601
   repo_ref: null            # commit ref of the audited repository
 
@@ -14,14 +15,62 @@ provenance:
 # the repository in Stage 1, before anything below this block is graded —
 # see references/discovery.md.
 discovery:
-  environment: null        # discourse | nextjs | tailwind | rails-sprockets | vite | monorepo | unknown
-  detected_by: null        # the file or signal that proved it
-  confidence: null         # certain | inferred | interviewed
-  evidence: []             # each entry: {kind, path, matched} — kind is manifest |
+  engine:                    # the deterministic discovery implementation
+    name: null               # universal-profile-engine
+    schema_version: null
+  repository:                # audited checkout identity used for provenance validation
+    root: null
+    ref: null
+  environment: []          # one or more active profile ids; unknown only when none match
+  adapters: []             # adapter references contributed by active profiles
+  detected_by: []          # evidence for each detected layer
+  confidence: []           # evidence confidence per layer
+  evidence: []             # each entry: {claim, kind, path, line, matched, method, confidence, reachable_from, artifact_needed}
                            # build-config | lockfile | asset-registration | entry-point |
                            # template | theme-structure | extension
-  owned_paths: []          # what the project authored
-  excluded_paths: []       # each entry: {path, reason}
+  ownership:               # the explicit or profile-inferred grading boundary
+    owned_patterns: []
+    basis: null
+    inferred_owned_roots: []
+    inferred_owned_patterns: []
+    unknown_roots: []
+    demo_roots: []
+
+  # What discovery could establish independently of any one framework.
+  # state: verified | unmeasured | blocked
+  capabilities:
+    detection: null
+    production_roots: null
+    import_resolution: null
+    token_source_discovery: null
+    ownership: null
+    mode_resolution: null
+    runtime_verification: null
+
+  # Profiles compose rather than compete. A Discourse monorepo can retain
+  # discourse, rails-sprockets, Storybook and monorepo evidence in one run.
+  profile_composition:
+    schema_version: 1
+    registry: assets/framework-profiles.json
+    registry_sources: []   # ordered [{path, sha256}], including custom overrides
+    active: []             # [{id, kind, adapter, activation, confidence, score, evidence, missing_signals, contexts}]
+    candidates: []         # partial matches retained for investigation
+    order: []              # deterministic contribution order
+    application_candidates: []
+    embedded_applications: [] # nested framework applications composed with the root
+    application_selection: # {requested, selected, state, reason}
+      requested: null
+      selected: null
+      state: null
+      reason: null
+    conflicts: []
+  profile_guidance: {}     # active profile -> guidance for capabilities 2-7
+
+  # The same seven capabilities in their required order. Each step carries
+  # state, contributors, evidence, the current limitation and one next move.
+  capability_ladder:
+    order: []
+    steps: []              # [{capability, state, contributors, evidence, limitation, next_step}]
 
   # Every candidate found in job two, after job three proved reachability
   # and job four classified it. The token count counts concepts, so a
@@ -29,7 +78,9 @@ discovery:
   # one entry with both sites recorded in `sites`.
   # Each entry:
   #   {path, classification, reachable_from: [...], sites: [...],
-  #    alias_of: <path|null>, matched: <what identified it>}
+  #    alias_of: <path|null>, matched: <what identified it>,
+  #    confidence: framework-registered | import-graph verified |
+  #                static candidate | runtime verified | blocked}
   # classification: canonical | alias | consumer | generated | unverified
   # A canonical or alias source with an empty reachable_from fails
   # validate_run.py rule 2 — it was inventoried without proof that it ships.
@@ -39,17 +90,51 @@ discovery:
   # evidence. Roots are the owned production entry points; orphans are
   # stylesheets no root reaches.
   import_graph:
-    roots: []              # each entry: {path, detected_by}
+    roots: []              # each entry: {path, root_type, detected_by, evidence, confidence}
     reachable: {}          # path -> {depth, via: [...]}
     unresolved: []         # each entry: {from, spec, reason}
     orphans: []            # stylesheets no owned entry point reaches
+
+  # Product roots proven by a framework registration or import graph.
+  roots: []                # [{path, root_type, confidence, ownership, evidence, profiles}]
+
+  # Static conventions retained as leads because no registered root proved
+  # them reachable. They are never token-source evidence by themselves.
+  root_candidates: []      # [{path, root_type, confidence, ownership, evidence, profiles}]
+
+  # The same graph restricted to roots proven owned. Leakage and adoption
+  # use this graph; import_graph above preserves the full framework picture.
+  owned_import_graph:
+    roots: []
+    reachable: {}
+    unresolved: []
+    orphans: []
+
+  # Optional framework-adapter roots used for component adoption analysis.
+  # Strings are intentionally rejected: every root needs evidence.
+  component_roots: []      # [{path, confidence, ownership, evidence, profiles}]
+                            # confidence: framework-registered |
+                            #             import-graph verified | runtime verified
+
+  # Evidenced component locations excluded from adoption grading until their
+  # ownership is established.
+  component_root_candidates: [] # [{path, confidence, ownership, evidence, profiles}]
+
+  # A registration or strong profile root whose source file is absent.
+  missing_registered_roots: [] # [{path, root_type, confidence, ownership, evidence, profiles, exists:false}]
+
+  # Routes, templates and Storybook roots guide investigation without
+  # becoming product reachability by themselves.
+  surface_roots: []        # [{path, root_type, scope, confidence, ownership, evidence, profiles}]
 
   # The schemes that have resolved or compiled output this run could read.
   # mode-completeness may only be graded pass/attention/fail when every
   # entry in `declared.modes` appears here — otherwise it is blocked, and
   # `blocked_reason` names the artifact that would unblock it.
-  resolved_modes: []
-  modes_blocked_reason: null
+  mode_resolution:
+    audited_pairs: []      # [{bundle, mode}]
+    resolved_pairs: []     # [{bundle, mode, artifact, confidence}]
+    blocked_reason: null
 
 # What this run looked at. Every value is observed, never assumed.
 run:
@@ -85,6 +170,31 @@ declared:
 inventory:
   families: {}             # name -> {state, count, tiers: {primitive, semantic},
                            #          sources: [...], note}
+  concepts: []             # canonical [{name, family, representations, values, sites,
+                           #   definitions: [{value, site, representation, offset, identity_context}],
+                           #   alias_of}]; aggregates must equal definition projections
+  unclassified_count: null # concepts whose family needs review
+  candidate_or_local_override_sources: [] # reachable sources excluded from canonical counts
+  identity:
+    typography:            # identity-critical; never render a substitute
+      state: blocked       # verified | blocked
+      family: null
+      token: null
+      confidence: unresolved
+      evidence: []
+      candidates: []
+      specimen:            # self-contained only; never rely on fonts installed on the reader's machine
+        state: blocked     # verified | blocked
+        asset: null        # verified {state, family, path, format, sha256, size_bytes, declaration, url}
+        note: null
+      note: null
+    brand_colors:          # only explicit brand names or brand/identity source sections
+      state: blocked       # verified | blocked
+      confidence: unresolved
+      subject_namespaces: [] # [{namespace, evidence}], distinguishes product from third parties
+      colors: []           # [{token, value, confidence, evidence}]
+      conflicts: []        # [{token, values, evidence, reason}], visible but never swatched
+      note: null
 
 # The four questions the report answers before anything else. Question four
 # carries equal weight: a summary quiet about what it could not measure
@@ -107,10 +217,12 @@ executive_summary:
   fix_first: null           # {action, file_line, finding_id}
   confidence_split: null    # {confirmed, blocked, unmeasured, waiting_on: [...]}
 
-# Every finding safe enough to act on mechanically, ordered by priority.
+# Verified fixes and review candidates with a canonical replacement, ordered
+# by priority. Only entries with semantic proof may be automated.
 # Each entry:
 #   {id, tier, family, literal, replacement, locations: ["path:line"],
-#    occurrences, files, breadth, confidence, safe_to_automate,
+#    occurrences, files, breadth, confidence, semantic_role_verified,
+#    safe_to_automate,
 #    effort: S | M | L,
 #    priority: {occurrences, files, breadth, confidence, confidence_weight,
 #               formula, score}}
@@ -118,8 +230,9 @@ executive_summary:
 #         file needing a call; L needs a decision first. Derived, never hours.
 # confidence: exact static match | import-graph verified |
 #             compiled-runtime verified | manual review
-# safe_to_automate may only be true for the redundant tier at a confidence
-# other than manual review — validate_run.py rule 7.
+# safe_to_automate may only be true for the redundant tier when
+# semantic_role_verified is true and confidence is not manual review —
+# validate_run.py rule 7.
 fix_queue: []
 
 # The same findings, grouped so an engineer can start from what they own.
@@ -129,6 +242,26 @@ groups:
   by_component: []          # [{name, path, finding_ids, occurrences, files, priority}]
   by_plugin: []             # [{name, path, finding_ids, occurrences, files, priority}]
   by_route: []              # [{name, bundle, finding_ids, occurrences, files, priority}]
+
+# A ranked adoption view produced by tools/analyze_component_usage.py.
+# Every Top 20 entry is rendered in HTML with every token and location.
+component_usage:
+  state: null               # measured | unmeasured | blocked
+  component_definition: null
+  rank_by: null
+  files_scanned: null
+  total_usage_units: null
+  total_components_with_token_usage: null
+  additional_style_surfaces: null
+  shown: null
+  shown_components: null
+  fallback_surfaces: null
+  not_shown: null
+  measurement: []           # [{syntax, state, evidence}]
+  top_20: []                # [{id, rank, key, name, kind, confidence, paths,
+                            #   references, distinct_tokens, families,
+                            #   syntaxes, tokens: [{id, family, references,
+                            #                       syntaxes, locations: ["path:line"]}]}]
 
 # primitive definition -> semantic alias -> projection -> consumer usage.
 # A lineage edge is what separates an intentional alias from a duplicate
@@ -159,7 +292,7 @@ trend:
 
 vitals:
   tier-integrity: { grade: null, evidence: [], note: null }
-  leakage: { grade: null, evidence: [], note: null, tiers: { "redundant": 0, "near-miss": 0, "uncovered": 0 } }
+  leakage: { grade: null, evidence: [], note: null, tiers: { "redundant": 0, "exact-value candidate": 0, "near-miss": 0, "uncovered": 0 } }
   coverage: { grade: null, evidence: [], note: null }
   mode-completeness: { grade: null, evidence: [], note: null }
   naming-coherence: { grade: null, evidence: [], note: null }

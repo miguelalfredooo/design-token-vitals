@@ -57,8 +57,13 @@ class TestFindingId(unittest.TestCase):
 
 
 class TestAutomatable(unittest.TestCase):
-    def test_redundant_with_confidence_is_automatable(self):
-        self.assertTrue(is_automatable("redundant", "exact static match"))
+    def test_redundant_with_semantic_proof_is_automatable(self):
+        self.assertTrue(
+            is_automatable("redundant", "exact static match", True)
+        )
+
+    def test_exact_value_without_semantic_proof_is_not_automatable(self):
+        self.assertFalse(is_automatable("redundant", "exact static match"))
 
     def test_redundant_needing_manual_review_is_not(self):
         self.assertFalse(is_automatable("redundant", "manual review"))
@@ -116,10 +121,10 @@ class TestRank(unittest.TestCase):
 
 class TestEffort(unittest.TestCase):
     def test_automatable_and_small_is_s(self):
-        self.assertEqual(effort("redundant", "exact static match", 4), "S")
+        self.assertEqual(effort("redundant", "exact static match", 4, True), "S")
 
     def test_automatable_and_wide_is_m(self):
-        self.assertEqual(effort("redundant", "exact static match", 84), "M")
+        self.assertEqual(effort("redundant", "exact static match", 84, True), "M")
 
     def test_a_single_file_judgment_call_is_m(self):
         self.assertEqual(effort("near-miss", "manual review", 1), "M")

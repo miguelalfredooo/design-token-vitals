@@ -37,6 +37,28 @@ class TestTemplate(unittest.TestCase):
         self.assertEqual(failures, [], "\n".join(
             "%s: %s on %s = %.2f" % (l, fg, bg, r) for l, fg, _, bg, _, r in failures))
 
+    def test_blocked_hatch_is_light_pink_and_clears_graphic_contrast(self):
+        table, _ = palette.check(self.html)
+        rows = [row for row in table if row[1] == "--block-line"]
+        self.assertEqual(len(rows), 12)
+        self.assertTrue(all(color == "#C86D84" for _, _, color, _, _, _ in rows))
+        self.assertTrue(all(
+            ratio >= palette.GRAPHIC_AA
+            for _, _, _, _, _, ratio in rows
+        ))
+        self.assertNotRegex(
+            self.html,
+            r'blocked[^\{]*\{[^\}]*repeating-linear-gradient\([^\)]*var\(--block\)',
+        )
+
+    def test_blocked_text_is_checked_against_its_actual_tint(self):
+        broken = self.html.replace("--block: #5B5B7A", "--block: #6D6D6D", 1)
+        _, failures = palette.check(broken)
+        self.assertTrue(any(
+            foreground == "--block" and background == "--block-bg"
+            for _, foreground, _, background, _, _ in failures
+        ))
+
     def test_the_check_is_not_vacuous(self):
         """A template with a failing pair must be reported, or the test above means nothing."""
         broken = self.html.replace("--pass: #397248", "--pass: #A0D0A8", 1)

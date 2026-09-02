@@ -7,7 +7,10 @@ leakage count full of code nobody here can fix, an inventory of a file the
 browser never receives.
 
 The rule underneath all six: **discover sources from evidence, and prove
-they ship before grading them.**
+they ship before grading them.** Keep an evidence ledger for every root,
+source, exclusion, and mode: claim, `file:line`, discovery method,
+confidence, reachability path, and any artifact still needed. A useful
+report can say "unmeasured"; it cannot make an unproven claim look precise.
 
 ## Job one — detect the framework and styling system
 
@@ -15,7 +18,10 @@ The framework decides where the real token source lives, whether a build
 step resolves values before they reach the browser, and how modes get
 expressed. Guess wrong and every later stage grades the wrong artifact.
 
-Read evidence, in this order, and record every signal you find:
+Run `tools/discover_environment.py` first. Its executable profiles compose
+into one evidence-backed starting point rather than selecting one winning
+framework. Read its matched adapters and then
+confirm evidence in this order:
 
 | Evidence | What to read |
 |---|---|
@@ -39,11 +45,15 @@ Read evidence, in this order, and record every signal you find:
 | `.storybook/` | Storybook is present; stories are not product code |
 | nothing above matches | use `references/adapters/generic.md` |
 
-More than one row can match, and that is normal. Record the framework, the
+More than one row can match, and that is normal. The registry also covers
+SvelteKit, Nuxt, Astro, Angular, Remix, Ember, and React Scripts. Apply the shared contract in
+`environment-adapters.md`, then the matching adapter details. Record the framework, the
 adapters, the confidence, and the evidence path for each — into
 `discovery.environment`, `discovery.detected_by`, `discovery.confidence`,
 and `discovery.evidence`, and into the report's measurement section. A
-framework you concluded with nothing to point at is a guess.
+framework you concluded with nothing to point at is a guess. Keep partial
+matches in `profile_composition.candidates`; they are investigation leads,
+not active profiles.
 
 ### Discourse
 
@@ -92,7 +102,9 @@ python3 tools/import_graph.py <root> --entry <owned entry point> --json .token-v
 ```
 
 Find the roots the framework registers — build entry points, asset
-registration calls, stylesheet bundle roots — and traverse from each. Cover
+registration calls, stylesheet bundle roots — and traverse from each. Record
+whether every root is framework-registered, import-graph verified, static
+candidate, runtime verified, or blocked. Cover
 the bundles a framework registers separately: common, desktop, mobile,
 theme, plugin, component, and route-specific.
 
@@ -103,14 +115,20 @@ shipped. A stylesheet full of beautiful token declarations that no bundle
 imports contributes nothing to the running product, and counting it inflates
 the system's apparent size while hiding that nobody wired it up.
 
-Templates, routes and page registrations are **supplemental evidence only**,
-for conditional, route-specific, component-specific or lazily loaded styles.
-A template that references a stylesheet is a reason to look, and it never
-by itself proves production inclusion.
+Framework-registered routes and pages may be production roots when their
+profile records that registration evidence. Other templates, routes, stories
+and page-like files are `surface_roots`: supplemental evidence for
+conditional or lazy styles, never product inclusion by themselves.
+
+Classify unresolved specs as framework built-in, remote, external package,
+dynamic runtime import, unsupported resolver, or missing local source. Do
+not report a built-in Sass module or remote font as a missing local file.
 
 Record the graph roots, the reachable set, the unresolved specs and the
-orphans in `discovery.import_graph`, and put the same evidence in the
-report.
+orphans in `discovery.import_graph`. Preserve unpromoted static roots under
+`discovery.root_candidates` and component locations outside owned scope
+under `discovery.component_root_candidates`; put the same evidence in the
+report rather than dropping rejected hypotheses.
 
 ## Job four — classify every source
 
@@ -167,11 +185,13 @@ Find every registered theme scheme and token override root: the declared
 modes, the selectors or media queries that carry them, per-theme color
 definitions, and any scheme-selection mechanism the framework provides.
 
-Then answer one question per scheme: **does resolved output exist for it?**
+Then answer one question per production bundle × scheme pair: **does resolved
+output exist for it?** Record every expected pair under
+`discovery.mode_resolution.audited_pairs` and every inspected artifact under
+`resolved_pairs`.
 
-- **Yes for every audited scheme** — grade `mode-completeness` normally, and
-  record the resolved schemes in `discovery.resolved_modes`.
-- **No for any scheme** — grade `blocked`, name the missing artifact, and
+- **Yes for every audited pair** — grade `mode-completeness` normally.
+- **No for any pair** — grade `blocked`, name the missing artifact, and
   say what would produce it. Never infer a pass from source declarations
   alone: a mechanism that exists proves a mechanism exists, and says
   nothing about whether every token has a value in every scheme.
@@ -186,7 +206,7 @@ Record all six jobs in `assets/capability-map.yml`'s `discovery` block
 before moving on. Then run:
 
 ```
-python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html
+python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html --current-skill
 ```
 
 An audit that cannot pass those six rules is not ready to ship.

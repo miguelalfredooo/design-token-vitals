@@ -84,6 +84,215 @@ class TestBuild(unittest.TestCase):
         g = import_graph.build(root, ["src/main.tsx"])
         self.assertIn("src/index.css", g["reachable"])
 
+    def test_commented_imports_do_not_enter_reachability(self):
+        root = make_repo({
+            "src/main.js": (
+                '// import "./line-dead.css";\n'
+                '/* import("./block-dead.css"); */\n'
+                'import "./live.css";\n'
+            ),
+            "src/line-dead.css": ":root { --dead-line: red; }",
+            "src/block-dead.css": ":root { --dead-block: red; }",
+            "src/live.css": (
+                '/* @import "./css-dead.css"; */\n'
+                ":root { --live: red; }"
+            ),
+            "src/css-dead.css": ":root { --dead-css: red; }",
+        })
+        graph = import_graph.build(root, ["src/main.js"])
+        self.assertIn("src/live.css", graph["reachable"])
+        self.assertNotIn("src/line-dead.css", graph["reachable"])
+        self.assertNotIn("src/block-dead.css", graph["reachable"])
+        self.assertNotIn("src/css-dead.css", graph["reachable"])
+
+    def test_export_text_cannot_consume_a_later_quoted_sentence(self):
+        records = import_graph.import_records_in(
+            "src/helpers.js",
+            "export function registerUnbound() {}\n"
+            "const message = `export helper from 'discourse/helpers/${name}.js'`;\n",
+        )
+        self.assertEqual(records, [])
+
+    def test_multiline_literal_import_is_not_also_dynamic(self):
+        records = import_graph.import_records_in(
+            "src/editor.js", 'const editor = import(\n  "./editor.js"\n);')
+        self.assertEqual(records, [{"spec": "./editor.js", "kind": "import"}])
+
+    def test_dynamic_import_examples_inside_strings_are_ignored(self):
+        records = import_graph.import_records_in(
+            "src/example.js",
+            "const quoted = 'import(\"./fake.css\")';\n"
+            "const template = `require('./also-fake.css')`;\n",
+        )
+        self.assertEqual(records, [])
+
+    def test_static_export_example_inside_multiline_template_is_ignored(self):
+        records = import_graph.import_records_in(
+            "src/example.js",
+            "const docs = `\nexport { x } from \"./fake.js\";\n`;\n",
+        )
+        self.assertEqual(records, [])
+
+    def test_js_graph_follows_component_before_css_module(self):
+        root = make_repo({
+            "src/main.tsx": 'import { Button } from "./Button";',
+            "src/Button.tsx": 'import "./Button.module.css"; export const Button = 1;',
+            "src/Button.module.css": ".button { color: var(--brand); }",
+        })
+        g = import_graph.build(root, ["src/main.tsx"])
+        self.assertIn("src/Button.tsx", g["reachable"])
+        self.assertIn("src/Button.module.css", g["reachable"])
+
+    def test_html_entry_reaches_root_relative_script_and_css(self):
+        root = make_repo({
+            "index.html": '<link rel="stylesheet" href="/src/base.css"><script type="module" src="/src/main.ts"></script>',
+            "src/main.ts": 'import "./feature.css";',
+            "src/base.css": ":root { --base: red; }",
+            "src/feature.css": ".x { color: var(--base); }",
+        })
+        g = import_graph.build(root, ["index.html"])
+        self.assertIn("src/main.ts", g["reachable"])
+        self.assertIn("src/base.css", g["reachable"])
+        self.assertIn("src/feature.css", g["reachable"])
+
+    def test_html_ignores_non_style_link_assets(self):
+        root = make_repo({
+            "index.html": (
+                '<link rel="icon" href="/favicon.ico">'
+                '<link rel="preload" as="font" href="/font.woff2">'
+            ),
+        })
+        g = import_graph.build(root, ["index.html"])
+        self.assertEqual(g["unresolved"], [])
+
+    def test_angular_style_urls_follows_every_array_entry(self):
+        root = make_repo({
+            "src/card.ts": (
+                "@Component({ styleUrls: ['./base.css', './theme.scss'] })"
+            ),
+            "src/base.css": ".card {}",
+            "src/theme.scss": "$gap: 1rem;",
+        })
+        g = import_graph.build(root, ["src/card.ts"])
+        self.assertIn("src/base.css", g["reachable"])
+        self.assertIn("src/theme.scss", g["reachable"])
+
+    def test_tsconfig_alias_is_resolved(self):
+        root = make_repo({
+            "tsconfig.json": '{"compilerOptions":{"baseUrl":".","paths":{"@/*":["src/*"]}}}',
+            "src/main.ts": 'import "@/theme.css";',
+            "src/theme.css": ":root { --brand: red; }",
+        })
+        g = import_graph.build(root, ["src/main.ts"])
+        self.assertIn("src/theme.css", g["reachable"])
+        self.assertEqual(g["unresolved"], [])
+
+    def test_aliases_are_scoped_to_each_embedded_application(self):
+        root = make_repo({
+            "apps/a/app/layout.tsx": 'import "@/theme.css";',
+            "apps/a/src/theme.css": ":root { --a: red; }",
+            "apps/b/app/layout.tsx": 'import "@/theme.css";',
+            "apps/b/src/theme.css": ":root { --b: blue; }",
+        })
+        graph = import_graph.build(
+            root,
+            ["apps/a/app/layout.tsx", "apps/b/app/layout.tsx"],
+            alias_contexts={
+                "apps/a": {"@/*": "apps/a/src/*"},
+                "apps/b": {"@/*": "apps/b/src/*"},
+            },
+        )
+        self.assertIn("apps/a/src/theme.css", graph["reachable"])
+        self.assertIn("apps/b/src/theme.css", graph["reachable"])
+        self.assertEqual(graph["unresolved"], [])
+
+    def test_jsonc_alias_with_comments_and_trailing_commas_is_resolved(self):
+        root = make_repo({
+            "jsconfig.json": (
+                '{\n  // application aliases\n  "compilerOptions": {\n'
+                '    "baseUrl": ".",\n    "paths": {\n'
+                '      "discourse/*": ["app/*"],\n    },\n  },\n}\n'
+            ),
+            "src/main.ts": 'import "discourse/theme.css";',
+            "app/theme.css": ":root { --brand: red; }",
+        })
+        graph = import_graph.build(root, ["src/main.ts"])
+        self.assertIn("app/theme.css", graph["reachable"])
+        self.assertEqual(graph["unresolved"], [])
+
+    def test_wildcard_alias_does_not_capture_bare_workspace_package(self):
+        root = make_repo({
+            "pnpm-workspace.yaml": "packages:\n  - 'packages/*'\n",
+            "jsconfig.json": (
+                '{"compilerOptions":{"paths":'
+                '{"truth-helpers/*":["packages/truth-helpers/addon/*"]}}}'
+            ),
+            "src/main.js": 'import "truth-helpers";',
+            "packages/truth-helpers/package.json": '{"name":"truth-helpers"}',
+            "packages/truth-helpers/src/index.js": "export {};",
+        })
+        graph = import_graph.build(root, ["src/main.js"])
+        self.assertIn("packages/truth-helpers/src/index.js", graph["reachable"])
+
+    def test_js_alias_does_not_redirect_sass_import(self):
+        root = make_repo({
+            "jsconfig.json": (
+                '{"compilerOptions":{"paths":'
+                '{"admin/*":["app/assets/javascripts/admin/*"]}}}'
+            ),
+            "app/assets/stylesheets/application.scss": '@import "admin/base";',
+            "app/assets/stylesheets/admin/_base.scss": "$space: 4px;",
+        })
+        graph = import_graph.build(
+            root, ["app/assets/stylesheets/application.scss"])
+        self.assertIn("app/assets/stylesheets/admin/_base.scss",
+                      graph["reachable"])
+
+    def test_profile_rewrite_resolves_dynamic_framework_namespace(self):
+        root = make_repo({
+            "src/main.js": (
+                'import "discourse/plugins/acme/discourse/components/card";'
+            ),
+            "plugins/acme/assets/javascripts/discourse/components/card.js": (
+                "export {};"
+            ),
+        })
+        graph = import_graph.build(root, ["src/main.js"], rewrites=[{
+            "regex": r"^discourse/plugins/(?P<plugin>[^/]+)/(?P<rest>.+)$",
+            "replacement": "plugins/{plugin}/assets/javascripts/{rest}",
+        }])
+        self.assertIn(
+            "plugins/acme/assets/javascripts/discourse/components/card.js",
+            graph["reachable"],
+        )
+
+    def test_conflicting_profile_rewrites_block_resolution(self):
+        root = make_repo({
+            "src/main.js": 'import "virtual";',
+            "src/a.js": "export {};", "src/b.js": "export {};",
+        })
+        graph = import_graph.build(root, ["src/main.js"], rewrites=[
+            {"regex": "^virtual$", "replacement": "src/a.js", "profile": "a"},
+            {"regex": "^virtual$", "replacement": "src/b.js", "profile": "b"},
+        ])
+        self.assertNotIn("src/a.js", graph["reachable"])
+        self.assertNotIn("src/b.js", graph["reachable"])
+        self.assertEqual(
+            graph["unresolved"][0]["reason"], "ambiguous profile rewrite")
+
+    def test_dynamic_expression_is_classified(self):
+        root = make_repo({"src/main.ts": "const page = import(`./${name}.css`);"})
+        g = import_graph.build(root, ["src/main.ts"])
+        self.assertEqual(g["unresolved"][0]["reason"], "dynamic runtime import")
+
+    def test_sprockets_require_tree_reaches_styles(self):
+        root = make_repo({
+            "app/assets/stylesheets/application.css": "/*\n *= require_tree ./components\n */",
+            "app/assets/stylesheets/components/card.css": ".card {}",
+        })
+        g = import_graph.build(root, ["app/assets/stylesheets/application.css"])
+        self.assertIn("app/assets/stylesheets/components/card.css", g["reachable"])
+
     def test_external_package_spec_is_reported_unresolved(self):
         root = make_repo({"app/globals.css": '@import "tailwindcss";'})
         g = import_graph.build(root, ["app/globals.css"])
@@ -105,11 +314,39 @@ class TestBuild(unittest.TestCase):
         g = import_graph.build(root, ["app/globals.css"])
         self.assertNotIn("node_modules/pkg/theme.css", g["orphans"])
 
+    def test_nested_vendor_source_can_be_reached(self):
+        root = make_repo({
+            "app/globals.scss": '@import "assets/stylesheets/vendor/normalize";',
+            "app/assets/stylesheets/vendor/_normalize.scss": "html { line-height: 1; }",
+            "vendor/gem/theme.scss": "$external: true;",
+        })
+        g = import_graph.build(root, ["app/globals.scss"])
+        self.assertIn("app/assets/stylesheets/vendor/_normalize.scss", g["reachable"])
+        self.assertNotIn("vendor/gem/theme.scss", g["orphans"])
+
+    def test_orphans_exclude_tests_and_respect_owned_patterns(self):
+        root = make_repo({
+            "app/globals.css": ":root { --live: 1; }",
+            "app/owned-stray.css": ":root { --owned: 1; }",
+            "plugins/upstream/stray.css": ":root { --upstream: 1; }",
+            "spec/fixtures/stray.css": ":root { --fixture: 1; }",
+        })
+        g = import_graph.build(
+            root, ["app/globals.css"], orphan_patterns=["app/**"]
+        )
+        self.assertEqual(g["orphans"], ["app/owned-stray.css"])
+
     def test_missing_entry_point_is_reported(self):
         root = make_repo({"app/globals.css": ":root{--a:1px}"})
         g = import_graph.build(root, ["app/nope.css"])
         self.assertEqual(g["reachable"], {})
         self.assertEqual(g["unresolved"][0]["reason"], "entry point does not exist")
+
+    def test_explicit_empty_entries_do_not_auto_detect(self):
+        root = make_repo({"app/globals.css": ":root{--a:1px}"})
+        g = import_graph.build(root, [])
+        self.assertEqual(g["roots"], [])
+        self.assertEqual(g["reachable"], {})
 
     def test_detects_conventional_entry_points(self):
         root = make_repo({"app/globals.css": ":root{--a:1px}"})
