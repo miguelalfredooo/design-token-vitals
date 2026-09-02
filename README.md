@@ -23,7 +23,10 @@ What is stable: the eight vitals, the five status values
 (`pass`, `attention`, `fail`, `blocked`, `not_applicable`), the refusal to
 produce a composite score, and the rule that every finding carries a real
 `file:line`. Those are the design, and changing them would make it a
-different skill.
+different skill. Every report also ships an unmissable "not validated"
+banner that only `tools/validate_run.py --stamp` can clear, and only on a
+pass — a partial or time-boxed run stays visibly unfinished in the report
+itself, not just in a footnote a reader can skim past.
 
 What is still moving: the rendering forms, the discovery stage, the leakage
 cascade's borderline cases, and the reproducibility work. A later version
@@ -172,7 +175,7 @@ guardrail the run re-derives each time is a rule that drifts.
 | `tools/findings.py` | Stable, path-independent finding ids, and the priority score `(n + 2f + 3b) x c` over occurrences, affected owned files, breadth, and confidence in the fix |
 | `tools/trend.py` | New, resolved, count changes and regressions between two runs. Refuses when framework, adapters, owned paths, scope or token sources diverge |
 | `tools/import_graph.py` | Walks stylesheet and JS-entry imports from owned production entry points. Reports what is reachable, what is orphaned, and what resolves outside the repository. Reachability is what makes a candidate source an active one |
-| `tools/validate_run.py` | Fails an audit that uses one presumed token file with no discovery evidence, inventories an unreachable source, claims mode coverage without resolved output, reports zero for an unmeasured category, omits a foundational family, truncates in the HTML while the JSON holds more, is stale against its discovery/token/component/leakage or browser-interaction artifacts, or renders typography/brand identity without independently recomputed repository evidence and a verified self-contained font specimen |
+| `tools/validate_run.py` | Fails an audit that uses one presumed token file with no discovery evidence, inventories an unreachable source, claims mode coverage without resolved output, reports zero for an unmeasured category, omits a foundational family, truncates in the HTML while the JSON holds more, is stale against its discovery/token/component/leakage or browser-interaction artifacts, or renders typography/brand identity without independently recomputed repository evidence and a verified self-contained font specimen. `--stamp` writes `provenance.validation_gate` and clears the report's validation banner — the only thing that marks a report finished — and only on a pass |
 | `tools/compare_runs.py` | Diffs two runs on scope, counts, the eight grades, per-vital evidence, and rendering forms. Exits non-zero when the grades disagree |
 | `tools/check_voice.py` | The copy standard for generated reports. Skips fenced blocks and inline code, so a document can name a banned word as data |
 | `tools/palette.py` | Checks every status color against its own tint, in all three theme blocks. WCAG AA, and the report grades others on this |
@@ -188,7 +191,7 @@ python3 tools/audit_literal_colors.py <repo> --discovery discovery.json --tokens
 python3 tools/import_graph.py <repo> --entry app/globals.css --json graph.json
 python3 tools/render_discovery.py --refresh-template --discovery discovery.json --tokens tokens.json --leakage literal-colors.json --report-json report.json --html report.html
 python3 tools/render_component_usage.py --components components.json --report-json report.json --html report.html
-python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --components .token-vitals/components.json --leakage .token-vitals/literal-colors.json --current-skill
+python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --components .token-vitals/components.json --leakage .token-vitals/literal-colors.json --current-skill --stamp
 python3 tools/compare_runs.py run-a/report.json run-b/report.json
 python3 tools/trend.py baseline/report.json .token-vitals/report.json
 python3 tools/palette.py

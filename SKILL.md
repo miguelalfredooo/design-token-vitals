@@ -311,6 +311,9 @@ open every report disclosure so no evidence tail is omitted; after printing,
 restore each disclosure's prior state. Tabs select token families; they never
 paginate arbitrary table rows.
 
+- [ ] `validation-banner` — leave it exactly as shipped. Do not fill it,
+      remove it, or hand-edit `provenance.validation_gate` — only a passing
+      `validate_run.py --stamp` run may clear it (see below)
 - [ ] `doc-title`, `runhead-tag`, `runhead-meta` — the subject, never
       "Sample report · representative data"
 - [ ] `at-a-glance` — the strip above the summary; every mark carries its
@@ -360,7 +363,7 @@ source-artifact inputs prevent an internally consistent but stale report from
 passing after a newer discovery or analysis step:
 
 ```
-python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --components .token-vitals/components.json --leakage .token-vitals/literal-colors.json --current-skill
+python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --components .token-vitals/components.json --leakage .token-vitals/literal-colors.json --current-skill --stamp
 ```
 
 It fails an audit that uses one presumed token file with no discovery
@@ -385,6 +388,19 @@ changes.
 
 A non-zero exit means the report claims more than the run established. Fix
 the run, never the assertion — and never write the report while it fails.
+
+`--stamp` is what actually finishes the report: on a pass, it writes
+`provenance.validation_gate` into the JSON and replaces the `report.html`
+validation banner with a small "validated" note — the one field and the one
+region a report generator must never touch directly (see the `assets/report-template.html`
+validation-banner region and `assets/capability-map.yml`'s
+`provenance.validation_gate`). Every report ships the banner by default; a
+report handed to a reader still showing it was written without the gate,
+regardless of what the surrounding prose claims — and a partial or
+time-boxed run must say so out loud rather than let the banner speak for it
+implicitly. Running the plain command without `--stamp` is a legitimate way
+to check status without writing anything — the finished report is the one
+produced by the `--stamp` invocation actually passing.
 
 ### Completeness check — required before writing the report
 

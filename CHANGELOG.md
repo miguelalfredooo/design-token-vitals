@@ -6,6 +6,34 @@ that produced it.
 
 ## Unreleased
 
+### Wave 4 — a report can no longer look finished when it isn't
+
+A report handed to a reader with the validation gate never run looked
+identical to one that passed it — the only difference was a sentence in a
+footnote, easy to skim past. Found live: a run against alfredo-studio
+skipped `validate_run.py` entirely, built its own report by hand instead of
+through the render pipeline, and was presented as finished until a human
+caught the gap by actually reading the "not completed" section.
+
+- `assets/report-template.html` ships a `validation-banner` region, present
+  by default, that only `tools/validate_run.py --stamp` can clear — and
+  only on a pass. No other tool, and no report generator, writes to it.
+- `assets/capability-map.yml` gained `provenance.validation_gate`
+  (`passed`, `exit_code`, `checked_at`) — the one field a report must never
+  set itself.
+- `tools/validate_run.py --stamp`: on a passing run, writes that field and
+  replaces the HTML banner with a small "validated, at ‹timestamp›" note.
+  A failing run is never stamped, and running without `--stamp` still
+  checks status without writing anything.
+- `SKILL.md`'s Stage 6 checklist and Stage 7 command both updated: the
+  finished report is the one produced by `--stamp` actually passing, not
+  the one a plain `validate_run.py` invocation happened to run against.
+- Five new tests in `tools/test_validate_run.py` covering: stamp writes on
+  pass, banner clears on pass, a failing run is never stamped, no `--stamp`
+  leaves the file untouched, and stamping works with no `report.html`
+  present. Watched all three of the meaningful ones go red first, against
+  a mutation that no-oped the stamp call while still reporting pass.
+
 ### Wave 3 — framework-aware discovery, environment adapters, and component/literal-color analysis
 
 A required discovery stage now runs in front of grading. Source discovery
