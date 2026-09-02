@@ -9,12 +9,20 @@
 
   Regions are marked with a pair of HTML comments naming a region,
   for example a "runhead-meta" region wraps the run metadata list. The
-  region names include: doc-title, runhead-tag, runhead-meta,
-  vitals-grid, next-steps, inventory-color, inventory-type, inventory-space,
-  families, leak-redundant, leak-near-miss, leak-uncovered, modes-coverage,
-  modes-gaps, orphans, enforcement, measurement, and footer-meta. This file
-  calls them regions rather than slots to avoid colliding with the sentence
-  slots defined in references/voice.md.
+  region names include: validation-banner, doc-title, runhead-tag,
+  runhead-meta, vitals-grid, next-steps, inventory-color, inventory-type,
+  inventory-space, families, leak-redundant, leak-near-miss, leak-uncovered,
+  modes-coverage, modes-gaps, orphans, enforcement, measurement, and
+  footer-meta. This file calls them regions rather than slots to avoid
+  colliding with the sentence slots defined in references/voice.md.
+
+  validation-banner is the one region a report generator must never fill
+  itself. It ships with a fixed warning and stays that way until
+  `tools/validate_run.py --stamp` runs on a passing report and replaces it
+  with a small "validated" note — see provenance.validation_gate in
+  assets/capability-map.yml and "Validation gate" in SKILL.md. A finished
+  report that still shows the warning was written without the gate, no
+  matter what its surrounding prose claims.
 
   next-steps holds the ranked list of concrete next actions derived from
   the findings elsewhere in this report — see "Deriving the next-steps
@@ -976,11 +984,33 @@
     .ts-row { flex-direction: column; align-items: flex-start; gap: 2px; }
     .ts-row .tk { flex: none; }
   }
+
+  /* Present by default; only `tools/validate_run.py --stamp` removes it,
+     and only on a passing run. A report that still shows this has not
+     been machine-validated, whatever the surrounding prose claims —
+     see provenance.validation_gate. */
+  .validation-banner {
+    display: flex; align-items: baseline; gap: 8px;
+    background: var(--fail-bg); color: var(--fail);
+    border: 1px solid var(--fail); border-radius: 6px;
+    padding: 10px 16px; margin-bottom: 20px;
+    font-family: var(--sans); font-size: 13.5px; line-height: 1.5;
+  }
+  .validation-banner strong { font-weight: 700; white-space: nowrap; }
+  .validation-ok {
+    display: flex; align-items: baseline; gap: 8px;
+    background: var(--pass-bg); color: var(--pass);
+    border: 1px solid var(--pass); border-radius: 6px;
+    padding: 8px 16px; margin-bottom: 20px;
+    font-family: var(--mono); font-size: 12px;
+  }
 </style>
 </head>
 <body>
 
 <div class="wrap">
+
+  <!-- SLOT:validation-banner --><div class="validation-banner" role="alert"><strong>⚠ Not validated.</strong> This report has not passed <code>tools/validate_run.py</code>'s 16-rule gate. Findings may be incomplete, unverified, or claim more than this run established — do not treat it as finished.</div><!-- /SLOT:validation-banner -->
 
   <header class="runhead">
     <div>

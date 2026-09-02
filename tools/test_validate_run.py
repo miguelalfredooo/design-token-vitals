@@ -1182,5 +1182,89 @@ class TestRule16IdentityIntegrity(unittest.TestCase):
         )
 
 
+class TestStampOnlyMarksAPassingRun(unittest.TestCase):
+    """provenance.validation_gate is the one field a report must not set
+    itself — only a passing tools/validate_run.py --stamp run may write it.
+    A report that skips the gate must keep showing the un-gated banner."""
+
+    def write_report(self, root, doc):
+        import json
+        path = os.path.join(root, "report.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(doc, fh)
+        return path
+
+    def banner_html(self):
+        return (
+            '<body><div class="wrap">'
+            '<!-- SLOT:validation-banner -->'
+            '<div class="validation-banner" role="alert">'
+            '<strong>⚠ Not validated.</strong> placeholder</div>'
+            '<!-- /SLOT:validation-banner -->'
+            '</div></body>'
+        )
+
+    def test_stamp_writes_passed_true_into_the_json(self):
+        import json
+        with tempfile.TemporaryDirectory() as root:
+            path = self.write_report(root, good_doc())
+            rc = validate_run.main([path, "--stamp"])
+            self.assertEqual(rc, validate_run.EXIT_OK)
+            with open(path, encoding="utf-8") as fh:
+                stamped = json.load(fh)
+            gate = stamped["provenance"]["validation_gate"]
+            self.assertTrue(gate["passed"])
+            self.assertEqual(gate["exit_code"], 0)
+            self.assertTrue(gate["checked_at"])
+
+    def test_stamp_clears_the_html_banner_on_pass(self):
+        with tempfile.TemporaryDirectory() as root:
+            report_path = self.write_report(root, good_doc())
+            html_path = os.path.join(root, "report.html")
+            with open(html_path, "w", encoding="utf-8") as fh:
+                fh.write(self.banner_html())
+            rc = validate_run.main([report_path, "--html", html_path, "--stamp"])
+            self.assertEqual(rc, validate_run.EXIT_OK)
+            with open(html_path, encoding="utf-8") as fh:
+                stamped_html = fh.read()
+            self.assertNotIn("Not validated", stamped_html)
+            self.assertIn("validation-ok", stamped_html)
+            self.assertIn("Validated", stamped_html)
+
+    def test_a_failing_run_is_never_stamped(self):
+        import json
+        with tempfile.TemporaryDirectory() as root:
+            d = good_doc()
+            d["discovery"]["token_sources"] = []
+            d["stack"] = {"token_sources": []}
+            path = self.write_report(root, d)
+            rc = validate_run.main([path, "--stamp"])
+            self.assertEqual(rc, validate_run.EXIT_FINDING)
+            with open(path, encoding="utf-8") as fh:
+                unstamped = json.load(fh)
+            self.assertNotIn("validation_gate", unstamped.get("provenance", {}))
+
+    def test_without_the_stamp_flag_a_passing_run_leaves_the_file_untouched(self):
+        import json
+        with tempfile.TemporaryDirectory() as root:
+            path = self.write_report(root, good_doc())
+            with open(path, encoding="utf-8") as fh:
+                before = fh.read()
+            rc = validate_run.main([path])
+            self.assertEqual(rc, validate_run.EXIT_OK)
+            with open(path, encoding="utf-8") as fh:
+                after = fh.read()
+            self.assertEqual(before, after)
+            doc = json.loads(after)
+            self.assertNotIn("validation_gate", doc.get("provenance", {}))
+
+    def test_stamp_with_no_html_file_only_touches_the_json(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = self.write_report(root, good_doc())
+            rc = validate_run.main([path, "--stamp"])
+            self.assertEqual(rc, validate_run.EXIT_OK)
+            self.assertFalse(os.path.exists(os.path.join(root, "report.html")))
+
+
 if __name__ == "__main__":
     unittest.main()

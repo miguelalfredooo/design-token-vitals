@@ -10,6 +10,10 @@ provenance:
   profile_registry_sources: [] # ordered [{path, sha256}] executable profile inputs
   generated_at: null        # ISO 8601
   repo_ref: null            # commit ref of the audited repository
+  validation_gate:          # stamped ONLY by `tools/validate_run.py --stamp` on a passing run —
+    passed: false           # never hand-set this true; it is the one field a report generator
+    exit_code: null         # must not write itself. false/null here means the 16-rule gate has
+    checked_at: null        # not (yet) passed against this exact report, whatever else it claims.
 
 # What owns theming, and what the project actually authored. Read from
 # the repository in Stage 1, before anything below this block is graded —

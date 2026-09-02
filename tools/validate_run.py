@@ -14,6 +14,7 @@ because a rule the run re-derives each time is a rule that drifts.
 import argparse
 import base64
 import binascii
+import datetime
 import hashlib
 import html as html_tools
 import json
@@ -73,6 +74,41 @@ def file_sha256(path):
         for chunk in iter(lambda: handle.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+VALIDATION_BANNER_SLOT = re.compile(
+    r'(<!-- SLOT:validation-banner -->).*?(<!-- /SLOT:validation-banner -->)', re.S)
+
+
+def stamp_pass(report_json_path, doc, report_html_path, report_html_text):
+    """Record that THIS report_json, byte for byte, passed the gate just now.
+
+    Called only after `validate` returns no failures. Writes
+    provenance.validation_gate into the JSON and clears the report.html
+    banner — the one field a report generator must never set itself, so a
+    report that was never actually gated cannot claim otherwise by copying
+    a passing report's JSON shape.
+    """
+    checked_at = datetime.datetime.now(datetime.timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ")
+    doc.setdefault("provenance", {})["validation_gate"] = {
+        "passed": True, "exit_code": 0, "checked_at": checked_at,
+    }
+    with open(report_json_path, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh, indent=2)
+        fh.write("\n")
+
+    if report_html_path and report_html_text is not None:
+        ok_note = (
+            '<div class="validation-ok">&#10003; Validated &mdash; '
+            'all 16 rules passed %s</div>' % html_tools.escape(checked_at)
+        )
+        stamped = VALIDATION_BANNER_SLOT.sub(
+            lambda m: m.group(1) + ok_note + m.group(2), report_html_text, count=1)
+        if stamped != report_html_text:
+            with open(report_html_path, "w", encoding="utf-8") as fh:
+                fh.write(stamped)
+    return checked_at
 
 
 def rule_1_discovery_evidence(doc):
@@ -1711,6 +1747,11 @@ def main(argv):
         "--current-skill", action="store_true",
         help="fail when provenance.skill_version differs from this installed skill",
     )
+    ap.add_argument(
+        "--stamp", action="store_true",
+        help="on a passing run, write provenance.validation_gate into report_json and "
+             "clear the report.html validation banner. Never stamps a failing run.",
+    )
     add_json_flag(ap)
     args = ap.parse_args(argv)
 
@@ -1747,6 +1788,12 @@ def main(argv):
     })
     if not failures:
         print("validate: pass — all sixteen rules hold")
+        if args.stamp:
+            checked_at = stamp_pass(
+                args.report_json, doc,
+                report_html_path if os.path.exists(report_html_path) else None,
+                html)
+            print("stamp: provenance.validation_gate.passed = true (%s)" % checked_at)
         return EXIT_OK
     for f in failures:
         print("FAIL  %-22s %s" % (f.rule, f.message))
