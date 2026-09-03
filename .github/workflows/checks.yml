@@ -1,0 +1,44 @@
+name: checks
+
+# This repository ships a skill whose first rule is that a guard nobody has
+# watched fail is a guard nobody has tested. Running its own suite on every
+# push is the same argument turned inwards.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # No third-party dependency by design — the skill runs on a stock
+      # interpreter in whatever repository it audits, and so does its suite.
+      - name: Tests
+        run: python3 -m unittest discover -s tools -p 'test_*.py' -v
+
+      - name: Status colors clear WCAG AA in all three theme blocks
+        run: python3 tools/palette.py
+
+      - name: The nineteen foundational families agree with the reference
+        run: python3 tools/taxonomy.py --check
+
+      - name: Report copy holds the voice standard
+        run: python3 tools/check_voice.py SKILL.md README.md
+
+      # There is deliberately no step gating examples/shadcn-ui/ here. That
+      # report passes the gate only on the machine that produced it: rule 16
+      # recomputes brand identity by reading discovery.repository.root off
+      # disk, and the audited checkout does not exist on a runner. Adding the
+      # step would have shipped a red build on day one — and the local run
+      # that "verified" it was reading a scratchpad tree from an earlier
+      # session. See chore/genericise-fixtures for the demonstration.
