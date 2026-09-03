@@ -460,7 +460,7 @@ the same directory. Show that prefix once above the table, in a
 `<p class="prefix">`, and render each row as its distinctive tail:
 
 ```
-plugins/raptive-layout-and-styles/assets/stylesheets/
+plugins/acme-layout-and-styles/assets/stylesheets/
   common/share-community-feed-cta.scss:4
   common/fkb-c-topic.scss:270
 ```

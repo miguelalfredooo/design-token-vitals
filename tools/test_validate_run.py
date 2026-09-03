@@ -822,7 +822,7 @@ class TestRule16IdentityIntegrity(unittest.TestCase):
     def identity_doc_and_html(self):
         root = tempfile.mkdtemp()
         type_text = ":root { --font-family: DM Sans, sans-serif; }\n"
-        color_text = "\n:root { --brand-primary: #6b65ff; }\n"
+        color_text = "\n:root { --brand-primary: #5b4bd6; }\n"
         os.makedirs(os.path.join(root, "styles"), exist_ok=True)
         with open(os.path.join(root, "styles/type.css"), "w", encoding="utf-8") as handle:
             handle.write(type_text)
@@ -841,10 +841,10 @@ class TestRule16IdentityIntegrity(unittest.TestCase):
             }],
         }, {
             "name": "brand-primary", "family": "color",
-            "values": ["#6b65ff"], "sites": ["styles/colors.css:2"],
+            "values": ["#5b4bd6"], "sites": ["styles/colors.css:2"],
             "representations": ["css-custom-property"],
             "definitions": [{
-                "value": "#6b65ff", "site": "styles/colors.css:2",
+                "value": "#5b4bd6", "site": "styles/colors.css:2",
                 "representation": "css-custom-property",
                 "offset": color_text.index("--brand-primary"),
                 "identity_context": None,
@@ -964,18 +964,18 @@ class TestRule16IdentityIntegrity(unittest.TestCase):
         path = os.path.join(root, "styles/colors.css")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as handle:
-            handle.write(":root { --primary: #6b65ff; }\n")
+            handle.write(":root { --primary: #5b4bd6; }\n")
         context = {
             "kind": "brand", "label": "Visual Identity",
             "path": "styles/colors.css", "line": 1,
         }
         color = {
-            "name": "primary", "family": "color", "values": ["#6b65ff"],
+            "name": "primary", "family": "color", "values": ["#5b4bd6"],
             "sites": ["styles/colors.css:1"],
             "representations": ["css-custom-property"],
             "identity_contexts": [context],
             "definitions": [{
-                "value": "#6b65ff", "site": "styles/colors.css:1",
+                "value": "#5b4bd6", "site": "styles/colors.css:1",
                 "representation": "css-custom-property", "offset": 0,
                 "identity_context": context,
             }],
@@ -1078,7 +1078,7 @@ class TestRule16IdentityIntegrity(unittest.TestCase):
         with open(style_path, "w", encoding="utf-8") as handle:
             handle.write(type_text)
         color_path = os.path.join(root, "styles/colors.css")
-        color_text = "\n:root { --brand-primary: #6b65ff; }\n"
+        color_text = "\n:root { --brand-primary: #5b4bd6; }\n"
         with open(color_path, "w", encoding="utf-8") as handle:
             handle.write(color_text)
         type_concept, color_concept = doc["inventory"]["concepts"]
@@ -1131,7 +1131,7 @@ class TestRule16IdentityIntegrity(unittest.TestCase):
         with open(style_path, "w", encoding="utf-8") as handle:
             handle.write(type_text)
         color_path = os.path.join(root, "styles/colors.css")
-        color_text = "\n:root { --brand-primary: #6b65ff; }\n"
+        color_text = "\n:root { --brand-primary: #5b4bd6; }\n"
         with open(color_path, "w", encoding="utf-8") as handle:
             handle.write(color_text)
         type_concept, color_concept = doc["inventory"]["concepts"]

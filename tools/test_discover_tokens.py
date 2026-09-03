@@ -515,7 +515,7 @@ class TestTokenDiscovery(unittest.TestCase):
         root, discovery = self.repo({
             "styles/tokens.scss": (
                 ".score {\n"
-                "  &--raptive:not(:last-child) { margin-bottom: 1em; }\n"
+                "  &--acme:not(:last-child) { margin-bottom: 1em; }\n"
                 "  --score-gap: 8px;\n"
                 "}\n"
             ),
