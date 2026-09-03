@@ -4,9 +4,8 @@ A small codebase with a known token layer, and `expected.json` recording
 what a correct run must find. Every number in that file is derivable from
 these files by hand.
 
-The skill ships 344 tests for its tools and, before this, none for itself.
-Every rule in `references/` was prose that nothing verified. This is where a
-change to those rules gets checked rather than reasoned about.
+The automated suite checks the tools and the skill's own contract. This is
+where a change to the written rules gets verified rather than assumed.
 
 ## Using it
 
@@ -40,7 +39,7 @@ expectation to match a run, which turns the test into a mirror.
 | `components/badge.tsx` | A near-miss: `#2563ec`, one hex step from `#2563eb` |
 | `components/chart.tsx` | Two uncovered values: no layer token and no opacity token exists |
 | `theme.config.json` | Declares `high-contrast`, which nothing resolves. `mode-completeness` must be `blocked` |
-| `pnpm-workspace.yaml`, `packages/ui/` | **A workspace package imported by name.** `globals.css` imports `ui/theme.css`; the file is `packages/ui/src/theme.css`. A graph that cannot read the workspace reports it as unresolved and the file as an orphan. It defines no tokens, so the count stays at 20 |
+| `pnpm-workspace.yaml`, `packages/ui/` | **A workspace package imported by name.** `globals.css` imports `ui/theme.css`; the file is `packages/ui/src/theme.css`. A graph that cannot read the workspace reports it as unresolved and the file as an orphan. It defines no tokens, so it does not change the count |
 | `app/components.css`, last rule | **A string value holding markup.** `content: "<b onmouseover=alert(1)>new</b>"`. A run that renders it unescaped has shipped an injection; `validate_run.py` rule 9 catches it |
 | `dist/bundle.css` | Generated output carrying a sourceMappingURL. Holds `#2563eb`; must never be reported |
 | `node_modules/pkg/theme.css` | A dependency holding `#2563eb` and `8px`; must never be reported |
@@ -76,7 +75,7 @@ Recorded so nobody mistakes a passing run here for full coverage:
 - **A resolving mode set.** Every mode path here ends in `blocked`. A second
   fixture is needed where all declared modes resolve and
   `mode-completeness` grades normally.
-- **Scale.** Twenty tokens sits in the `full` rendering tier, so the
+- **Scale.** Twenty-one tokens sit in the `full` rendering tier, so the
   `collapsed` and `family-only` forms and the density rules go untested.
 - **A monorepo.** Scope derivation with more than one plausible app is
   unexercised.

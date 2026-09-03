@@ -15,9 +15,7 @@ is. Each names what it forbids and how it is checked.
 
 ## Status: a working skill, still evolving
 
-This skill is in active development and it is not finalized. Treat it as
-something in use and under revision at the same time, rather than a
-finished tool with settled behavior.
+This skill is in active use and under revision.
 
 What is stable: the eight vitals, the five status values
 (`pass`, `attention`, `fail`, `blocked`, `not_applicable`), the refusal to
@@ -28,15 +26,14 @@ banner that only `tools/validate_run.py --stamp` can clear, and only on a
 pass — a partial or time-boxed run stays visibly unfinished in the report
 itself, not just in a footnote a reader can skim past.
 
-What is still moving: the rendering forms, the discovery stage, the leakage
-cascade's borderline cases, and the reproducibility work. A later version
-can change what a report looks like, and it can change how a genuinely
-close call gets graded.
+What is still moving: framework-profile coverage, runtime verification, and
+the leakage cascade's genuinely ambiguous cases. A later version can discover
+more evidence or change how a close call gets graded.
 
-So: trust a report the way you would trust a colleague's reading of your
-codebase — check it. Every finding points at a line you can open, which is
-the whole reason the evidence rule exists. If you need two runs months
-apart to be comparable, pin the version you ran.
+Trust a report the way you would trust a colleague's reading of your
+codebase: check its evidence. Every finding points at a line you can open.
+Pin the skill version when comparing runs over time; the comparison tool
+shows scope, evidence, initial view, density, and rendering-form drift.
 
 Open work, in the order it matters:
 
@@ -49,29 +46,18 @@ Open work, in the order it matters:
   `fixtures/repo`, and each pin held on the following pair. A fourth pair
   is the next measurement. The grades that matter have been stable across
   all six — only `leakage` has ever moved.
-- **The earlier picture, kept for the record.** Four blind runs
-  against shadcn-ui/ui at `63c1308` on 2026-09-01. The morning pair, against
-  a skill of about 9,500 words, agreed on all eight grades and counted 114
-  tokens both times. The afternoon pair, after the discovery stage and the
-  actionable-report layer had grown the skill to about 14,600 words, agreed
-  on seven of eight and counted 82 and 77. The one that split was
-  `leakage`, on a decision both runs named as their closest call: whether a
-  framework's own spacing scale counts as tokens available to authors.
-  Neither the grade nor the count is stable yet, and this line will change
-  again when that is fixed.
-- **What caused it, as far as the evidence goes.** The skill has no written
-  rule for the framework-scale question, and no written rule for which
-  utility-local custom properties count as tokens. Two careful runs read
-  each differently. Both rules are being pinned in prose and exercised in
-  `fixtures/repo`, and the pair gets re-run before that merges.
 - **What still moves between runs even when the grades agree.**
   `files_scanned`, `family_count`, and the specific evidence lines cited
   under matching grades. Scope and reachability now come from
   `tools/import_graph.py` rather than prose, which is aimed at this.
-- **The rendering forms are new.** The display-density work landed
-  recently and has had little use in the field. The two runs picked
+- **The rendering forms have had little use in the field.** Two runs picked
   different forms for the same leakage data, which is a real gap in the
   form-choice rule.
+- **A silent zero, found by running the skill on a real repository.** An
+  owned scope that excluded the framework's registered entry left the owned
+  import graph with no roots, and every tool that reads it measured nothing
+  without saying so. Fixed; the lesson is that a discovery step needs to
+  fail loudly rather than return an empty set.
 
 Issues and pull requests are welcome, and so is a report that came out
 wrong — a case where the skill graded something you know to be untrue is
@@ -129,6 +115,12 @@ automatable share of the fix queue as a ring, and the counts as tiles.
 Every mark carries its number. The report ships one fixed, validated script
 for accessible inventory-family tabs; repository content can never enter it.
 
+Readers can move between three depths without generating another report:
+**Snapshot** keeps the decision dashboard in view, **Action Plan** adds the
+roadmap and rollout guidance, and **Evidence** reveals the complete audit.
+Deep links promote the view when needed, no-script output stays complete, and
+printing includes every section and disclosure.
+
 Below it, an executive summary — the highest-impact problem,
 how many owned files and components it touches, what to fix first, and how
 many results are confirmed against blocked or unmeasured. Below that sits a
@@ -154,8 +146,23 @@ duplicate definition. A coverage matrix crosses every entry bundle with
 every mode and every family, so a gap in what the run could see reads as a
 shape rather than as an absence you have to notice.
 
+The report ends with an **evidence-derived unification strategy**. It chooses
+between a token-first foundation and a token-led hybrid from the framework
+profiles, delivery adapters, production roots, modes, token sources, and
+component adoption measured in that run. It then renders five integration
+constraints, five architecture layers, six rollout gates, standards,
+guardrails, and success measures. It
+never recommends repository-wide component replacement from token evidence
+alone; component behavior requires its own contract assessment.
+
 See a real one: [`examples/shadcn-ui/report.html`](examples/shadcn-ui/report.html)
 (GitHub renders this as raw HTML rather than a page, so download it and open it locally).
+
+The component roadmap turns the Top 20 adoption ranking into three cumulative
+token-footprint bands: assess first, plan next, and focused follow-up. The dashboard shows
+the first five rows, while the complete section preserves every ranked
+component, token, and evidence location. The bands prioritize investigation;
+they do not label a component as healthy, broken, or safe to migrate.
 
 ## The tools
 
@@ -168,15 +175,15 @@ guardrail the run re-derives each time is a rule that drifts.
 | `tools/framework_profiles.py` | Loads and validates the built-in profile registry plus optional project profiles, then evaluates repository signals without turning partial matches into facts |
 | `tools/profile_extractors.py` | Executes validated profile-declared registration, config-array, and build-JSON root extractors for built-in and custom frameworks |
 | `tools/discover_tokens.py` | Finds CSS, Sass, DTCG, Style Dictionary, conservative JS/TS theme, and component-embedded declarations; classifies canonical sources, projections, overrides, and unverified candidates |
-| `tools/analyze_component_usage.py` | Measures which component surfaces reference the confirmed token concepts; ranks identified components before generic style surfaces, and states which reference syntaxes were measured versus left unresolved |
-| `tools/audit_literal_colors.py` | Finds hardcoded color values against the confirmed token set; exact-value matches stay manual-review candidates until semantic equivalence is proven |
-| `tools/render_discovery.py` | Rebuilds finished runs from the current template; keeps summaries, decisions, ownership, lineage, coverage, discovery, identity, token inventory, leakage, and provenance identical in report JSON and HTML; Color, Typography, and Foundation use accessible tabs while long token tables use a first-20 plus “See more” disclosure without dropping rows |
-| `tools/render_component_usage.py` | Merges the component-usage ranking into the report template's `component-usage` region, in the same first-N-plus-disclosure form as the token tables |
+| `tools/analyze_component_usage.py` | Ranks identified components by confirmed canonical token use and derives deterministic cumulative-footprint bands for roadmap planning |
+| `tools/adoption_strategy.py` | Derives and renders the framework-aware unification model, standards baseline, architecture, rollout gates, guardrails, and success measures from the report's measured evidence |
+| `tools/render_discovery.py` | Rebuilds finished runs from the current template; records Snapshot, Action Plan, or Evidence independently from data density; preserves deep links, no-script completeness, and full print output; keeps summaries, decisions, ownership, lineage, coverage, token inventory, leakage, and provenance identical in report JSON and HTML |
+| `tools/render_component_usage.py` | Renders the dashboard’s five-row token-footprint table, the complete three-band component roadmap, and every component-to-token evidence location |
 | `tools/findings.py` | Stable, path-independent finding ids, and the priority score `(n + 2f + 3b) x c` over occurrences, affected owned files, breadth, and confidence in the fix |
 | `tools/trend.py` | New, resolved, count changes and regressions between two runs. Refuses when framework, adapters, owned paths, scope or token sources diverge |
 | `tools/import_graph.py` | Walks stylesheet and JS-entry imports from owned production entry points. Reports what is reachable, what is orphaned, and what resolves outside the repository. Reachability is what makes a candidate source an active one |
-| `tools/validate_run.py` | Fails an audit that uses one presumed token file with no discovery evidence, inventories an unreachable source, claims mode coverage without resolved output, reports zero for an unmeasured category, omits a foundational family, truncates in the HTML while the JSON holds more, is stale against its discovery/token/component/leakage or browser-interaction artifacts, or renders typography/brand identity without independently recomputed repository evidence and a verified self-contained font specimen. `--stamp` writes `provenance.validation_gate` and clears the report's validation banner — the only thing that marks a report finished — and only on a pass |
-| `tools/compare_runs.py` | Diffs two runs on scope, counts, the eight grades, per-vital evidence, and rendering forms. Exits non-zero when the grades disagree |
+| `tools/validate_run.py` | Enforces seventeen integrity rules, including discovery, reachability, mode proof, HTML/JSON parity, component adoption, identity evidence, artifact freshness, and a complete evidence-derived unification strategy. `--stamp` writes `provenance.validation_gate` and clears the report's validation banner — the only thing that marks a report finished — and only on a pass |
+| `tools/compare_runs.py` | Diffs two runs on scope, counts, the eight grades, per-vital evidence, initial view, density tier, and rendering forms. Exits non-zero when the grades disagree |
 | `tools/check_voice.py` | The copy standard for generated reports. Skips fenced blocks and inline code, so a document can name a banned word as data |
 | `tools/palette.py` | Checks every status color against its own tint, in all three theme blocks. WCAG AA, and the report grades others on this |
 | `tools/taxonomy.py` | The nineteen foundational families, defined once. `--check` compares the code against the reference Markdown |
@@ -189,13 +196,14 @@ python3 tools/discover_tokens.py <repo> --discovery discovery.json --update-disc
 python3 tools/analyze_component_usage.py <repo> --discovery discovery.json --tokens tokens.json --json components.json
 python3 tools/audit_literal_colors.py <repo> --discovery discovery.json --tokens tokens.json --json literal-colors.json
 python3 tools/import_graph.py <repo> --entry app/globals.css --json graph.json
-python3 tools/render_discovery.py --refresh-template --discovery discovery.json --tokens tokens.json --leakage literal-colors.json --report-json report.json --html report.html
+python3 tools/render_discovery.py --refresh-template --report-view snapshot --discovery discovery.json --tokens tokens.json --leakage literal-colors.json --report-json report.json --html report.html
 python3 tools/render_component_usage.py --components components.json --report-json report.json --html report.html
 python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --components .token-vitals/components.json --leakage .token-vitals/literal-colors.json --current-skill --stamp
 python3 tools/compare_runs.py run-a/report.json run-b/report.json
 python3 tools/trend.py baseline/report.json .token-vitals/report.json
 python3 tools/palette.py
 python3 tools/taxonomy.py --check
+python3 -m unittest discover -s tools -p 'test_*.py'
 ```
 
 Baselines are passed explicitly, so the skill never writes state into the
@@ -217,8 +225,8 @@ bundled tools directly against your repository.
 2. **Detect the styling stack** — match CSS-vars, Tailwind, SCSS, DTCG, and framework-specific mechanisms; profiles and adapters can all apply at once.
 3. **Read what the project declares** — modes, categories, and any accessibility target, taken from the repository, never assumed.
 4. **Grade the eight vitals** — each one graded against the stack and declarations from the prior stages, with at least one real `file:line` attached to every grade.
-5. **Choose the rendering tier** — the token count decides how much evidence renders inline versus rolls up into a count.
-6. **Rank, queue, and trace** — score every finding, build the fix queue, group by owner, rank component token usage, trace lineage, and fill the coverage matrix — the five layers that sit above the raw findings.
+5. **Choose the report view and rendering tier** — the reader chooses Snapshot, Action Plan, or Evidence; token count independently decides how densely listings render.
+6. **Rank, queue, and trace** — score every finding, build the fix queue, group by owner, rank component token usage, trace lineage, fill the coverage matrix, and derive the unification strategy — the layers that sit above the raw findings.
 7. **Fill the template** — the self-contained report is built by filling named slots in a fixed template, never by writing free-form HTML.
 8. **Write the outputs** — the HTML report, a JSON working set that duplicates it for tooling, and a terminal summary naming one next step.
 
@@ -258,27 +266,6 @@ Same check, opposite verdicts, and the difference never comes from an
 assumption the tool made — it comes entirely from what the project itself
 promised. A grade this skill produces is only ever a comparison against a
 target the project set for itself.
-
-## A real run: shadcn-ui/ui
-
-`examples/shadcn-ui/` is a full run against a public repository
-(shadcn-ui/ui, commit `63c1308`), so every finding in it is independently
-checkable. It came back with no failures: four vitals at `attention`
-(tier integrity, leakage, coverage, single source of truth), three at
-`pass` (mode completeness, naming coherence, orphans), and one `blocked`
-(enforcement).
-
-`blocked`, not `fail`, matters here: nothing in that repository's lint
-config or CI reads the token layer at all, so there is nothing to grade —
-a check that could not run is never reported as a silent pass. A mostly
-healthy system with one real gap in its guardrails is a more useful,
-more credible result than a report tuned to look dramatic, and it is
-exactly what the skill found and nothing more.
-
-Read the full breakdown, with every `file:line`, in
-[`examples/shadcn-ui/README.md`](examples/shadcn-ui/README.md),
-[`report.json`](examples/shadcn-ui/report.json), or the rendered
-[`report.html`](examples/shadcn-ui/report.html).
 
 ## License
 

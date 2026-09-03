@@ -63,6 +63,19 @@ class TestClean(unittest.TestCase):
         )
         self.assertEqual(findings, [])
 
+    def test_html_attributes_are_not_treated_as_prose(self):
+        findings = check_text(
+            '<div aria-labelledby="inventory-tab-color">Colour matters.</div>'
+        )
+        self.assertEqual(len(findings), 1)
+        self.assertIn("Color", findings[0].message)
+
+    def test_accessibility_identifier_in_generated_markup_is_not_prose(self):
+        findings = check_text(
+            "'<table aria-labelledby=\"component-roadmap-title\">'"
+        )
+        self.assertEqual(findings, [])
+
 
 class TestFencedCodeBlocks(unittest.TestCase):
     def test_banned_word_inside_fence_not_flagged(self):

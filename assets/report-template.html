@@ -9,20 +9,13 @@
 
   Regions are marked with a pair of HTML comments naming a region,
   for example a "runhead-meta" region wraps the run metadata list. The
-  region names include: validation-banner, doc-title, runhead-tag,
-  runhead-meta, vitals-grid, next-steps, inventory-color, inventory-type,
-  inventory-space, families, leak-redundant, leak-near-miss, leak-uncovered,
-  modes-coverage, modes-gaps, orphans, enforcement, measurement, and
-  footer-meta. This file calls them regions rather than slots to avoid
-  colliding with the sentence slots defined in references/voice.md.
-
-  validation-banner is the one region a report generator must never fill
-  itself. It ships with a fixed warning and stays that way until
-  `tools/validate_run.py --stamp` runs on a passing report and replaces it
-  with a small "validated" note — see provenance.validation_gate in
-  assets/capability-map.yml and "Validation gate" in SKILL.md. A finished
-  report that still shows the warning was written without the gate, no
-  matter what its surrounding prose claims.
+  region names include: validation-banner, doc-title, runhead-tag, runhead-meta,
+  vitals-grid, next-steps, inventory-color, inventory-type, inventory-space,
+  families, leak-redundant, leak-near-miss, leak-uncovered, modes-coverage,
+  modes-gaps, orphans, enforcement, measurement, adoption-strategy, and
+  footer-meta. This file
+  calls them regions rather than slots to avoid colliding with the sentence
+  slots defined in references/voice.md.
 
   next-steps holds the ranked list of concrete next actions derived from
   the findings elsewhere in this report — see "Deriving the next-steps
@@ -35,11 +28,13 @@
   their detection confidence, any framework version consulted, and —
   starting with Stage 1 discovery — the environment the run identified,
   what proved it, and the paths this run treated as owned versus excluded
-  and why. It sits at the very end of the report — after the working-set
-  section, right before the footer — on purpose: it is what lets two runs
+  and why. It sits after the working-set section and immediately before the
+  adoption strategy — on purpose: it is what lets two runs
   against the same repository be compared and a difference between them
   attributed, and that only matters once a reader has already seen the
-  findings it backs up. A reader who disagrees with what the run scoped in
+  findings it backs up. The adoption strategy is the final report section
+  because it translates that evidence into a target architecture and rollout
+  without interrupting the diagnosis. A reader who disagrees with what the run scoped in
   or out finds that decision here, stated plainly enough to argue with.
 
   doc-title wraps the whole title element rather than nesting its
@@ -118,9 +113,7 @@
   (ui-sans-serif / system-ui / -apple-system / "Segoe UI" and
   ui-monospace / SFMono-Regular / Menlo), so the page still uses IBM Plex
   for anyone who already has it installed, and degrades cleanly for
-  everyone else, offline or in a sandbox. assets/reference/*.html carry
-  the same footer claim and the same fallback stacks, so they do not load
-  the Google Fonts link either.
+  everyone else, offline or in a sandbox.
 -->
 <style>
   :root {
@@ -308,6 +301,9 @@
   /* ---------- tables (generic) ---------- */
 
   .tbl-scroll { overflow-x: auto; }
+  .tbl-scroll[tabindex]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
 
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th {
@@ -511,8 +507,58 @@
   summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .details-body { padding: 0 14px 14px; }
 
+  .location-group + .location-group { margin-top: 8px; }
+  .component-token-table { min-width: 760px; }
+  .location-file { display: block; }
+  .location-lines {
+    display: flex; flex-wrap: wrap; gap: 3px 10px; margin-top: 3px;
+  }
+  .location-line { white-space: nowrap; font-size: 11px; }
+  .location-disclosure {
+    margin: 4px 0 0; border: 0; border-radius: 0; background: transparent;
+  }
+  .location-disclosure[open] { background: transparent; }
+  .location-disclosure > summary {
+    padding: 3px 0; font-size: 11px; letter-spacing: 0;
+  }
+  .location-disclosure > .details-body { padding: 2px 0 0 14px; }
+
   @media (prefers-reduced-motion: reduce) {
     summary::before { transition: none; }
+  }
+
+  /* ---------- report depth ---------- */
+
+  .report-view-switcher {
+    margin: 0 0 14px; padding: 14px;
+    border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--surface-sunk);
+  }
+  .report-view-switcher { display: none; }
+  .report-views--ready .report-view-switcher { display: block; }
+  .report-view-switcher__head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    margin-bottom: 10px;
+  }
+  .report-view-switcher__head strong { font-size: 13px; color: var(--ink); }
+  .report-view-switcher__status { margin: 0; font-size: 11.5px; color: var(--ink-mute); }
+  .report-view-switcher__choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .report-view-switcher button {
+    min-width: 0; padding: 10px 12px; text-align: left;
+    border: 1px solid var(--line); border-radius: 4px;
+    background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .report-view-switcher button:hover { border-color: var(--accent); color: var(--ink); }
+  .report-view-switcher button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .report-view-switcher button[aria-pressed="true"] {
+    border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent);
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .report-view-switcher button strong { display: block; font-size: 12.5px; color: inherit; }
+  .report-view-switcher button span { display: block; margin-top: 2px; font-size: 11px; color: var(--ink-mute); }
+  .report-views--ready body[data-report-view="snapshot"] section[data-report-views]:not([data-report-views~="snapshot"]),
+  .report-views--ready body[data-report-view="action"] section[data-report-views]:not([data-report-views~="action"]) {
+    display: none;
   }
 
   /* ---------- contents rail ---------- */
@@ -536,14 +582,30 @@
   }
   .contents a:hover { color: var(--accent); border-color: var(--accent); }
   .contents a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  @media (min-width: 1320px) {
+  .contents-more { position: relative; }
+  .contents-more > summary {
+    padding: 4px 10px; border: 1px solid var(--line); border-radius: 3px;
+    color: var(--ink-soft); background: var(--surface); font-family: var(--mono);
+    font-size: 11.5px; letter-spacing: 0; text-transform: none;
+  }
+  .contents-more > summary::before { display: none; }
+  .contents-more[open] > summary { color: var(--accent); border-color: var(--accent); }
+  .contents-more-links {
+    display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; padding: 8px;
+    border: 1px solid var(--line); border-radius: 4px; background: var(--surface-sunk);
+  }
+  @media (min-width: 1540px) {
     .contents {
-      position: fixed; top: 32px; left: calc(50% - 640px - 200px); width: 170px;
+      position: fixed; top: 32px; left: calc(50% - 750px); width: 170px;
       flex-direction: column; align-items: stretch; gap: 2px; margin: 0; padding: 0; border: none;
     }
     .contents-label { margin: 0 0 8px; }
     .contents a { border: none; background: transparent; padding: 5px 8px; border-left: 2px solid transparent; border-radius: 0; }
     .contents a:hover { border-left-color: var(--accent); background: var(--surface); }
+    .contents-more > summary { border: none; border-left: 2px solid transparent; border-radius: 0; background: transparent; }
+    .contents-more[open] > summary { border-left-color: var(--accent); }
+    .contents-more-links { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 0 8px; padding: 4px 0; border: 0; background: transparent; }
+    .contents-more-links a { font-size: 10.5px; padding-block: 3px; }
   }
   section[id] { scroll-margin-top: 24px; }
   tr[id] { scroll-margin-top: 80px; }
@@ -558,7 +620,7 @@
      and restores the reader's exact open/closed state afterprint. */
   @media print {
     body { background: #fff; color: #000; }
-    .contents, .ihelp .info { display: none; }
+    .report-view-switcher, .contents, .ihelp .info { display: none; }
     .tip {
       position: static; opacity: 1; visibility: visible; display: block;
       max-width: none; margin: 4px 0 0; padding: 0; box-shadow: none;
@@ -570,14 +632,28 @@
     .tbl-scroll { overflow: visible; }
     table { font-size: 11px; }
     section { break-inside: avoid-page; page-break-inside: avoid; }
+    #strategy { break-inside: auto; page-break-inside: auto; }
+    #strategy .panel { break-inside: avoid; page-break-inside: avoid; }
     section + section { break-before: auto; }
     h2 { break-after: avoid; }
     details { border: 1px solid #bbb; }
+    .location-file { display: none; }
+    .location-lines { display: block; }
+    .location-line {
+      display: block; white-space: normal; overflow-wrap: anywhere; font-size: 0;
+    }
+    .location-line::after {
+      content: attr(data-token-location); font-family: var(--mono); font-size: 11px;
+    }
+    .location-disclosure > summary { display: none; }
+    .location-disclosure > .details-body { padding: 0; }
     .token-tabs__list { display: none !important; }
     .token-tabs__panel { display: block !important; padding-top: 12px; }
+    section[data-report-views] { display: block !important; }
     summary::before { display: none; }
     a { color: inherit; text-decoration: none; }
-    .sw i, .ramp i, .out i, .pair i, .cell, .c, .pip, .track i, .gbar i, .bar-row i {
+    .sw i, .ramp i, .out i, .pair i, .cell, .c, .pip, .track i, .gbar i, .bar-row i,
+    .dashboard-brand-color i, .dashboard-vital-state::before, .dashboard-progress i {
       -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
   }
@@ -815,18 +891,111 @@
   .dot[data-s="gap"]  { color: var(--fail); background: var(--fail-bg); font-weight: 600; }
   .dot[data-s="none"] { color: var(--na); }
 
-  /* ---------- at a glance ---------- */
+  /* ---------- at-a-glance dashboard ---------- */
 
-  /* One strip a reader takes in without reading. Cards in the shadcn shape
-     — title, value, a mark — with segmented bars for distributions and a
-     ring for a share. Every mark carries its number. Rule 9 permits only
-     the skill-owned inventory tab controller. */
-  .glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 0 0 36px; }
-  .gcard { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-  .gcard .gt { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-mute); display: flex; justify-content: space-between; gap: 8px; }
-  .gcard .gv { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
-  .gcard .gv small { font-size: 13px; font-weight: 500; color: var(--ink-mute); letter-spacing: 0; margin-left: 4px; }
-  .gcard .gd { font-size: 12px; color: var(--ink-soft); line-height: 1.4; }
+  /* A plain-language entry point built from the same exact evidence shown
+     deeper in the report. Segmented bars carry distributions, links connect
+     every summary to its source section, and the formal grade stays visible
+     beside its friendlier explanation. */
+  .dashboard {
+    margin: 0 0 42px; overflow: hidden;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px;
+  }
+  .dashboard-hero { padding: 30px 32px 26px; border-bottom: 1px solid var(--line); }
+  .dashboard-hero h3 {
+    max-width: 760px; margin: 0 0 10px; font-size: clamp(25px, 3vw, 38px);
+    line-height: 1.12; letter-spacing: -0.032em; text-wrap: balance;
+  }
+  .dashboard-hero p { max-width: 76ch; margin: 0; color: var(--ink-soft); font-size: 15px; }
+  .dashboard-ribbon { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); }
+  .dashboard-metric { min-width: 0; padding: 18px 20px; border-right: 1px solid var(--line); }
+  .dashboard-metric:last-child { border-right: 0; }
+  .dashboard-label {
+    display: block; margin-bottom: 7px; font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-mute);
+  }
+  .dashboard-value { display: block; font-size: 18px; font-weight: 600; line-height: 1.25; }
+  .dashboard-value code { color: var(--accent); font-size: 17px; }
+  .dashboard-helper { display: block; margin-top: 4px; color: var(--ink-mute); font-size: 11.5px; line-height: 1.4; }
+  .dashboard-main { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .8fr); }
+  .dashboard-actions { padding: 26px 28px 28px; border-right: 1px solid var(--line); }
+  .dashboard-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+  .dashboard-section-head h4 { margin: 0; font-size: 17px; letter-spacing: -0.01em; }
+  .dashboard-section-head a, .dashboard-link { color: var(--accent); font-size: 12.5px; font-weight: 600; text-decoration: none; }
+  .dashboard-section-head a:hover, .dashboard-link:hover { text-decoration: underline; }
+  .dashboard-action-list { display: grid; gap: 8px; }
+  .dashboard-action {
+    display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 12px; align-items: start;
+    padding: 14px; color: inherit; text-decoration: none; border: 1px solid var(--line); border-radius: 6px;
+  }
+  .dashboard-action:first-child { border-color: var(--accent); background: var(--accent-soft); }
+  .dashboard-action:hover { border-color: var(--accent); }
+  .dashboard-action:focus-visible, .dashboard-readiness:focus-visible, .dashboard-vital:focus-visible,
+  .dashboard-link:focus-visible, .dashboard-section-head a:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .dashboard-action-number {
+    display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--surface-sunk); color: var(--ink-soft); font-family: var(--mono); font-size: 11px; font-weight: 600;
+  }
+  .dashboard-action:first-child .dashboard-action-number { background: var(--accent); color: var(--surface); }
+  .dashboard-action strong { display: block; margin-bottom: 3px; font-size: 14px; line-height: 1.35; }
+  .dashboard-action p { margin: 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+  .dashboard-action-cta { align-self: center; color: var(--accent); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .dashboard-readiness {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, .7fr); gap: 18px;
+    align-items: center; margin-top: 18px; padding-top: 16px; color: inherit;
+    text-decoration: none; border-top: 1px solid var(--line);
+  }
+  .dashboard-readiness:hover strong { color: var(--accent); }
+  .dashboard-readiness strong { display: block; font-size: 12.5px; }
+  .dashboard-side { padding: 26px 24px 28px; }
+  .dashboard-side-block + .dashboard-side-block { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .dashboard-side h4 { margin: 0 0 11px; font-size: 15px; }
+  .dashboard-type { font-size: 25px; font-weight: 550; letter-spacing: -0.02em; }
+  .dashboard-type[data-font-verified="true"] { font-family: "Token Vitals Identity", var(--sans); }
+  .dashboard-type-meta, .dashboard-component-meta { margin-top: 3px; color: var(--ink-mute); font-size: 11.5px; }
+  .dashboard-brand-colors { display: grid; gap: 7px; margin-top: 13px; }
+  .dashboard-brand-color { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-width: 0; }
+  .dashboard-brand-color i { width: 18px; height: 18px; border: 1px solid var(--line-strong); border-radius: 50%; }
+  .dashboard-brand-color code { overflow: hidden; color: var(--ink-soft); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
+  .dashboard-brand-color span { color: var(--ink-mute); font-family: var(--mono); font-size: 10px; }
+  .dashboard-component-name { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+  .dashboard-roadmap { padding: 24px 28px 26px; border-top: 1px solid var(--line); }
+  .dashboard-roadmap-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 24px; margin-bottom: 14px;
+  }
+  .dashboard-roadmap-head h4 { margin: 0 0 5px; font-size: 17px; letter-spacing: -0.01em; }
+  .dashboard-roadmap-head p {
+    max-width: 74ch; margin: 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45;
+  }
+  .dashboard-roadmap-head .dashboard-link { flex: none; margin-top: 3px; }
+  .dashboard-roadmap-table { min-width: 760px; }
+  .dashboard-roadmap-table code { font-size: 11.5px; }
+  .component-share-label { color: var(--ink-soft); font-family: var(--mono); font-size: 10.5px; }
+  .component-roadmap-state {
+    display: inline-block; padding: 2px 7px; border-radius: 3px;
+    background: var(--accent-soft); color: var(--accent); font-size: 10.5px; font-weight: 600;
+  }
+  .dashboard-vitals { padding: 24px 28px 26px; border-top: 1px solid var(--line); }
+  .dashboard-vital-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .dashboard-vital {
+    min-width: 0; padding: 12px 13px; color: inherit; text-decoration: none;
+    border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface);
+  }
+  .dashboard-vital:nth-child(4n) { border-right: 0; }
+  .dashboard-vital:nth-last-child(-n+4) { border-bottom: 0; }
+  .dashboard-vital:hover { background: var(--surface-sunk); }
+  .dashboard-vital-name { display: block; overflow: hidden; font-size: 12.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+  .dashboard-vital-state { display: flex; align-items: center; gap: 6px; margin-top: 5px; color: var(--ink-mute); font-size: 10.5px; }
+  .dashboard-vital-state::before { content: ""; width: 7px; height: 7px; flex: none; border-radius: 50%; }
+  .dashboard-vital[data-grade="pass"] .dashboard-vital-state::before { background: var(--pass); }
+  .dashboard-vital[data-grade="attention"] .dashboard-vital-state::before { background: var(--warn); }
+  .dashboard-vital[data-grade="fail"] .dashboard-vital-state::before { background: var(--fail); }
+  .dashboard-vital[data-grade="blocked"] .dashboard-vital-state::before { background: var(--block-line); }
+  .dashboard-vital[data-grade="not_applicable"] .dashboard-vital-state::before { border: 1px dashed var(--na); }
+  .dashboard-official { color: var(--ink-mute); font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; }
 
   .seg { display: flex; height: 12px; border-radius: 3px; overflow: hidden; background: var(--surface-sunk); }
   .seg i { display: block; height: 100%; }
@@ -839,15 +1008,54 @@
   .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
   .legend b { font-weight: 600; color: var(--ink-soft); }
 
-  .ring { display: flex; align-items: center; gap: 12px; }
-  .ring svg { width: 52px; height: 52px; flex: none; transform: rotate(-90deg); }
-  .ring circle { fill: none; stroke-width: 6; }
-  .ring .track { stroke: var(--surface-sunk); }
-  .ring .fill { stroke: var(--pass); stroke-linecap: butt; }
-  .ring .rv { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
-  .ring .rv small { font-size: 12px; color: var(--ink-mute); font-weight: 500; }
-  .gcard .gstage { font-size: 20px; color: var(--accent); font-weight: 600; }
-  .ring .rd { font-size: 11.5px; color: var(--ink-soft); margin-top: 3px; }
+  .dashboard-progress { height: 6px; margin-top: 8px; overflow: hidden; border-radius: 3px; background: var(--surface-sunk); }
+  .dashboard-progress i { display: block; height: 100%; background: var(--pass); }
+
+  /* ---------- component roadmap ---------- */
+
+  .component-roadmap { margin: 18px 0 26px; }
+  .component-roadmap-intro {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px;
+    margin-bottom: 14px;
+  }
+  .component-roadmap-intro h3 { margin: 0; }
+  .component-roadmap-intro p { flex: 1 1 520px; margin: 0; color: var(--ink-soft); font-size: 13px; }
+  .component-roadmap-intro span { color: var(--ink-mute); font-family: var(--mono); font-size: 11px; }
+  .component-roadmap-grid {
+    display: grid; grid-template-columns: repeat(3, minmax(340px, 1fr));
+    gap: 12px; align-items: start; overflow-x: auto; padding-bottom: 4px;
+  }
+  .component-roadmap-band {
+    overflow: hidden; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--surface);
+  }
+  .component-roadmap-band > header { min-height: 154px; padding: 16px 16px 14px; border-top: 3px solid var(--accent); background: var(--accent-soft); }
+  .component-roadmap-band[data-roadmap-band="plan-next"] > header { border-top-color: var(--warn); background: var(--warn-bg); }
+  .component-roadmap-band[data-roadmap-band="focused-follow-up"] > header { border-top-color: var(--pass); background: var(--pass-bg); }
+  .component-roadmap-kicker { color: var(--ink-mute); font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; }
+  .component-roadmap-band h3 { margin: 4px 0 5px; font-size: 18px; }
+  .component-roadmap-band header p { min-height: 54px; margin: 0 0 8px; color: var(--ink-soft); font-size: 11.5px; line-height: 1.45; }
+  .component-roadmap-band header strong { color: var(--ink-soft); font-family: var(--mono); font-size: 10.5px; font-weight: 500; }
+  .component-roadmap-band .tbl-scroll {
+    padding: 0 12px 8px; overscroll-behavior-inline: contain; scrollbar-gutter: stable;
+  }
+  .component-roadmap-band .tbl-scroll[tabindex]:focus-visible { outline-offset: -2px; }
+  .component-roadmap-band table { min-width: 600px; table-layout: fixed; font-size: 11.5px; }
+  .component-roadmap-band th { padding-top: 10px; font-size: 10.5px; white-space: nowrap; }
+  .component-roadmap-band td { padding-top: 8px; padding-bottom: 8px; }
+  .component-roadmap-band th:nth-child(1), .component-roadmap-band td:nth-child(1) { width: 34px; }
+  .component-roadmap-band th:nth-child(2), .component-roadmap-band td:nth-child(2) { width: 250px; }
+  .component-roadmap-band th:nth-child(3), .component-roadmap-band td:nth-child(3) { width: 84px; }
+  .component-roadmap-band th:nth-child(4), .component-roadmap-band td:nth-child(4) { width: 62px; }
+  .component-roadmap-band th:nth-child(5), .component-roadmap-band td:nth-child(5) { width: 58px; }
+  .component-roadmap-band th:nth-child(6), .component-roadmap-band td:nth-child(6) { width: 64px; }
+  .component-roadmap-band code { display: block; overflow-wrap: anywhere; font-size: 10.5px; }
+  .component-roadmap-link { color: inherit; text-decoration: none; }
+  .component-roadmap-link:hover { color: var(--accent); text-decoration: underline; }
+  .component-roadmap-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .component-roadmap-band .p-mute { font-size: 9.5px; }
+  .component-roadmap-band .component-share-label { display: inline-block; width: 34px; }
+  .component-detail-paths, .component-detail-families { color: var(--ink-soft); font-size: 12px; }
 
   .ladder { display: flex; gap: 3px; }
   .ladder i { flex: 1; height: 7px; border-radius: 2px; background: var(--surface-sunk); }
@@ -975,14 +1183,45 @@
     background: var(--surface);
   }
 
+  @media (max-width: 1120px) {
+    .component-roadmap-grid { grid-template-columns: 1fr; overflow: visible; }
+  }
+
   @media (max-width: 620px) {
     .wrap { padding: 28px 18px 72px; }
     .runhead h1 { font-size: 24px; }
+    .dashboard-hero { padding: 24px 20px 22px; }
+    .dashboard-hero h3 { font-size: 27px; }
+    .dashboard-ribbon { grid-template-columns: repeat(2, 1fr); }
+    .dashboard-metric:nth-child(2) { border-right: 0; }
+    .dashboard-metric:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+    .dashboard-main { grid-template-columns: 1fr; }
+    .dashboard-actions { padding: 22px 18px 24px; border-right: 0; border-bottom: 1px solid var(--line); }
+    .dashboard-action { grid-template-columns: 30px minmax(0, 1fr); }
+    .dashboard-action-cta { grid-column: 2; justify-self: start; }
+    .dashboard-readiness { grid-template-columns: 1fr; gap: 8px; }
+    .dashboard-side { padding: 22px 20px 24px; }
+    .dashboard-roadmap { padding: 22px 18px 24px; }
+    .dashboard-roadmap-head { display: block; }
+    .dashboard-roadmap-head .dashboard-link { display: inline-block; margin-top: 8px; }
+    .dashboard-vitals { padding: 22px 18px 24px; }
+    .dashboard-vital-grid { grid-template-columns: repeat(2, 1fr); }
+    .dashboard-vital:nth-child(2n) { border-right: 0; }
+    .dashboard-vital:nth-child(-n+6) { border-bottom: 1px solid var(--line); }
+    .dashboard-vital:nth-last-child(-n+2) { border-bottom: 0; }
+    .report-view-switcher__head { display: block; }
+    .report-view-switcher__status { margin-top: 3px; }
+    .report-view-switcher__choices { grid-template-columns: 1fr; }
     .ramp-row .name { flex: 0 0 100%; }
     .cov-row .name { flex: 0 0 62px; }
     .cov-row .n { flex: 0 0 96px; }
     .ts-row { flex-direction: column; align-items: flex-start; gap: 2px; }
     .ts-row .tk { flex: none; }
+  }
+
+  @media print {
+    .component-roadmap-band table { min-width: 0; table-layout: auto; }
+    .component-roadmap-band th { white-space: normal; }
   }
 
   /* Present by default; only `tools/validate_run.py --stamp` removes it,
@@ -1006,11 +1245,11 @@
   }
 </style>
 </head>
-<body>
+<body data-report-view="snapshot">
 
 <div class="wrap">
 
-  <!-- SLOT:validation-banner --><div class="validation-banner" role="alert"><strong>⚠ Not validated.</strong> This report has not passed <code>tools/validate_run.py</code>'s 16-rule gate. Findings may be incomplete, unverified, or claim more than this run established — do not treat it as finished.</div><!-- /SLOT:validation-banner -->
+  <!-- SLOT:validation-banner --><div class="validation-banner" role="alert"><strong>&#9888; Not validated.</strong> This report has not passed <code>tools/validate_run.py</code>'s 17-rule gate. Findings may be incomplete, unverified, or claim more than this run established &mdash; do not treat it as finished.</div><!-- /SLOT:validation-banner -->
 
   <header class="runhead">
     <div>
@@ -1028,72 +1267,90 @@
     <!-- /SLOT:runhead-meta -->
   </header>
 
+  <!-- SLOT:report-view-switcher -->
+  <nav class="report-view-switcher" aria-label="Choose report depth">
+    <div class="report-view-switcher__head">
+      <strong>Choose how much detail you need</strong>
+      <p class="report-view-switcher__status" data-report-view-status aria-live="polite">Showing the short overview.</p>
+    </div>
+    <div class="report-view-switcher__choices" role="group" aria-label="Report views">
+      <button type="button" data-report-view-button="snapshot" aria-pressed="true"><strong>Snapshot</strong><span>What matters now</span></button>
+      <button type="button" data-report-view-button="action" aria-pressed="false"><strong>Action Plan</strong><span>What to do next</span></button>
+      <button type="button" data-report-view-button="evidence" aria-pressed="false"><strong>Evidence</strong><span>How we know</span></button>
+    </div>
+  </nav>
+  <!-- /SLOT:report-view-switcher -->
+
   <nav class="contents" aria-label="Report sections">
     <span class="contents-label">In this report</span>
-    <a href="#glance">At a glance</a>
-    <a href="#summary">Summary</a>
-    <a href="#decisions">Decisions</a>
-    <a href="#trend" data-tier="full collapsed family-only">Trend</a>
-    <a href="#vitals">Vitals</a>
-    <a href="#start">Where to start</a>
-    <a href="#architecture" data-tier="collapsed family-only">Architecture</a>
-    <a href="#fix-queue">Fix queue</a>
-    <a href="#ownership">Ownership</a>
-    <a href="#lineage">Lineage</a>
-    <a href="#inventory">Inventory</a>
-    <a href="#coverage">Coverage</a>
-    <a href="#leakage">Leakage</a>
-    <a href="#modes">Modes</a>
-    <a href="#orphans">Orphans</a>
-    <a href="#measurement">Measurement</a>
+    <a href="#glance">Overview</a>
+    <a href="#start">Start here</a>
+    <a href="#vitals">All vitals</a>
+    <a href="#component-usage">Components</a>
+    <a href="#strategy">Rollout plan</a>
+    <details class="contents-more">
+      <summary>All sections</summary>
+      <div class="contents-more-links">
+        <a href="#summary">Summary evidence</a>
+        <a href="#decisions">Decisions</a>
+        <a href="#trend" data-tier="full collapsed family-only">Trend</a>
+        <a href="#architecture" data-tier="collapsed family-only">Architecture</a>
+        <a href="#fix-queue">Fix queue</a>
+        <a href="#ownership">Ownership</a>
+        <a href="#lineage">Lineage</a>
+        <a href="#inventory">Token inventory</a>
+        <a href="#coverage">Coverage</a>
+        <a href="#leakage">Candidate matches</a>
+        <a href="#modes">Themes and modes</a>
+        <a href="#orphans">Unused tokens</a>
+        <a href="#measurement">How this was measured</a>
+      </div>
+    </details>
   </nav>
 
-  <section id="glance">
-    <div class="eyebrow">At a glance</div>
-    <h2>The whole run in one strip</h2>
+  <section id="glance" data-report-views="snapshot action evidence">
+    <div class="eyebrow">Overview</div>
+    <h2>Your design token dashboard</h2>
     <p class="lede">
-      Six marks you can read without reading: where the system stands, how the eight grades split, how much of this is confirmed against blocked or unmeasured, how leakage divides across its four evidence tiers, how much of the fix queue has verified semantic equivalence, and what was counted. Every mark carries its number. Start here, then read down for the evidence.
+      Start with the plain-language summary, then follow the links whenever you want the detailed evidence behind a result.
     </p>
     <!-- SLOT:at-a-glance -->
-    <div class="glance">
-      <div class="gcard">
-        <div class="gt"><span>Stage</span><span>2 of 6</span></div>
-        <div class="gv"><code class="gstage">declared</code></div>
-        <div class="ladder"><i class="done"></i><i class="now"></i><i></i><i></i><i></i><i></i></div>
-        <div class="gd">Tokens exist and ship; components go around them. Next: <code>adopted</code>.</div>
+    <div class="dashboard">
+      <div class="dashboard-hero">
+        <h3>Your token foundation is in place. Here’s what will make it stronger.</h3>
+        <p>We found 53 shared token concepts. Next, confirm what the highest-impact matches mean so the team can replace hardcoded styles safely.</p>
       </div>
-      <div class="gcard">
-        <div class="gt"><span>Eight vitals</span><span>3 fail</span></div>
-        <div class="seg"><i data-g="fail" style="width:37.5%"></i><i data-g="attention" style="width:37.5%"></i><i data-g="pass" style="width:12.5%"></i><i data-g="blocked" style="width:12.5%"></i></div>
-        <div class="legend"><span><b>3</b> fail</span><span><b>3</b> attention</span><span><b>1</b> pass</span><span><b>1</b> blocked</span></div>
+      <div class="dashboard-ribbon">
+        <div class="dashboard-metric"><span class="dashboard-label">You’re here</span><span class="dashboard-value"><code>declared</code></span><span class="dashboard-helper">Stage 2 of 6 · next: adopted</span></div>
+        <div class="dashboard-metric"><span class="dashboard-label">How the system is doing</span><span class="dashboard-value">Needs focus</span><span class="dashboard-helper">3 fail · 3 attention · 1 blocked</span></div>
+        <div class="dashboard-metric"><span class="dashboard-label">What we could verify</span><span class="dashboard-value">6 of 8 vitals</span><span class="dashboard-helper">1 needs evidence · 1 is unmeasured</span></div>
+        <div class="dashboard-metric"><span class="dashboard-label">Token inventory</span><span class="dashboard-value">53 concepts</span><span class="dashboard-helper">Across 5 measured families</span></div>
       </div>
-      <div class="gcard">
-        <div class="gt"><span>Confidence</span><span>6 of 8 confirmed</span></div>
-        <div class="seg"><i data-k="confirmed" style="width:75%"></i><i data-k="blocked" style="width:12.5%"></i><i data-k="unmeasured" style="width:12.5%"></i></div>
-        <div class="legend"><span><b>6</b> confirmed</span><span><b>1</b> blocked</span><span><b>1</b> unmeasured</span></div>
-      </div>
-      <div class="gcard">
-        <div class="gt"><span>Leakage</span><span>1,645 values</span></div>
-        <div class="seg"><i data-t="redundant" style="width:52%"></i><i data-t="near-miss" style="width:17%"></i><i data-t="uncovered" style="width:31%"></i></div>
-        <div class="legend"><span><b>861</b> redundant</span><span><b>274</b> near-miss</span><span><b>510</b> uncovered</span></div>
-      </div>
-      <div class="gcard">
-        <div class="gt"><span>Fix queue</span><span>7 entries</span></div>
-        <div class="ring">
-          <svg viewBox="0 0 52 52" aria-hidden="true"><circle class="track" cx="26" cy="26" r="20"></circle><circle class="fill" cx="26" cy="26" r="20" stroke-dasharray="89.8 125.7"></circle></svg>
-          <div><div class="rv">5<small> / 7</small></div><div class="rd">semantically verified</div></div>
+      <div class="dashboard-main">
+        <div class="dashboard-actions">
+          <div class="dashboard-section-head"><h4>Start here</h4><a href="#start">See all next steps</a></div>
+          <div class="dashboard-action-list">
+            <a class="dashboard-action" href="#leakage"><span class="dashboard-action-number">1</span><span><strong>Confirm what the closest matches mean</strong><p>Review semantic intent before replacing a hardcoded value with a token.</p></span><span class="dashboard-action-cta">Review matches</span></a>
+            <a class="dashboard-action" href="#modes"><span class="dashboard-action-number">2</span><span><strong>Prove every theme before migration</strong><p>Compare resolved output for each registered mode and product surface.</p></span><span class="dashboard-action-cta">Check themes</span></a>
+            <a class="dashboard-action" href="#measurement"><span class="dashboard-action-number">3</span><span><strong>Give unowned style roots a clear owner</strong><p>Settle those boundaries first, then add token-aware checks that prevent new drift.</p></span><span class="dashboard-action-cta">Review ownership</span></a>
+          </div>
+          <a class="dashboard-readiness" href="#fix-queue"><span><strong>Automation readiness</strong><span class="dashboard-helper">No automatic changes are queued yet</span></span><div class="dashboard-progress" data-glance-mark="fix-queue" data-fix-total="0" data-fix-verified="0" aria-label="No automatic changes are queued yet"><i style="width:0%"></i></div></a>
         </div>
+        <aside class="dashboard-side">
+          <div class="dashboard-side-block"><h4>Your design language</h4><div class="dashboard-type" data-font-verified="true">Inter</div><div class="dashboard-type-meta">Verified typography family</div><div class="dashboard-brand-colors"><div class="dashboard-brand-color"><i data-color-value="#0F8A83" style="background:#0F8A83"></i><code>brand-primary</code><span>#0F8A83</span></div><div class="dashboard-brand-color"><i data-color-value="#E8A83E" style="background:#E8A83E"></i><code>brand-accent</code><span>#E8A83E</span></div></div></div>
+          <div class="dashboard-side-block"><h4>Most connected component</h4><div class="dashboard-component-name">Button</div><div class="dashboard-component-meta">Uses 18 distinct tokens across 64 references</div><a class="dashboard-link" href="#component-usage">See component usage</a></div>
+        </aside>
       </div>
-      <div class="gcard">
-        <div class="gt"><span>Counted</span><span>full tier</span></div>
-        <div class="gv">53<small>tokens</small></div>
-        <div class="gd"><b>5</b> families measured · <b>14</b> absent · <b>0</b> unmeasured · <b>1,230</b> files scanned</div>
+      <div class="dashboard-roadmap">
+        <div class="dashboard-roadmap-head"><div><h4 id="dashboard-component-roadmap-title">Where component token work has the widest footprint</h4><p>Use confirmed token references to choose what to examine first, then check modes, leakage, and product usage before scheduling a migration.</p></div><a class="dashboard-link" href="#component-usage">Explore all 20 components</a></div>
+        <div class="tbl-scroll" role="region" tabindex="0" aria-labelledby="dashboard-component-roadmap-title"><table class="dashboard-roadmap-table" aria-labelledby="dashboard-component-roadmap-title"><thead><tr><th class="num">#</th><th>Component or surface</th><th class="num">Token refs</th><th class="num">Tokens</th><th class="num">Paths</th><th>Share</th><th>Suggested order</th></tr></thead><tbody><tr><td class="num">1</td><td><a class="component-roadmap-link" href="#component-usage"><code>app / button</code></a></td><td class="num">64</td><td class="num">18</td><td class="num">2</td><td><span class="component-share-label">22%</span></td><td><span class="component-roadmap-state">Assess first</span></td></tr></tbody></table></div>
       </div>
+      <div class="dashboard-vitals"><div class="dashboard-section-head"><h4>Your eight system checks</h4><a href="#vitals">See the full evidence</a></div><div class="dashboard-vital-grid"><a class="dashboard-vital" data-grade="pass" href="#vitals"><span class="dashboard-vital-name">Tier integrity</span><span class="dashboard-vital-state">Well supported <span class="dashboard-official">pass</span></span></a><a class="dashboard-vital" data-grade="attention" href="#vitals"><span class="dashboard-vital-name">Leakage</span><span class="dashboard-vital-state">Worth a look <span class="dashboard-official">attention</span></span></a><a class="dashboard-vital" data-grade="attention" href="#vitals"><span class="dashboard-vital-name">Coverage</span><span class="dashboard-vital-state">Worth a look <span class="dashboard-official">attention</span></span></a><a class="dashboard-vital" data-grade="blocked" href="#vitals"><span class="dashboard-vital-name">Mode completeness</span><span class="dashboard-vital-state">Needs evidence <span class="dashboard-official">blocked</span></span></a><a class="dashboard-vital" data-grade="attention" href="#vitals"><span class="dashboard-vital-name">Naming coherence</span><span class="dashboard-vital-state">Worth a look <span class="dashboard-official">attention</span></span></a><a class="dashboard-vital" data-grade="pass" href="#vitals"><span class="dashboard-vital-name">Single source</span><span class="dashboard-vital-state">Well supported <span class="dashboard-official">pass</span></span></a><a class="dashboard-vital" data-grade="blocked" href="#vitals"><span class="dashboard-vital-name">Orphans</span><span class="dashboard-vital-state">Needs evidence <span class="dashboard-official">blocked</span></span></a><a class="dashboard-vital" data-grade="blocked" href="#vitals"><span class="dashboard-vital-name">Enforcement</span><span class="dashboard-vital-state">Needs evidence <span class="dashboard-official">blocked</span></span></a></div></div>
     </div>
     <!-- /SLOT:at-a-glance -->
   </section>
 
-  <section id="summary">
+  <section id="summary" data-report-views="action evidence">
     <div class="eyebrow">Summary</div>
     <h2>What is worst, and what to do first</h2>
     <p class="lede">
@@ -1133,7 +1390,7 @@
     <!-- /SLOT:exec-summary -->
   </section>
 
-  <section id="decisions">
+  <section id="decisions" data-report-views="action evidence">
     <div class="eyebrow">Decisions this run made</div>
     <h2>The close calls, and the other reading of each</h2>
     <p class="lede">
@@ -1160,7 +1417,7 @@
     <!-- /SLOT:decisions -->
   </section>
 
-  <section id="trend">
+  <section id="trend" data-report-views="action evidence">
     <div class="eyebrow">Trend</div>
     <h2>What moved since the last run</h2>
     <p class="lede">
@@ -1190,7 +1447,7 @@
     <!-- /SLOT:trend -->
   </section>
 
-  <section id="vitals">
+  <section id="vitals" data-report-views="action evidence">
     <div class="eyebrow">The eight vitals</div>
     <h2>Eight checks on your token system</h2>
     <p class="lede">
@@ -1265,7 +1522,7 @@
     </div>
   </section>
 
-  <section id="start">
+  <section id="start" data-report-views="action evidence">
     <div class="eyebrow">Where to start</div>
     <h2>The next concrete move, ranked</h2>
     <p class="lede">
@@ -1319,7 +1576,7 @@
     <!-- /SLOT:next-steps -->
   </section>
 
-  <section id="architecture" data-tier="collapsed family-only">
+  <section id="architecture" data-tier="collapsed family-only" data-report-views="action evidence">
     <div class="eyebrow">Architecture</div>
     <h2>Your system, grouped the way you built it</h2>
     <p class="lede">
@@ -1484,7 +1741,7 @@
   </section>
 
 
-  <section id="fix-queue">
+  <section id="fix-queue" data-report-views="action evidence">
     <div class="eyebrow">Fix queue</div>
     <h2>What a person or an agent can act on now</h2>
     <p class="lede">
@@ -1576,7 +1833,7 @@
     <!-- /SLOT:fix-queue -->
   </section>
 
-  <section id="ownership">
+  <section id="ownership" data-report-views="action evidence">
     <div class="eyebrow">Ownership</div>
     <h2>The same findings, grouped by who owns them</h2>
     <p class="lede">
@@ -1600,34 +1857,29 @@
     <!-- /SLOT:groups -->
   </section>
 
-  <section id="component-usage">
-    <div class="eyebrow">Token adoption</div>
-    <h2>The 20 components using the most tokens</h2>
+  <section id="component-usage" data-report-views="action evidence">
+    <div class="eyebrow">Component roadmap</div>
+    <h2>Which components carry the largest token footprint</h2>
     <p class="lede">
-      Ranked by confirmed token-reference occurrences, then distinct tokens. High usage is context, not a defect: use the token and family detail to see whether a component is a healthy system anchor or a surface worth investigating.
+      Confirmed token references show which components carry the largest styling footprint. Use them to order investigation, then check leakage, modes, lineage, product usage, and behavior before scheduling a migration.
     </p>
     <!-- SLOT:component-usage -->
     <div class="note">
       <b>Measurement boundary:</b> CSS custom properties and Sass variables are measured. Framework-generated utilities remain unmeasured until their adapter resolves them to canonical concepts.
     </div>
-    <div class="tbl-scroll stack-16">
-      <table>
-        <thead>
-          <tr><th class="num">Rank</th><th>Component or surface</th><th class="num">References</th><th class="num">Tokens</th><th>Families</th><th>Most-used tokens</th></tr>
-        </thead>
-        <tbody>
-          <tr data-component="component0001"><td class="num">1</td><td><code>app / button</code><br><span class="path">src/components/button.css</span></td><td class="num">42</td><td class="num">8</td><td>color 20 · spacing 12 · typography 10</td><td><span class="tok">--surface-raised</span> · <span class="tok">--space-sm</span></td></tr>
-        </tbody>
-      </table>
+    <div class="component-roadmap">
+      <div class="component-roadmap-intro"><h3>Plan by token footprint</h3><p>Three cumulative-use bands turn the ranking into an investigation sequence.</p><span>100 confirmed token references in this ranked view</span></div>
+      <div class="component-roadmap-grid">
+        <article class="component-roadmap-band" data-roadmap-band="assess-first" aria-labelledby="component-roadmap-band-assess-first-title"><header><span class="component-roadmap-kicker">1–5</span><h3 id="component-roadmap-band-assess-first-title">Assess first</h3><p>The components that make up the first half of confirmed token use in this ranked view.</p><strong>50% of the ranked view</strong></header><div class="tbl-scroll" role="region" tabindex="0" aria-labelledby="component-roadmap-band-assess-first-title"><table aria-labelledby="component-roadmap-band-assess-first-title"><thead><tr><th class="num">#</th><th>Component or surface</th><th class="num">Token refs</th><th class="num">Tokens</th><th class="num">Paths</th><th>Share</th></tr></thead><tbody><tr><td class="num">1</td><td><a class="component-roadmap-link" href="#component-usage"><code>app / button</code></a><br><span class="p-mute">component · co-named-source</span></td><td class="num">22</td><td class="num">8</td><td class="num">2</td><td><span class="component-share-label">22%</span></td></tr></tbody></table></div></article>
+        <article class="component-roadmap-band" data-roadmap-band="plan-next" aria-labelledby="component-roadmap-band-plan-next-title"><header><span class="component-roadmap-kicker">6–12</span><h3 id="component-roadmap-band-plan-next-title">Plan next</h3><p>The components that move the cumulative total from roughly 50% to 80%.</p><strong>30% of the ranked view</strong></header><div class="tbl-scroll" role="region" tabindex="0" aria-labelledby="component-roadmap-band-plan-next-title"><table aria-labelledby="component-roadmap-band-plan-next-title"><thead><tr><th class="num">#</th><th>Component or surface</th><th class="num">Token refs</th><th class="num">Tokens</th><th class="num">Paths</th><th>Share</th></tr></thead><tbody><tr><td class="num">6</td><td><a class="component-roadmap-link" href="#component-usage"><code>app / card</code></a><br><span class="p-mute">component · path-inferred</span></td><td class="num">8</td><td class="num">4</td><td class="num">1</td><td><span class="component-share-label">8%</span></td></tr></tbody></table></div></article>
+        <article class="component-roadmap-band" data-roadmap-band="focused-follow-up" aria-labelledby="component-roadmap-band-focused-follow-up-title"><header><span class="component-roadmap-kicker">13–20</span><h3 id="component-roadmap-band-focused-follow-up-title">Focused follow-up</h3><p>The remaining ranked components, where confirmed token use is more focused.</p><strong>20% of the ranked view</strong></header><div class="tbl-scroll" role="region" tabindex="0" aria-labelledby="component-roadmap-band-focused-follow-up-title"><table aria-labelledby="component-roadmap-band-focused-follow-up-title"><thead><tr><th class="num">#</th><th>Component or surface</th><th class="num">Token refs</th><th class="num">Tokens</th><th class="num">Paths</th><th>Share</th></tr></thead><tbody><tr><td class="num">13</td><td><a class="component-roadmap-link" href="#component-usage"><code>app / badge</code></a><br><span class="p-mute">component · path-inferred</span></td><td class="num">3</td><td class="num">2</td><td class="num">1</td><td><span class="component-share-label">3%</span></td></tr></tbody></table></div></article>
+      </div>
     </div>
-    <details class="stack-16">
-      <summary>Every token and evidence location for the Top 20</summary>
-      <div class="details-body"><p>Replace this sample with one disclosure per ranked component, including every token, family, count and file:line location.</p></div>
-    </details>
+    <details class="stack-16"><summary>#1 app / button — 22 references across 8 tokens</summary><div class="details-body"><p>Each finished run lists every token, family, count, owned path, and file:line location here.</p></div></details>
     <!-- /SLOT:component-usage -->
   </section>
 
-  <section id="lineage">
+  <section id="lineage" data-report-views="evidence">
     <div class="eyebrow">Lineage</div>
     <h2>Where each token comes from</h2>
     <p class="lede">
@@ -1666,7 +1918,7 @@
     <!-- /SLOT:lineage -->
   </section>
 
-  <section id="inventory">
+  <section id="inventory" data-report-views="evidence">
     <div class="eyebrow">Inventory</div>
     <h2>Your tokens, shown as what they are</h2>
     <p class="lede">
@@ -1996,7 +2248,7 @@
   </section>
 
 
-  <section id="coverage">
+  <section id="coverage" data-report-views="action evidence">
     <div class="eyebrow">Coverage</div>
     <h2>What was measured, per bundle and mode</h2>
     <p class="lede">
@@ -2032,7 +2284,7 @@
     <!-- /SLOT:coverage-matrix -->
   </section>
 
-  <section id="leakage">
+  <section id="leakage" data-report-views="action evidence">
     <div class="eyebrow">Leakage</div>
     <h2>Hardcoded values, and whether a token already existed</h2>
     <p class="lede">
@@ -2421,7 +2673,7 @@
     </div>
   </section>
 
-  <section id="modes">
+  <section id="modes" data-report-views="action evidence">
     <div class="eyebrow">Mode completeness</div>
     <h2>Which tokens are missing a value in each mode</h2>
     <p class="lede">
@@ -2719,7 +2971,7 @@
     <!-- /SLOT:modes-gaps -->
   </section>
 
-  <section id="orphans">
+  <section id="orphans" data-report-views="action evidence">
     <div class="eyebrow">Orphans &amp; enforcement</div>
     <h2>Tokens nothing uses, and what stops this coming back</h2>
     <p class="lede">
@@ -2782,7 +3034,7 @@
     </div>
   </section>
 
-  <section id="working-set">
+  <section id="working-set" data-report-views="evidence">
     <div class="eyebrow">Working set</div>
     <h2>Where to go from here</h2>
     <p class="lede">
@@ -2806,7 +3058,7 @@
     </div>
   </section>
 
-  <section id="measurement">
+  <section id="measurement" data-report-views="evidence">
     <div class="eyebrow">Measurement</div>
     <h2>How this was measured</h2>
     <p class="lede">
@@ -2955,6 +3207,27 @@
       </div>
     </div>
     <!-- /SLOT:measurement -->
+  </section>
+
+  <section id="strategy" data-report-views="action evidence">
+    <div class="eyebrow">Unification strategy</div>
+    <h2>How to turn this audit into a durable system</h2>
+    <p class="lede">
+      The recommendation below separates the system of design decisions from the system of component implementation. It uses this repository's framework boundaries, delivery mechanisms, token inventory, modes, and component adoption to choose a model, then defines the architecture, rollout gates, standards, and measures that fit the evidence.
+    </p>
+    <!-- SLOT:adoption-strategy -->
+    <div class="stage-line"><code>token-led-hybrid</code> — Unify decisions everywhere; unify components where ownership is proven.</div>
+    <div class="grid2 stack-16">
+      <div class="panel">
+        <h3>Target architecture</h3>
+        <p class="p-soft">One typed token contract, semantic aliases, generated delivery adapters, and versioned components for owned surfaces.</p>
+      </div>
+      <div class="panel">
+        <h3>Rollout</h3>
+        <p class="p-soft">Prove the boundary, freeze identity, generate adapters, verify modes, migrate by impact, then enforce.</p>
+      </div>
+    </div>
+    <!-- /SLOT:adoption-strategy -->
   </section>
 
   <footer>

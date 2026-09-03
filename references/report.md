@@ -61,6 +61,30 @@ few dozen strips. The answer to a large palette is a better rendering,
 never a smaller one — the inventory does not regress to prose as the
 system grows, it compresses through a form built for exactly that.
 
+## Three views, one evidence set
+
+The report offers three reading depths without running three different audits:
+
+| View | Reader question | Opens with |
+|---|---|---|
+| `snapshot` | What matters now? | Dashboard, maturity, confidence, identity, three priorities, Top 5 component footprint, and eight vital states |
+| `action` | What should we do next? | Snapshot plus the executive summary, decisions, trend, vitals, ranked actions, architecture, fix queue, ownership, Top 20 component roadmap, coverage, leakage, modes, orphans, and rollout strategy |
+| `evidence` | How do we know? | Every section, including lineage, complete token inventory, working set, discovery engine, measurement, and provenance |
+
+Record the initial selection under `rendering.view`; always record
+`rendering.available_views` as `snapshot`, `action`, then `evidence`. Default
+to `snapshot`. A view changes the report's initial disclosure, not its facts:
+every section and every finding remains in the same self-contained HTML file.
+With scripting unavailable, show the complete report. When a deep link points
+into a hidden section, promote the page to the least-detailed view that contains
+the target before scrolling. The switcher stays hidden when scripting is not
+available, while the full report and every evidence disclosure remain visible.
+Printing always includes all sections and all evidence disclosures.
+
+Do not confuse report views with rendering tiers. A view answers how much a
+reader needs now. A tier answers how densely a repository of this size must
+render. The two decisions are independent.
+
 ## Rendering tiers
 
 The report changes shape as your token system grows. Every tier grades the
@@ -143,12 +167,31 @@ point at does not appear on the list.
 
 ## At a glance
 
-Above the executive summary, one strip a reader takes in without reading:
-the stage as a six-tick ladder, the eight grades as one segmented bar,
-confirmed against blocked and unmeasured as another, leakage's four tiers
-as a third, the automatable share of the fix queue as a ring, and the
-token and family counts as tiles. Every mark carries its number; nothing
-is decorative. Inline SVG and CSS only — the report ships no script.
+Above the executive summary, a compact dashboard gives the reader a clear
+starting point before the detailed evidence. It has five layers:
+
+1. An evidence-derived headline that says what the current maturity stage
+   means in plain language.
+2. Four quick answers: where the system is, how it is doing, what the run
+   could verify, and what it counted.
+3. Three prioritized actions, followed by the verified type family, brand
+   colors, most-connected component, and framework roots that shaped the run.
+4. A five-row component-footprint table that shows confirmed references, distinct
+   tokens, share of the ranked view, and the suggested investigation band.
+5. The eight vitals, each with a plain-language state first and its exact
+   audit grade second.
+
+The stage ladder, grade split, confidence split, candidate split, fix-queue
+readiness, and inventory totals remain structured marks with exact values.
+The dashboard links to the deeper section behind each summary. It never
+replaces evidence, invents an identity value, or describes an unverified
+replacement as safe.
+
+The complete component section divides the Top 20 into `assess-first`,
+`plan-next`, and `focused-follow-up` tables by cumulative confirmed token use.
+This is a roadmap input, not a migration verdict: token references identify the
+largest styling footprint, while product usage, leakage, mode proof, lineage,
+and component behavior determine whether a change is ready.
 
 ## Decisions this run made
 
@@ -334,6 +377,21 @@ Required in both HTML and JSON, in the measurement section:
 Most of this lands in `discovery` and `run` already. Listing it here makes
 it required rather than customary, and gives a follow-on agent one place to
 read the run's provenance from.
+
+## Unification strategy
+
+End the report with the evidence-derived adoption strategy from
+`references/adoption-strategy.md`. Measurement comes immediately before it
+so the recommendation reads as a consequence of the scope, not as generic
+design-system advice.
+
+The strategy must duplicate `adoption_strategy` from the JSON and show the
+selected model, the repository facts that selected it, five integration
+constraints, five target-architecture layers, four standards references, six
+ordered rollout phases, six guardrails, and five success measures. Component consolidation remains
+selective until a separate component-contract assessment proves behavior,
+public APIs, state, localization, analytics, authorization, and interaction
+accessibility.
 
 ## The invariants
 

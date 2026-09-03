@@ -13,7 +13,7 @@ allowed-tools: Read, Grep, Glob, Bash, Write
 
 You are grading a codebase's design token layer against eight fixed vitals
 and reporting what you found — with evidence, never an average. Work through
-the eight stages below in order.
+the seven stages below in order.
 
 ## Stage 1 — Framework and token-source discovery
 
@@ -168,7 +168,23 @@ point at when nothing was found, or when the check could not run. A vital
 with a count and no reachable instance is `blocked`, never `fail` —
 silence is not evidence.
 
-## Stage 5 — Choose the rendering tier and the form per section
+## Stage 5 — Choose the report view, rendering tier, and form per section
+
+Choose the report's initial view independently of its data density:
+
+- `snapshot` — open on the dashboard: what matters now.
+- `action` — open the working plan: priorities, owners, component roadmap,
+  gaps, and rollout guidance.
+- `evidence` — open the complete audit: inventory, lineage, discovery,
+  provenance, and every implementation detail.
+
+Default to `snapshot` unless the user asks for another view. Record the
+selection as `rendering.view` and the fixed ordered list
+`[snapshot, action, evidence]` as `rendering.available_views`. Keep every
+section and finding in the one self-contained HTML file regardless of the
+initial view. Treat the view as progressive disclosure, never as permission
+to omit evidence. Make a deep link reveal the least-detailed view containing
+its target, and show every section when printing.
 
 Count the tokens the stack detected and choose the tier from
 `references/report.md`: under 150 tokens is `full`; 150 to 600 inclusive is
@@ -187,9 +203,9 @@ enough to need the densest form. Record one form per section under
 `distribution`, `chips`, `by-family`, `matrix`, `coverage-bar`,
 `health-strip`, `by-namespace`.
 
-Recording the form is what lets two runs be compared on presentation as
-well as on findings. A run that grades the same and renders differently has
-diverged, and `rendering.forms` is where that shows up.
+Recording the view, tier, and forms lets two runs be compared on presentation
+as well as on findings. A run that grades the same and renders differently has
+diverged, and the `rendering` block is where that shows up.
 
 ## Stage 5b — Rank, queue, and trace
 
@@ -215,13 +231,31 @@ findings. All of them go into both the HTML and the JSON.
   Use generic surfaces only to fill a list shorter than 20 and label the
   fallback. Render every token used by each entry, its family, syntax, count,
   and real locations. State which reference syntaxes were measured and which
-  remain unresolved.
+  remain unresolved. Group repeated locations by file, show the first two,
+  and keep the remainder in a default-closed, accessible “See N more locations” disclosure;
+  preserve every full `file:line` value in HTML, JSON, and print. Validate the
+  one-file-label, two-location preview, hidden count, default-closed state, and
+  disclosure tail.
+  Split the ranked view into cumulative-use roadmap bands: the rows that carry
+  the first roughly 50% of confirmed references are `assess-first`, the rows
+  through roughly 80% are `plan-next`, and the remainder are
+  `focused-follow-up`. Show the first five on the dashboard and all ranked rows
+  in the component section. This orders investigation by token footprint.
+  Runtime frequency, migration safety, and component quality require separate
+  evidence.
 - **Trace lineage** from primitive to semantic alias to projection to
   consumers. A lineage edge is what separates a deliberate alias from a
   duplicate definition; mark an untraced link as untraced rather than
   guessing at it.
 - **Fill the coverage matrix**: entry bundle by mode by family, every cell
   `measured`, `unmeasured`, `not_applicable` or `blocked`, with evidence.
+- **Derive the unification strategy** from the same measured facts. Follow
+  `references/adoption-strategy.md`: recommend a framework-neutral token
+  contract, generated delivery adapters, and shared components only where
+  ownership is proven. Never infer that a token audit established component
+  behavior. Record the selected model, its exact evidence, five integration
+  constraints, five architecture layers, the standards baseline, six gated
+  rollout phases, guardrails, and success measures under `adoption_strategy`.
 
 Assign every finding a stable id with `findings.finding_id()`; ids are
 path-independent so a rename moves counts rather than re-creating findings.
@@ -273,7 +307,7 @@ After filling the template, merge and render the deterministic discovery and
 component-adoption views:
 
 ```
-python3 tools/render_discovery.py --refresh-template --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --leakage .token-vitals/literal-colors.json --report-json .token-vitals/report.json --html .token-vitals/report.html
+python3 tools/render_discovery.py --refresh-template --report-view snapshot --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --leakage .token-vitals/literal-colors.json --report-json .token-vitals/report.json --html .token-vitals/report.html
 ```
 
 ```
@@ -306,7 +340,9 @@ tokens.” This is progressive disclosure, not data truncation: every token and
 its structured parity attributes remain in the HTML. Present Color,
 Typography, and Foundation as inventory-family tabs with tablist/tabpanel
 relationships, Arrow/Home/End keyboard navigation, hash deep links, all panels
-visible without scripting and all panels visible in print. Before printing,
+visible without scripting and all panels visible in print. Author every report
+disclosure open, record its enhanced default state, and let the verified
+controller restore that state when scripting is available. Before printing,
 open every report disclosure so no evidence tail is omitted; after printing,
 restore each disclosure's prior state. Tabs select token families; they never
 paginate arbitrary table rows.
@@ -316,6 +352,8 @@ paginate arbitrary table rows.
       `validate_run.py --stamp` run may clear it (see below)
 - [ ] `doc-title`, `runhead-tag`, `runhead-meta` — the subject, never
       "Sample report · representative data"
+- [ ] `report-view-switcher` — Snapshot, Action Plan, and Evidence from one
+      complete evidence set; selected view matches `rendering.view`
 - [ ] `at-a-glance` — the strip above the summary; every mark carries its
       number
 - [ ] `exec-summary` — the stage line, then the four questions
@@ -342,9 +380,14 @@ paginate arbitrary table rows.
 - [ ] `measurement` — everything in `provenance` and `discovery`, including
       the capability table, root evidence, ownership split, unresolved
       imports by reason, and bundle × scheme verification; plus the
-      rendering tier and forms, read back from the capability map
+      initial report view, rendering tier, and forms, read back from the
+      capability map
 - [ ] `discovery-capabilities` — the seven universal capabilities, each
       with state, strongest evidence, and current limitation
+- [ ] `adoption-strategy` — the final report section; the evidence-derived
+      unification model, integration constraints, target architecture,
+      standards, six-phase rollout, guardrails, and measurable outcomes from
+      `references/adoption-strategy.md`
 - [ ] `footer-meta`
 
 For a generated sentence, use the slot templates in
@@ -358,7 +401,7 @@ skill exists to catch.
 
 ### Validation gate — required before writing the report
 
-Run the sixteen rules as code, rather than checking yourself against them. The
+Run the seventeen rules as code, rather than checking yourself against them. The
 source-artifact inputs prevent an internally consistent but stale report from
 passing after a newer discovery or analysis step:
 
@@ -381,7 +424,10 @@ the discovery profile stack, capability ladder, production roots,
 supplemental surfaces, and rendered evidence drift apart.
 It also fails when typography or brand colors are generic, inferred without
 explicit semantic evidence, missing from the visible HTML, or inconsistent
-with the source token artifact.
+with the source token artifact. It fails when the closing unification strategy
+is absent, generic, stale against the report evidence, missing an integration
+constraint, architecture layer, or rollout phase, or inconsistent between JSON
+and HTML.
 With `--current-skill`, it also refuses a report stamped by an older copy of
 the skill, which prevents a stale report from passing after discovery logic
 changes.
@@ -420,6 +466,8 @@ report while one of these is still failing:
 - Every `SLOT` region present in the file (after tier removal) has real
   content between its markers — none are empty.
 - Every vital card's `data-grade` matches its chip's `data-g`.
+- The three report-view buttons are present once, the selected button matches
+  `rendering.view`, and every section declares its allowed views.
 - The leading instruction comment is gone.
 
 ## Stage 7 — Write the outputs

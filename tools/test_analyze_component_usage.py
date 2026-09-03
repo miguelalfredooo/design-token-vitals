@@ -46,6 +46,9 @@ class TestComponentUsage(unittest.TestCase):
         self.assertEqual(card["references"], 3)
         self.assertEqual(card["distinct_tokens"], 2)
         self.assertEqual(card["families"], {"color": 2, "spacing": 1})
+        self.assertEqual(card["roadmap_band"], "assess-first")
+        self.assertEqual(card["share_of_ranked_references"], 100.0)
+        self.assertEqual(result["roadmap"]["ranked_references"], 3)
         syntax_by_token = {item["id"]: item["syntaxes"] for item in card["tokens"]}
         self.assertEqual(syntax_by_token["brand-primary"], ["css-custom-property"])
         self.assertEqual(syntax_by_token["space-sm"], ["scss-variable"])
@@ -96,16 +99,38 @@ class TestComponentUsage(unittest.TestCase):
         self.assertEqual(result["fallback_surfaces"], 1)
         self.assertEqual(len(result["top_20"][0]["paths"]), 2)
 
-    def test_co_named_source_and_css_module_form_one_component(self):
+    def test_unreachable_co_named_source_does_not_promote_or_enter_usage(self):
+        root, discovery, tokens = self.repo({
+            "src/Button.tsx": (
+                "export function Button() { return 'var(--brand-primary)'; }"
+            ),
+            "src/Button.module.css": ".button { color: var(--brand-primary); }",
+        }, reachable_paths={"src/Button.module.css"})
+        result = analyze_component_usage.analyze(root, discovery, tokens)
+        button = result["top_20"][0]
+        self.assertNotEqual(button["kind"], "component")
+        self.assertEqual(button["references"], 1)
+        self.assertEqual(button["paths"], ["src/Button.module.css"])
+
+    def test_independently_proven_co_named_source_and_style_form_one_component(self):
         root, discovery, tokens = self.repo({
             "src/Button.tsx": "export function Button() {}",
             "src/Button.module.css": ".button { color: var(--brand-primary); }",
-        }, reachable_paths={"src/Button.module.css"})
+        })
         result = analyze_component_usage.analyze(root, discovery, tokens)
         button = result["top_20"][0]
         self.assertEqual(button["kind"], "component")
         self.assertEqual(button["confidence"], "co-named-source")
         self.assertEqual(button["paths"], ["src/Button.module.css", "src/Button.tsx"])
+
+    def test_generic_reachable_source_is_a_surface_not_a_component(self):
+        root, discovery, tokens = self.repo({
+            "app/routes/home.ts": "export const color = 'var(--brand-primary)';",
+        })
+        result = analyze_component_usage.analyze(root, discovery, tokens)
+        self.assertEqual(result["top_20"][0]["kind"], "surface")
+        self.assertEqual(result["shown_components"], 0)
+        self.assertEqual(result["fallback_surfaces"], 1)
 
     def test_owned_but_unreachable_files_do_not_enter_analysis(self):
         root, discovery, tokens = self.repo({
@@ -120,6 +145,9 @@ class TestComponentUsage(unittest.TestCase):
         })
         result = analyze_component_usage.analyze(root, discovery, tokens)
         self.assertEqual(result["total_components_with_token_usage"], 1)
+        self.assertEqual(
+            result["top_20"][0]["confidence"], "path-inferred"
+        )
         self.assertTrue(result["top_20"][0]["name"].endswith("/ live"))
 
     def test_adapter_proven_component_root_is_scanned(self):
@@ -131,6 +159,23 @@ class TestComponentUsage(unittest.TestCase):
         }])
         result = analyze_component_usage.analyze(root, discovery, tokens)
         self.assertEqual(result["total_components_with_token_usage"], 1)
+        self.assertEqual(
+            result["top_20"][0]["confidence"], "framework-registered"
+        )
+
+    def test_import_graph_component_root_preserves_its_confidence(self):
+        root, discovery, tokens = self.repo({
+            "ui/card.ts": "export const card = 'var(--brand-primary)';",
+        }, reachable_paths=set(), component_roots=[{
+            "path": "ui", "confidence": "import-graph verified",
+            "ownership": "owned",
+        }])
+
+        result = analyze_component_usage.analyze(root, discovery, tokens)
+
+        self.assertEqual(
+            result["top_20"][0]["confidence"], "import-graph verified"
+        )
 
     def test_component_root_without_owned_evidence_is_not_scanned(self):
         root, discovery, tokens = self.repo({
@@ -151,6 +196,9 @@ class TestComponentUsage(unittest.TestCase):
         }])
         result = analyze_component_usage.analyze(root, discovery, tokens)
         self.assertEqual(result["total_components_with_token_usage"], 1)
+        self.assertEqual(
+            result["top_20"][0]["confidence"], "runtime verified"
+        )
 
     def test_ranking_is_reference_count_then_diversity_then_key(self):
         root, discovery, tokens = self.repo({
@@ -184,6 +232,42 @@ class TestComponentUsage(unittest.TestCase):
         })
         result = analyze_component_usage.analyze(root, discovery, tokens)
         self.assertEqual(result["total_components_with_token_usage"], 0)
+
+    def test_roadmap_bands_follow_cumulative_confirmed_usage(self):
+        rows = [
+            {"id": "a", "rank": 1, "references": 50},
+            {"id": "b", "rank": 2, "references": 30},
+            {"id": "c", "rank": 3, "references": 20},
+        ]
+
+        roadmap = analyze_component_usage.build_roadmap(rows)
+
+        self.assertEqual(
+            [item["roadmap_band"] for item in rows],
+            ["assess-first", "plan-next", "focused-follow-up"],
+        )
+        self.assertEqual(
+            [item["share_of_ranked_references"] for item in rows],
+            [50.0, 30.0, 20.0],
+        )
+        self.assertEqual(
+            [item["component_ids"] for item in roadmap["bands"]],
+            [["a"], ["b"], ["c"]],
+        )
+
+    def test_roadmap_uses_exact_thresholds_before_rounding_for_display(self):
+        rows = [
+            {"id": "a", "rank": 1, "references": 2000},
+            {"id": "b", "rank": 2, "references": 1},
+        ]
+
+        roadmap = analyze_component_usage.build_roadmap(rows)
+
+        self.assertEqual(
+            [item["roadmap_band"] for item in rows],
+            ["assess-first", "focused-follow-up"],
+        )
+        self.assertEqual(roadmap["ranked_references"], 2001)
 
 
 if __name__ == "__main__":

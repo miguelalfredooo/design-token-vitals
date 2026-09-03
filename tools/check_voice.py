@@ -45,11 +45,18 @@ NEG_PARALLEL = re.compile(r"\b(?:is|are|was|were)\s+not\s+(?:a|an|the)\b", re.I)
 # smuggle the word past the lint. `references/token-taxonomy.md` has to list
 # "colour" as a name to search for, because codebases spell it that way.
 INLINE_CODE = re.compile(r"`+[^`]*`+")
+HTML_TAG = re.compile(r"<[^>]*>")
+TECHNICAL_IDENTIFIERS = re.compile(r"aria-labelledby")
 
 
 def strip_inline_code(line):
     """Blank out inline code spans, keeping the line length so columns hold."""
     return INLINE_CODE.sub(lambda m: " " * len(m.group(0)), line)
+
+
+def strip_html_tags(line):
+    """Blank out HTML tags while leaving the reader-facing text between them."""
+    return HTML_TAG.sub(lambda m: " " * len(m.group(0)), line)
 
 
 def _fence_skip_lines(lines):
@@ -87,7 +94,10 @@ def check_text(text):
             ))
         if idx in skip:
             continue
-        prose = strip_inline_code(raw)
+        prose = strip_html_tags(strip_inline_code(raw))
+        prose = TECHNICAL_IDENTIFIERS.sub(
+            lambda match: " " * len(match.group(0)), prose
+        )
         for old, new in SPELLING:
             if old in prose:
                 findings.append(Finding(

@@ -12,7 +12,7 @@ provenance:
   repo_ref: null            # commit ref of the audited repository
   validation_gate:          # stamped ONLY by `tools/validate_run.py --stamp` on a passing run —
     passed: false           # never hand-set this true; it is the one field a report generator
-    exit_code: null         # must not write itself. false/null here means the 16-rule gate has
+    exit_code: null         # must not write itself. false/null here means the 17-rule gate has
     checked_at: null        # not (yet) passed against this exact report, whatever else it claims.
 
 # What owns theming, and what the project actually authored. Read from
@@ -262,8 +262,18 @@ component_usage:
   fallback_surfaces: null
   not_shown: null
   measurement: []           # [{syntax, state, evidence}]
+  roadmap:                  # deterministic cumulative-use bands for roadmap planning
+    state: null             # measured
+    basis: null             # what the ordering proves and does not prove
+    ranked_references: null # denominator for the visible ranked view
+    bands: []               # [{id, label, description, start_rank, end_rank,
+                            #   component_ids, references,
+                            #   share_of_ranked_references}]
   top_20: []                # [{id, rank, key, name, kind, confidence, paths,
                             #   references, distinct_tokens, families,
+                            #   share_of_ranked_references,
+                            #   cumulative_share_of_ranked_references,
+                            #   roadmap_band,
                             #   syntaxes, tokens: [{id, family, references,
                             #                       syntaxes, locations: ["path:line"]}]}]
 
@@ -282,6 +292,37 @@ coverage_matrix:
   families: []              # the token families on the third
   cells: []                 # [{bundle, mode, family, state, evidence, note}]
                             # state: measured | unmeasured | not_applicable | blocked
+
+# Evidence-derived recommendation for unifying design decisions without
+# claiming that a token audit proved component behavior. Rendered as the last
+# report section; see references/adoption-strategy.md.
+adoption_strategy:
+  schema_version: 1
+  model: null               # token-led-hybrid | token-first-foundation
+  confidence: null          # evidence-derived | bounded-by-discovery
+  headline: null
+  rationale: null
+  evidence:                 # exact facts used to choose the model
+    profiles: []
+    adapters: []
+    production_roots: null
+    owned_roots: null
+    confirmed_token_definition_sources: null
+    canonical_concepts: null
+    component_usage_state: null
+    components_with_token_usage: null
+    declared_modes: []
+    resolved_mode_pairs: null
+    unresolved_imports: null
+    capabilities: {}
+  target_architecture: []   # [{id, title, description}]
+  integration_constraints: [] # five ordered [{id, title, evidence, implication}]
+  standards: []             # [{id, name, url, role}]
+  rollout: []               # six ordered [{id, phase, title, objective,
+                            #               evidence, exit_criteria}]
+  guardrails: []
+  success_metrics: []       # [{id, measure, baseline, target}]
+  component_replacement_limit: null
 
 # Filled by tools/trend.py against an explicitly passed baseline. The skill
 # never writes a baseline into the repository it audits.
@@ -311,12 +352,17 @@ vitals:
 #           pass carries no evidence because nothing was found.
 
 rendering:
+  view: snapshot             # snapshot | action | evidence; initial presentation only
+  available_views:           # fixed order; every view uses this run's complete evidence
+    - snapshot
+    - action
+    - evidence
   tier: null                # full | collapsed | family-only
 
   # The mark each listing section was rendered with, chosen in Stage 5 from
   # that section's own finding count — see the form table in
-  # references/report.md. Recorded so two runs can be compared on
-  # presentation as well as on findings.
+  # references/report.md. The view, tier, and forms are recorded so two runs
+  # can be compared on presentation as well as on findings.
   forms:
     color: null             # rows | swatches | ramps
     typography: null        # rows | specimens

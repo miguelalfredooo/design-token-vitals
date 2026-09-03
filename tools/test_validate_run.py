@@ -5,6 +5,7 @@ only proves the happy path would let every one of them through.
 """
 import copy
 import hashlib
+import json
 import os
 import re
 import sys
@@ -186,11 +187,15 @@ class TestRule6HtmlJsonParity(unittest.TestCase):
                 '<div role="tabpanel" id="inventory-panel-%s" '
                 'aria-labelledby="inventory-tab-%s"></div>' % (family, family))
         return (
+            '<body data-report-view="snapshot">'
             '<style>.token-tabs__list { display: none; gap: 4px; }'
             '.token-tabs--ready .token-tabs__list { display: flex; }'
+            '.report-view-switcher { display: none; }'
+            '.report-views--ready .report-view-switcher { display: block; }'
             '@media print { .token-tabs__list { display: none !important; }'
             '.token-tabs__panel { display: block !important; padding-top: 12px; } }</style>'
             '<div data-token-inventory-tabs><div role="tablist">%s</div>%s</div>'
+            '<!-- SLOT:report-view-switcher --><!-- /SLOT:report-view-switcher -->'
             '<!-- SLOT:inventory-tabs-script --><!-- /SLOT:inventory-tabs-script -->' % (
                 "".join(tabs), "".join(panels))
         )
@@ -198,6 +203,10 @@ class TestRule6HtmlJsonParity(unittest.TestCase):
     def universal_doc(self):
         d = good_doc()
         d["discovery"]["engine"] = {"name": "universal-profile-engine"}
+        d["rendering"].update({
+            "view": "snapshot",
+            "available_views": list(render_discovery.REPORT_VIEWS),
+        })
         d.update({
             "stage": {"current": "declared", "next": "adopted"},
             "executive_summary": {}, "decisions": [], "fix_queue": [],
@@ -215,6 +224,15 @@ class TestRule6HtmlJsonParity(unittest.TestCase):
         self.assertIsNotNone(failure)
         self.assertIn("required HTML region is absent", " ".join(failure.detail))
 
+    def test_finished_legacy_report_cannot_skip_the_three_view_contract(self):
+        failure = validate_run.rule_6_html_matches_json(
+            good_doc(), "<!doctype html><html><body></body></html>"
+        )
+
+        self.assertIsNotNone(failure)
+        self.assertIn("rendering.view is missing or invalid", failure.detail)
+        self.assertIn("HTML has no report-view switcher", failure.detail)
+
     def test_universal_report_regions_preserve_json_records(self):
         d = self.universal_doc()
         slots = (
@@ -231,6 +249,65 @@ class TestRule6HtmlJsonParity(unittest.TestCase):
             {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
         )
         self.assertIsNone(validate_run.rule_6_html_matches_json(d, rendered))
+
+    def test_dashboard_component_values_must_match_json(self):
+        d = self.universal_doc()
+        row = {
+            "id": "c" * 12, "rank": 1, "name": "app / button",
+            "key": "app::button", "kind": "component",
+            "paths": ["app/button.scss"], "references": 80,
+            "distinct_tokens": 26,
+        }
+        roadmap_row = {
+            "id": row["id"], "rank": row["rank"],
+            "references": row["references"],
+        }
+        roadmap = validate_run.build_roadmap([roadmap_row])
+        for field in (
+                "roadmap_band", "share_of_ranked_references",
+                "cumulative_share_of_ranked_references"):
+            row[field] = roadmap_row[field]
+        d["component_usage"] = {
+            "state": "measured", "shown": 1, "fallback_surfaces": 0,
+            "roadmap": roadmap, "top_20": [row],
+        }
+        slots = (
+            "at-a-glance", "exec-summary", "decisions", "fix-queue",
+            "groups", "lineage", "coverage-matrix", "next-steps",
+            "modes-coverage", "modes-gaps", "orphans", "enforcement",
+        )
+        html = self.inventory_tabs_shell() + "".join(
+            "<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name)
+            for name in slots
+        )
+        rendered = render_discovery.render_report_slots(
+            html, d, None,
+            {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
+        )
+
+        tampered = rendered.replace(
+            'data-component-references="80"',
+            'data-component-references="999"',
+            1,
+        )
+
+        failure = validate_run.rule_6_html_matches_json(d, tampered)
+        self.assertIsNotNone(failure)
+        self.assertIn(
+            "dashboard data-component-references disagrees with JSON",
+            " ".join(failure.detail),
+        )
+        visible_tamper = rendered.replace(
+            '<td class="num">80</td>', '<td class="num">999</td>', 1
+        )
+        visible_failure = validate_run.rule_6_html_matches_json(
+            d, visible_tamper
+        )
+        self.assertIsNotNone(visible_failure)
+        self.assertIn(
+            "dashboard visible counts disagree with JSON",
+            " ".join(visible_failure.detail),
+        )
 
     def test_each_supplementary_region_is_required(self):
         d = self.universal_doc()
@@ -282,6 +359,52 @@ class TestRule6HtmlJsonParity(unittest.TestCase):
         self.assertIsNotNone(failure)
         self.assertIn(
             "inventory tabs lack exactly one verified controller",
+            failure.detail,
+        )
+
+    def test_report_view_selection_must_match_json(self):
+        d = self.universal_doc()
+        slots = (
+            "at-a-glance", "exec-summary", "decisions", "fix-queue",
+            "groups", "lineage", "coverage-matrix", "next-steps",
+            "modes-coverage", "modes-gaps", "orphans", "enforcement",
+        )
+        html = self.inventory_tabs_shell() + "".join(
+            "<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name)
+            for name in slots
+        )
+        rendered = render_discovery.render_report_slots(
+            html, d, None,
+            {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
+        )
+        tampered = rendered.replace(
+            '<body data-report-view="snapshot">',
+            '<body data-report-view="evidence">',
+        )
+        failure = validate_run.rule_6_html_matches_json(d, tampered)
+        self.assertIsNotNone(failure)
+        self.assertIn("HTML initial report view disagrees with JSON", failure.detail)
+
+    def test_report_sections_must_keep_their_view_contract(self):
+        d = self.universal_doc()
+        slots = (
+            "at-a-glance", "exec-summary", "decisions", "fix-queue",
+            "groups", "lineage", "coverage-matrix", "next-steps",
+            "modes-coverage", "modes-gaps", "orphans", "enforcement",
+        )
+        html = self.inventory_tabs_shell() + "".join(
+            "<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name)
+            for name in slots
+        )
+        rendered = render_discovery.render_report_slots(
+            html, d, None,
+            {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
+        )
+        rendered += '<section id="inventory" data-report-views="action evidence"></section>'
+        failure = validate_run.rule_6_html_matches_json(d, rendered)
+        self.assertIsNotNone(failure)
+        self.assertIn(
+            "inventory section has the wrong report-view visibility",
             failure.detail,
         )
 
@@ -495,11 +618,15 @@ class TestUniversalDiscoveryRules(unittest.TestCase):
 class TestRule13ComponentUsage(unittest.TestCase):
     def usage_doc(self):
         d = good_doc()
+        component_id = "c" * 12
+        roadmap_row = {"id": component_id, "rank": 1, "references": 2}
+        roadmap = validate_run.build_roadmap([roadmap_row])
         d["component_usage"] = {
             "state": "measured",
             "shown": 1,
+            "roadmap": roadmap,
             "top_20": [{
-                "id": "c" * 12,
+                "id": component_id,
                 "rank": 1,
                 "key": "app::button",
                 "name": "app / button",
@@ -509,6 +636,11 @@ class TestRule13ComponentUsage(unittest.TestCase):
                 "references": 2,
                 "distinct_tokens": 1,
                 "families": {"color": 2},
+                "share_of_ranked_references": roadmap_row[
+                    "share_of_ranked_references"],
+                "cumulative_share_of_ranked_references": roadmap_row[
+                    "cumulative_share_of_ranked_references"],
+                "roadmap_band": roadmap_row["roadmap_band"],
                 "tokens": [{
                     "id": "brand",
                     "family": "color",
@@ -528,12 +660,79 @@ class TestRule13ComponentUsage(unittest.TestCase):
         html = render_component_usage.render_section(d["component_usage"])
         self.assertNotIn("13-component-usage", rules_failed(d, html))
 
+    def test_collapsed_locations_pass_html_parity(self):
+        d = self.usage_doc()
+        token = d["component_usage"]["top_20"][0]["tokens"][0]
+        token["locations"] = [
+            "app/button.scss:4",
+            "app/button.scss:8",
+            "app/button.scss:12",
+            "app/button.scss:20",
+        ]
+        html = render_component_usage.render_section(d["component_usage"])
+
+        self.assertIn('data-location-hidden="2"', html)
+        self.assertNotIn("13-component-usage", rules_failed(d, html))
+
+    def test_visible_location_tail_fails_html_parity(self):
+        d = self.usage_doc()
+        token = d["component_usage"]["top_20"][0]["tokens"][0]
+        token["locations"] = [
+            "app/button.scss:4",
+            "app/button.scss:8",
+            "app/button.scss:12",
+            "app/button.scss:20",
+        ]
+        html = render_component_usage.render_section(d["component_usage"])
+        html = re.sub(
+            r'<details class="location-disclosure"[^>]*><summary>.*?</summary>'
+            r'<div class="details-body location-lines">(.*?)</div></details>',
+            r"\1",
+            html,
+            count=1,
+            flags=re.S,
+        )
+
+        self.assertIn("13-component-usage", rules_failed(d, html))
+
+    def test_wrong_location_disclosure_count_fails_html_parity(self):
+        d = self.usage_doc()
+        token = d["component_usage"]["top_20"][0]["tokens"][0]
+        token["locations"] = [
+            "app/button.scss:4",
+            "app/button.scss:8",
+            "app/button.scss:12",
+            "app/button.scss:20",
+        ]
+        html = render_component_usage.render_section(d["component_usage"])
+        html = html.replace('data-location-hidden="2"', 'data-location-hidden="1"')
+
+        self.assertIn("13-component-usage", rules_failed(d, html))
+
+    def test_open_location_tail_fails_html_parity(self):
+        d = self.usage_doc()
+        token = d["component_usage"]["top_20"][0]["tokens"][0]
+        token["locations"] = [
+            "app/button.scss:4",
+            "app/button.scss:8",
+            "app/button.scss:12",
+        ]
+        html = render_component_usage.render_section(d["component_usage"])
+        html = html.replace(
+            '<details class="location-disclosure"',
+            '<details open class="location-disclosure"',
+        )
+
+        self.assertIn("13-component-usage", rules_failed(d, html))
+
     def test_missing_token_detail_block_fails_html_parity(self):
         d = self.usage_doc()
         html = render_component_usage.render_section(d["component_usage"])
         html = html.replace(
-            '<details data-component-detail="%s">' % ("c" * 12),
-            '<details data-component-detail="removed">',
+            '<details id="component-detail-%s" data-component-detail="%s">' % (
+                "c" * 12, "c" * 12
+            ),
+            '<details id="component-detail-removed" data-component-detail="removed">',
         )
         self.assertIn("13-component-usage", rules_failed(d, html))
 
@@ -557,6 +756,47 @@ class TestRule13ComponentUsage(unittest.TestCase):
         d = self.usage_doc()
         d["component_usage"]["top_20"][0]["references"] = 3
         self.assertIn("13-component-usage", rules_failed(d))
+
+    def test_component_roadmap_is_required_for_measured_usage(self):
+        d = self.usage_doc()
+        del d["component_usage"]["roadmap"]
+        self.assertIn("13-component-usage", rules_failed(d))
+
+    def test_component_roadmap_share_must_match_ranked_references(self):
+        d = self.usage_doc()
+        d["component_usage"]["top_20"][0][
+            "share_of_ranked_references"] = 99.0
+        self.assertIn("13-component-usage", rules_failed(d))
+
+    def test_component_roadmap_html_must_match_json(self):
+        d = self.usage_doc()
+        html = render_component_usage.render_section(d["component_usage"])
+        html = html.replace(
+            'data-component-roadmap-json="',
+            'data-component-roadmap-json="stale',
+            1,
+        )
+        self.assertIn("13-component-usage", rules_failed(d, html))
+
+    def test_visible_component_roadmap_values_must_match_json(self):
+        d = self.usage_doc()
+        html = render_component_usage.render_section(d["component_usage"])
+        html = html.replace(
+            '<td class="num">2</td>', '<td class="num">999</td>', 1
+        )
+
+        self.assertIn("13-component-usage", rules_failed(d, html))
+
+    def test_component_roadmap_detail_link_is_required(self):
+        d = self.usage_doc()
+        html = render_component_usage.render_section(d["component_usage"])
+        html = html.replace(
+            'href="#component-detail-%s"' % ("c" * 12),
+            'href="#component-detail-removed"',
+            1,
+        )
+
+        self.assertIn("13-component-usage", rules_failed(d, html))
 
     def test_token_locations_are_required(self):
         d = self.usage_doc()
@@ -588,6 +828,63 @@ class TestRule14ProfileEngine(unittest.TestCase):
             root, ["app/**", "components/**"])
         return {"discovery": discovery}
 
+    def profile_inventory_doc(self):
+        d = self.profile_doc()
+        tokens = {
+            "concept_count": 1,
+            "concepts": [{
+                "id": "brand",
+                "family": "color",
+                "representations": ["css-custom-property"],
+                "sites": ["app/globals.css:1"],
+                "values": ["red"],
+                "definitions": [],
+            }],
+            "sources": [
+                {"role": "canonical"},
+                {"role": "alias"},
+                {"role": "candidate"},
+                {"role": "consumer-override"},
+            ],
+            "candidate_or_local_override_sources": [{}, {}],
+        }
+        d["discovery"]["import_graph"]["unresolved"] = [
+            {"reason": "external package"},
+            {"reason": "missing local source"},
+            {"reason": "unsupported resolver"},
+        ]
+        d["discovery"] = render_discovery.enrich(d["discovery"], tokens)
+        d.update({
+            "schema_version": "2",
+            "run": {"token_count": 1},
+            "inventory": {
+                "concepts": render_discovery.normalized_concepts(tokens),
+                "families": {},
+                "candidate_or_local_override_sources": [{}, {}],
+            },
+            "rendering": {"view": "snapshot", "tier": "full"},
+            "provenance": {
+                "adapter_versions": {},
+                "repo_ref": "test-ref",
+                "skill_version": "local-test",
+            },
+        })
+        html = "".join([
+            render_discovery.render_section(d["discovery"]),
+            render_discovery.concept_rows(d["inventory"]["concepts"]),
+            render_discovery.render_measurement(
+                d["discovery"], tokens, d, "local-test",
+                "2026-09-03T00:00:00Z",
+            ),
+            render_discovery.render_runhead(
+                d["discovery"], tokens, d, "local-test"
+            ),
+            render_discovery.render_footer(
+                d["discovery"], tokens, "local-test"
+            ),
+        ])
+        return d, html
+
     def test_complete_profile_engine_passes(self):
         self.assertIsNone(validate_run.rule_14_profile_engine(self.profile_doc()))
 
@@ -595,6 +892,39 @@ class TestRule14ProfileEngine(unittest.TestCase):
         d = self.profile_doc()
         html = render_discovery.render_section(d["discovery"])
         self.assertIsNone(validate_run.rule_14_profile_engine(d, html))
+
+    def test_measurement_metadata_drift_fails_html_parity(self):
+        fields = {
+            "token_sources": "2",
+            "unresolved_actionable": "2",
+            "unresolved_total": "3",
+            "unresolved_by_reason": "{",
+        }
+        for field, value in fields.items():
+            with self.subTest(field=field):
+                d, html = self.profile_inventory_doc()
+                marker = "&quot;%s&quot;:%s" % (field, value)
+                stale = html.replace(marker, marker + "stale", 1)
+                failure = validate_run.rule_14_profile_engine(d, stale)
+                self.assertEqual(failure.rule, "14-profile-engine")
+                self.assertIn(
+                    "measurement summary is missing or stale in HTML",
+                    failure.detail,
+                )
+
+    def test_runhead_confirmed_source_drift_fails_html_parity(self):
+        d, html = self.profile_inventory_doc()
+        runhead = re.search(
+            r'<dl class="meta" data-runhead-summary-json="[^"]+">', html
+        ).group(0)
+        stale_runhead = runhead.replace(
+            "&quot;token_sources&quot;:2", "&quot;token_sources&quot;:99"
+        )
+        failure = validate_run.rule_14_profile_engine(
+            d, html.replace(runhead, stale_runhead, 1)
+        )
+        self.assertEqual(failure.rule, "14-profile-engine")
+        self.assertIn("run header summary is missing or stale in HTML", failure.detail)
 
     def test_missing_product_root_fails_html_parity(self):
         d = self.profile_doc()
@@ -1182,32 +1512,71 @@ class TestRule16IdentityIntegrity(unittest.TestCase):
         )
 
 
+class TestRule17AdoptionStrategy(unittest.TestCase):
+    def test_strategy_section_accepts_report_view_metadata(self):
+        doc = good_doc()
+        strategy = validate_run.derive_adoption_strategy(doc)
+        doc["adoption_strategy"] = strategy
+        html = (
+            '<section id="strategy" data-report-views="action evidence">%s</section>'
+            '<footer></footer>' % render_discovery.render_adoption_strategy(strategy)
+        )
+
+        self.assertIsNone(validate_run.rule_17_adoption_strategy(doc, html))
+
+
 class TestStampOnlyMarksAPassingRun(unittest.TestCase):
+    # Borrow the shell builder rather than subclassing the parity case —
+    # inheriting a TestCase re-runs every one of its tests under this name.
+    inventory_tabs_shell = TestRule6HtmlJsonParity.inventory_tabs_shell
+
     """provenance.validation_gate is the one field a report must not set
     itself — only a passing tools/validate_run.py --stamp run may write it.
     A report that skips the gate must keep showing the un-gated banner."""
 
     def write_report(self, root, doc):
-        import json
         path = os.path.join(root, "report.json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(doc, fh)
         return path
 
-    def banner_html(self):
-        return (
-            '<body><div class="wrap">'
+    def gated_pair(self):
+        """A doc and the HTML a real render would produce for it, banner and all.
+
+        The stamp has to survive the same HTML the gate accepts, so this
+        builds through render_report_slots rather than hand-writing a shell:
+        a minimal fixture would fail rule 6's report-view contract and prove
+        nothing about the banner.
+        """
+        doc = good_doc()
+        doc.setdefault("rendering", {}).update({
+            "view": "snapshot",
+            "available_views": list(render_discovery.REPORT_VIEWS),
+        })
+        slots = (
+            "at-a-glance", "exec-summary", "decisions", "fix-queue",
+            "groups", "lineage", "coverage-matrix", "next-steps",
+            "modes-coverage", "modes-gaps", "orphans", "enforcement",
+        )
+        shell = self.inventory_tabs_shell() + "".join(
+            "<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name) for name in slots
+        )
+        banner = (
             '<!-- SLOT:validation-banner -->'
             '<div class="validation-banner" role="alert">'
-            '<strong>⚠ Not validated.</strong> placeholder</div>'
+            '<strong>\u26a0 Not validated.</strong> placeholder</div>'
             '<!-- /SLOT:validation-banner -->'
-            '</div></body>'
         )
+        rendered = render_discovery.render_report_slots(
+            shell, doc, None,
+            {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
+        )
+        return doc, banner + rendered
 
     def test_stamp_writes_passed_true_into_the_json(self):
-        import json
         with tempfile.TemporaryDirectory() as root:
-            path = self.write_report(root, good_doc())
+            doc, _ = self.gated_pair()
+            path = self.write_report(root, doc)
             rc = validate_run.main([path, "--stamp"])
             self.assertEqual(rc, validate_run.EXIT_OK)
             with open(path, encoding="utf-8") as fh:
@@ -1219,10 +1588,11 @@ class TestStampOnlyMarksAPassingRun(unittest.TestCase):
 
     def test_stamp_clears_the_html_banner_on_pass(self):
         with tempfile.TemporaryDirectory() as root:
-            report_path = self.write_report(root, good_doc())
+            doc, html = self.gated_pair()
+            report_path = self.write_report(root, doc)
             html_path = os.path.join(root, "report.html")
             with open(html_path, "w", encoding="utf-8") as fh:
-                fh.write(self.banner_html())
+                fh.write(html)
             rc = validate_run.main([report_path, "--html", html_path, "--stamp"])
             self.assertEqual(rc, validate_run.EXIT_OK)
             with open(html_path, encoding="utf-8") as fh:
@@ -1232,9 +1602,8 @@ class TestStampOnlyMarksAPassingRun(unittest.TestCase):
             self.assertIn("Validated", stamped_html)
 
     def test_a_failing_run_is_never_stamped(self):
-        import json
         with tempfile.TemporaryDirectory() as root:
-            d = good_doc()
+            d, _ = self.gated_pair()
             d["discovery"]["token_sources"] = []
             d["stack"] = {"token_sources": []}
             path = self.write_report(root, d)
@@ -1245,9 +1614,9 @@ class TestStampOnlyMarksAPassingRun(unittest.TestCase):
             self.assertNotIn("validation_gate", unstamped.get("provenance", {}))
 
     def test_without_the_stamp_flag_a_passing_run_leaves_the_file_untouched(self):
-        import json
         with tempfile.TemporaryDirectory() as root:
-            path = self.write_report(root, good_doc())
+            doc, _ = self.gated_pair()
+            path = self.write_report(root, doc)
             with open(path, encoding="utf-8") as fh:
                 before = fh.read()
             rc = validate_run.main([path])
@@ -1260,7 +1629,8 @@ class TestStampOnlyMarksAPassingRun(unittest.TestCase):
 
     def test_stamp_with_no_html_file_only_touches_the_json(self):
         with tempfile.TemporaryDirectory() as root:
-            path = self.write_report(root, good_doc())
+            doc, _ = self.gated_pair()
+            path = self.write_report(root, doc)
             rc = validate_run.main([path, "--stamp"])
             self.assertEqual(rc, validate_run.EXIT_OK)
             self.assertFalse(os.path.exists(os.path.join(root, "report.html")))

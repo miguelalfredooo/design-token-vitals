@@ -13,6 +13,11 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cli import EXIT_OK  # noqa: E402
+from adoption_strategy import (  # noqa: E402
+    ACTIONABLE_UNRESOLVED_REASONS,
+    derive as derive_adoption_strategy,
+    render as render_adoption_strategy,
+)
 from discover_tokens import (  # noqa: E402
     MAX_EMBEDDED_FONT_BYTES,
     matching_font_asset_evidence,
@@ -21,10 +26,10 @@ from discover_tokens import (  # noqa: E402
 from version import describe  # noqa: E402
 
 
-SECTION = re.compile(r'\n\s*<section id="discovery-engine">.*?</section>\n', re.S)
+SECTION = re.compile(r'\n\s*<section id="discovery-engine"[^>]*>.*?</section>\n', re.S)
 LEAKAGE_SECTION = re.compile(
-    r'\n\s*<section(?: id="leakage")?>\s*<div class="eyebrow">Leakage</div>.*?</section>\n', re.S)
-MEASUREMENT_MARKER = '<section id="measurement">'
+    r'\n\s*<section(?: id="leakage"[^>]*)?>\s*<div class="eyebrow">Leakage</div>.*?</section>\n', re.S)
+MEASUREMENT_MARKER = '<section id="measurement"'
 LEGACY_MEASUREMENT_MARKER = '<section>\n    <div class="eyebrow">Measurement</div>'
 SLOT = r'(<!-- SLOT:%s -->).*?(<!-- /SLOT:%s -->)'
 TEMPLATE_PATH = os.path.join(
@@ -39,10 +44,118 @@ VITAL_ORDER = [
     "tier-integrity", "leakage", "coverage", "mode-completeness",
     "naming-coherence", "single-source", "orphans", "enforcement",
 ]
+REPORT_VIEWS = ("snapshot", "action", "evidence")
+REPORT_VIEW_COPY = {
+    "snapshot": ("Snapshot", "What matters now", "Showing the short overview."),
+    "action": ("Action Plan", "What to do next", "Showing priorities, owners, and rollout guidance."),
+    "evidence": ("Evidence", "How we know", "Showing every finding and measurement detail."),
+}
+REPORT_VIEW_SECTIONS = {
+    "glance": ("snapshot", "action", "evidence"),
+    "summary": ("action", "evidence"),
+    "decisions": ("action", "evidence"),
+    "trend": ("action", "evidence"),
+    "vitals": ("action", "evidence"),
+    "start": ("action", "evidence"),
+    "architecture": ("action", "evidence"),
+    "fix-queue": ("action", "evidence"),
+    "ownership": ("action", "evidence"),
+    "component-usage": ("action", "evidence"),
+    "lineage": ("evidence",),
+    "inventory": ("evidence",),
+    "coverage": ("action", "evidence"),
+    "leakage": ("action", "evidence"),
+    "modes": ("action", "evidence"),
+    "orphans": ("action", "evidence"),
+    "working-set": ("evidence",),
+    "discovery-engine": ("evidence",),
+    "measurement": ("evidence",),
+    "strategy": ("action", "evidence"),
+}
+
+DETAILS_TAG = re.compile(r"<details\b([^>]*)>", re.I)
 
 
-INVENTORY_TABS_SCRIPT = """<script data-token-vitals-ui="inventory-tabs">
+INVENTORY_TABS_SCRIPT = """<script data-token-vitals-ui="report-controller">
 (() => {
+  const viewIds = ["snapshot", "action", "evidence"];
+  const viewMessages = {
+    snapshot: "Showing the short overview.",
+    action: "Showing priorities, owners, and rollout guidance.",
+    evidence: "Showing every finding and measurement detail."
+  };
+  const body = document.body;
+  const viewButtons = Array.from(document.querySelectorAll("[data-report-view-button]"));
+  const viewStatus = document.querySelector("[data-report-view-status]");
+  const contents = document.querySelector(".contents");
+  const disclosures = Array.from(
+    document.querySelectorAll("details[data-report-default-open]")
+  );
+
+  disclosures.forEach((disclosure) => {
+    disclosure.open = disclosure.dataset.reportDefaultOpen === "true";
+  });
+
+  const sectionViews = (section) => (
+    section ? (section.dataset.reportViews || "evidence").split(/\\s+/).filter(Boolean) : []
+  );
+
+  const setReportView = (view) => {
+    if (!viewIds.includes(view)) {
+      return;
+    }
+    body.dataset.reportView = view;
+    viewButtons.forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.reportViewButton === view));
+    });
+    if (viewStatus) {
+      viewStatus.textContent = viewMessages[view];
+    }
+    if (contents) {
+      const links = Array.from(contents.querySelectorAll('a[href^="#"]'));
+      links.forEach((link) => {
+        const target = document.getElementById(link.getAttribute("href").slice(1));
+        const section = target && target.closest("section[data-report-views]");
+        link.hidden = Boolean(section) && !sectionViews(section).includes(view);
+      });
+      contents.querySelectorAll(".contents-more").forEach((more) => {
+        const links = Array.from(more.querySelectorAll('a[href^="#"]'));
+        more.hidden = links.length > 0 && links.every((link) => link.hidden);
+      });
+    }
+  };
+
+  const revealHashTarget = () => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    const target = id && document.getElementById(id);
+    const section = target && target.closest("section[data-report-views]");
+    if (!section) {
+      return;
+    }
+    const allowed = sectionViews(section);
+    if (!allowed.includes(body.dataset.reportView)) {
+      const nextView = viewIds.find((view) => allowed.includes(view)) || "evidence";
+      setReportView(nextView);
+      window.requestAnimationFrame(() => target.scrollIntoView({ block: "start" }));
+    }
+  };
+
+  const initialView = viewIds.includes(body.dataset.reportView) ? body.dataset.reportView : "snapshot";
+  setReportView(initialView);
+  document.documentElement.classList.add("report-views--ready");
+  viewButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setReportView(button.dataset.reportViewButton);
+      const overview = document.getElementById("glance");
+      if (window.location.hash !== "#glance") {
+        window.history.replaceState(null, "", "#glance");
+      }
+      if (overview) {
+        overview.scrollIntoView({ block: "start" });
+      }
+    });
+  });
+
   const roots = Array.from(document.querySelectorAll("[data-token-inventory-tabs]"));
 
   const activate = (root, tab, moveFocus, updateHash) => {
@@ -117,6 +230,7 @@ INVENTORY_TABS_SCRIPT = """<script data-token-vitals-ui="inventory-tabs">
   });
 
   window.addEventListener("hashchange", () => {
+    revealHashTarget();
     roots.forEach((root) => {
       const tab = tabForHash(root);
       if (tab) {
@@ -124,6 +238,8 @@ INVENTORY_TABS_SCRIPT = """<script data-token-vitals-ui="inventory-tabs">
       }
     });
   });
+
+  revealHashTarget();
 
   let printDisclosureState = [];
   window.addEventListener("beforeprint", () => {
@@ -147,6 +263,71 @@ INVENTORY_TABS_SCRIPT = """<script data-token-vitals-ui="inventory-tabs">
 </script>"""
 
 
+def resolve_report_view(requested=None):
+    selected = requested or "snapshot"
+    if selected not in REPORT_VIEWS:
+        raise ValueError(
+            "report view must be one of %s; got %r" %
+            (", ".join(REPORT_VIEWS), selected)
+        )
+    return selected
+
+
+def render_report_view_switcher(selected):
+    buttons = []
+    for view in REPORT_VIEWS:
+        label, helper, _status = REPORT_VIEW_COPY[view]
+        buttons.append(
+            '<button type="button" data-report-view-button="%s" aria-pressed="%s">'
+            '<strong>%s</strong><span>%s</span></button>' % (
+                esc(view), str(view == selected).lower(), esc(label), esc(helper),
+            )
+        )
+    return (
+        '<nav class="report-view-switcher" aria-label="Choose report depth" '
+        'data-report-view-default="%s" data-report-views-json="%s">'
+        '<div class="report-view-switcher__head">'
+        '<strong>Choose how much detail you need</strong>'
+        '<p class="report-view-switcher__status" data-report-view-status aria-live="polite">%s</p>'
+        '</div><div class="report-view-switcher__choices" role="group" '
+        'aria-label="Report views">%s</div></nav>' % (
+            esc(selected), json_attr(list(REPORT_VIEWS)),
+            esc(REPORT_VIEW_COPY[selected][2]), "".join(buttons),
+        )
+    )
+
+
+def set_document_report_view(document, selected):
+    marker = 'data-report-view="%s"' % esc(selected)
+    if re.search(r'<body\b[^>]*\bdata-report-view="[^"]*"', document):
+        return re.sub(
+            r'(<body\b[^>]*\bdata-report-view=")[^"]*(")',
+            r'\g<1>%s\2' % esc(selected), document, count=1,
+        )
+    return re.sub(r'<body\b', '<body %s' % marker, document, count=1)
+
+
+def prepare_progressive_disclosures(document):
+    """Keep evidence open without JS, then restore authored states on enhancement."""
+    def prepare(match):
+        attributes = match.group(1)
+        if re.search(r'\bdata-report-default-open=', attributes, re.I):
+            return match.group(0)
+        default_open = bool(re.search(r'(?:^|\s)open(?:\s|=|$)', attributes, re.I))
+        attributes = re.sub(
+            r'\s+open(?:\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s]+))?',
+            "",
+            attributes,
+            count=1,
+            flags=re.I,
+        )
+        return '<details open data-report-default-open="%s"%s>' % (
+            str(default_open).lower(), attributes,
+        )
+
+    return DETAILS_TAG.sub(prepare, document)
+
+
 def esc(value):
     return html.escape(str(value), quote=True)
 
@@ -168,6 +349,30 @@ def token_sources(tokens):
             "declarations": item.get("declarations"),
         })
     return sources
+
+
+def confirmed_definition_count(records):
+    return sum(
+        1 for item in records
+        if (item.get("role") or item.get("classification"))
+        in {"canonical", "alias"}
+    )
+
+
+def unresolved_import_summary(discovery):
+    unresolved = discovery.get("import_graph", {}).get("unresolved", [])
+    by_reason = {}
+    for item in unresolved:
+        reason = item.get("reason") or "unclassified"
+        by_reason[reason] = by_reason.get(reason, 0) + 1
+    return {
+        "total": len(unresolved),
+        "actionable": sum(
+            count for reason, count in by_reason.items()
+            if reason in ACTIONABLE_UNRESOLVED_REASONS
+        ),
+        "by_reason": dict(sorted(by_reason.items())),
+    }
 
 
 def enrich(discovery, tokens=None):
@@ -935,10 +1140,10 @@ def render_vitals(report):
             ' <code>%s</code>' % esc(evidence[0]) if evidence else ""
         )
         cards.append(
-            '<article class="vital" data-vital="%s" data-grade="%s">'
+            '<article class="vital" id="vital-%s" data-vital="%s" data-grade="%s">'
             '<span class="grade" data-g="%s">%s</span><h3>%s</h3>'
             '<p>%s%s</p></article>' % (
-                esc(name), esc(grade), esc(grade), esc(grade),
+                esc(name), esc(name), esc(grade), esc(grade), esc(grade),
                 esc(name.replace("-", " ")), esc(note), evidence_text,
             )
         )
@@ -960,6 +1165,82 @@ def stage_summary(report):
         esc(current), esc(threshold))
 
 
+def render_dashboard_component_roadmap(report):
+    usage = report.get("component_usage", {}) or {}
+    roadmap = usage.get("roadmap", {}) or {}
+    components = usage.get("top_20", []) or []
+    if usage.get("state") != "measured" or not components or not roadmap.get("bands"):
+        return ""
+    band_labels = {
+        item.get("id"): item.get("label")
+        for item in roadmap.get("bands", []) if isinstance(item, dict)
+    }
+    shown = components[:5]
+    has_fallback_surfaces = int(usage.get("fallback_surfaces", 0) or 0) > 0
+    entry_plural = "entries" if has_fallback_surfaces else "components"
+    entry_singular = "component or surface" if has_fallback_surfaces else "component"
+    shown_subject = (
+        "This %s" % entry_singular if len(shown) == 1
+        else "These %d %s" % (len(shown), entry_plural)
+    )
+    account_verb = "accounts" if len(shown) == 1 else "account"
+    all_entries_noun = (
+        "entry" if has_fallback_surfaces and len(components) == 1
+        else "entries" if has_fallback_surfaces
+        else "component" if len(components) == 1
+        else "components"
+    )
+    heading = (
+        "Where component and surface token work has the widest footprint"
+        if has_fallback_surfaces
+        else "Where component token work has the widest footprint"
+    )
+    total = int(roadmap.get("ranked_references", 0) or 0)
+    shown_references = sum(int(item.get("references", 0) or 0) for item in shown)
+    shown_share = round(100.0 * shown_references / total, 1) if total else 0.0
+    rows = []
+    for component in shown:
+        share = float(component.get("share_of_ranked_references", 0.0) or 0.0)
+        rows.append(
+            '<tr data-dashboard-component="%s" data-roadmap-band="%s" '
+            'data-component-references="%d" data-component-distinct-tokens="%d" '
+            'data-component-paths="%d" data-component-share="%.1f"><td class="num">%d</td>'
+            '<td><a class="component-roadmap-link" href="#component-detail-%s">'
+            '<code>%s</code></a></td><td class="num">%d</td><td class="num">%d</td>'
+            '<td class="num">%d</td><td><span class="component-share-label">%.1f%%</span></td>'
+            '<td><span class="component-roadmap-state">%s</span></td></tr>' % (
+                esc(component.get("id")), esc(component.get("roadmap_band")),
+                int(component.get("references", 0) or 0),
+                int(component.get("distinct_tokens", 0) or 0),
+                len(component.get("paths", []) or []), share,
+                int(component.get("rank", 0) or 0), esc(component.get("id")),
+                esc(component.get("name") or "Unnamed component"),
+                int(component.get("references", 0) or 0),
+                int(component.get("distinct_tokens", 0) or 0),
+                len(component.get("paths", []) or []), share,
+                esc(band_labels.get(component.get("roadmap_band"), "Review")),
+            )
+        )
+    return (
+        '<div class="dashboard-roadmap" data-dashboard-component-roadmap-json="%s">'
+        '<div class="dashboard-roadmap-head"><div><h4 id="dashboard-component-roadmap-title">%s</h4>'
+        '<p>%s %s for %.1f%% of confirmed token use in the ranked view. '
+        'This measures token references inside code, not runtime impressions or screen frequency. '
+        'Check modes, leakage, and product usage before scheduling a migration.</p>'
+        '</div><a class="dashboard-link" href="#component-usage">Explore all %d %s</a></div>'
+        '<div class="tbl-scroll" role="region" tabindex="0" '
+        'aria-labelledby="dashboard-component-roadmap-title">'
+        '<table class="dashboard-roadmap-table" aria-labelledby="dashboard-component-roadmap-title"><thead><tr>'
+        '<th class="num">#</th><th>Component or surface</th><th class="num">Token refs</th>'
+        '<th class="num">Tokens</th><th class="num">Paths</th><th>Share</th><th>Suggested order</th>'
+        '</tr></thead><tbody>%s</tbody></table></div></div>' % (
+            json_attr(roadmap), esc(heading), esc(shown_subject),
+            esc(account_verb), shown_share, len(components),
+            esc(all_entries_noun), "".join(rows),
+        )
+    )
+
+
 def render_at_a_glance(report):
     stage = report.get("stage", {}) or {}
     vitals = report.get("vitals", {}) or {}
@@ -975,6 +1256,26 @@ def render_at_a_glance(report):
     measured_families = len([
         item for item in families.values() if item.get("state") == "measured"
     ])
+    unmeasured_families = len([
+        item for item in families.values()
+        if item.get("state") in ("unmeasured", "blocked")
+    ])
+    absent_families = len([
+        item for item in families.values() if item.get("state") == "absent"
+    ])
+    measured_family_text = "%d measured %s" % (
+        measured_families, "family" if measured_families == 1 else "families")
+    unmeasured_family_text = "%d %s %s evidence" % (
+        unmeasured_families,
+        "family" if unmeasured_families == 1 else "families",
+        "needs" if unmeasured_families == 1 else "need",
+    )
+    family_status = [measured_family_text]
+    if unmeasured_families:
+        family_status.append(unmeasured_family_text)
+    if absent_families:
+        family_status.append("%d absent %s" % (
+            absent_families, "family" if absent_families == 1 else "families"))
     grade_text = " · ".join(
         "%d %s" % (grades.get(name, 0), name)
         for name in ("pass", "attention", "fail", "blocked", "not_applicable")
@@ -1005,6 +1306,9 @@ def render_at_a_glance(report):
     )
     exact_count = len(leakage.get("exact_value_candidates", []) or [])
     uncovered_count = len(leakage.get("uncovered_candidates", []) or [])
+    match_label = "match" if exact_count == 1 else "matches"
+    match_verb = "means" if exact_count == 1 else "mean"
+    uncovered_label = "candidate" if uncovered_count == 1 else "candidates"
     leakage_total = max(exact_count + uncovered_count, 1)
     leakage_segments = (
         '<i data-t="candidate" style="width:%.3f%%"></i>'
@@ -1015,44 +1319,265 @@ def render_at_a_glance(report):
     )
     queue = report.get("fix_queue", []) or []
     verified = len([item for item in queue if item.get("safe_to_automate")])
-    ring_length = 125.7
-    ring_filled = ring_length * verified / len(queue) if queue else 0
+    verified_percent = 100.0 * verified / len(queue) if queue else 0
+    fix_readiness = "%d of %d automatic fixes verified" % (verified, len(queue)) \
+        if queue else "No automatic changes are queued yet"
+
+    if current_stage in ("declared", "adopted", "layered", "complete"):
+        headline = "Your token foundation is in place. Here’s what will make it stronger."
+    elif current_stage == "scattered":
+        headline = "You have useful token signals. Here’s how to turn them into a shared foundation."
+    elif current_stage == "held":
+        headline = "Your token system is holding steady. Here’s what deserves a closer look."
+    else:
+        headline = (
+            "We found design decisions, and we need more evidence before calling "
+            "them a token system."
+        )
+    if exact_count:
+        supporting = (
+            "We found %d shared token concepts across %s. Next, confirm "
+            "what the %d candidate %s between hardcoded values and tokens "
+            "mean, so the team can replace them safely and build with more consistency."
+        ) % (
+            run.get("token_count", 0), measured_family_text,
+            exact_count, match_label,
+        )
+    else:
+        supporting = (
+            "We found %d shared token concepts across %s. The next step is "
+            "following the evidence gaps below before making automated changes."
+        ) % (run.get("token_count", 0), measured_family_text)
+
+    graded_total = sum(grades.values())
+    if not graded_total:
+        health = "Not yet graded"
+    elif grades.get("fail", 0):
+        health = "Needs focus"
+    elif grades.get("blocked", 0):
+        health = "More evidence needed"
+    elif grades.get("attention", 0):
+        health = "Moving forward"
+    else:
+        health = "Well supported"
+
+    identity = report.get("inventory", {}).get("identity", {}) or {}
+    typography = identity.get("typography", {}) or {}
+    type_family = typography.get("family")
+    if type_family and typography.get("state") == "verified":
+        type_label = type_family
+        type_note = "Verified typography family"
+        type_font_verified = (
+            typography.get("specimen", {}).get("state") == "verified" and
+            typography.get("specimen", {}).get("asset", {}).get("state") == "verified"
+        )
+    else:
+        candidates = typography.get("candidates", []) or []
+        candidate_families = " or ".join(
+            item.get("family", "") for item in candidates[:2] if item.get("family")
+        )
+        type_label = "Candidates: %s" % candidate_families \
+            if candidate_families else "Typography needs source evidence"
+        type_note = "A family is not yet verified"
+        type_font_verified = False
+
+    brand = identity.get("brand_colors", {}) or {}
+    brand_colors = brand.get("colors", []) or [] \
+        if brand.get("state") == "verified" else []
+    brand_rows = []
+    for item in brand_colors[:6]:
+        value = item.get("value") or "transparent"
+        brand_rows.append(
+            '<div class="dashboard-brand-color" title="%s: %s">'
+            '<i data-color-value="%s" style="background:%s" aria-hidden="true"></i>'
+            '<code>%s</code><span>%s</span></div>' % (
+                esc(item.get("token") or "brand color"), esc(value), esc(value), esc(value),
+                esc(item.get("token") or "brand color"), esc(value),
+            )
+        )
+    if brand_rows and len(brand_colors) > 6:
+        brand_rows.append(
+            '<a class="dashboard-link" href="#inventory">See %d more verified brand colors</a>' %
+            (len(brand_colors) - 6)
+        )
+    if not brand_rows:
+        brand_rows.append(
+            '<span class="dashboard-type-meta">Brand colors need stronger source evidence.</span>'
+        )
+
+    component_usage = report.get("component_usage", {}) or {}
+    components = component_usage.get("top_20", []) or []
+    has_component_fallbacks = int(
+        component_usage.get("fallback_surfaces", 0) or 0
+    ) > 0
+    top_component_heading = (
+        "Most connected component or surface"
+        if has_component_fallbacks else "Most connected component"
+    )
+    component_link_noun = (
+        "entry" if has_component_fallbacks and len(components) == 1
+        else "entries" if has_component_fallbacks
+        else
+        "component" if len(components) == 1 else "components"
+    )
+    top_component = components[0] if components else {}
+    if top_component:
+        component_name = top_component.get("name") or "Unnamed component"
+        component_note = "Uses %d distinct tokens across %d references" % (
+            int(top_component.get("distinct_tokens", 0) or 0),
+            int(top_component.get("references", 0) or 0),
+        )
+    else:
+        component_name = "Component usage was not measured"
+        component_note = "Run the component inventory before choosing a migration pilot"
+
+    roots = report.get("discovery", {}).get("roots", []) or []
+    unknown_roots = [item for item in roots if item.get("ownership") == "unknown"]
+    root_label = "root" if len(roots) == 1 else "roots"
+    unknown_root_label = "root" if len(unknown_roots) == 1 else "roots"
+    profiles = report.get("discovery", {}).get("environment", []) or sorted({
+        profile for root in roots for profile in (
+            root.get("profiles", []) or [root.get("profile")])
+        if profile and profile != "convention"
+    })
+    profile_text = " + ".join(
+        item.replace("-", " ").title() for item in profiles
+    ) or "No framework profile confirmed"
+
+    first = report.get("executive_summary", {}).get("fix_first", {}) or {}
+    first_detail = first.get("action") or (
+        "Review candidate matches by design role before choosing a replacement."
+    )
+    mode_grade = vitals.get("mode-completeness", {}).get("grade", "blocked")
+    if mode_grade in ("blocked", "fail"):
+        mode_title = "Prove every theme before migration"
+        mode_detail = (
+            "Generate resolved output for each registered mode and product surface "
+            "before comparing color decisions."
+        )
+    else:
+        mode_title = "Keep every theme visible during migration"
+        mode_detail = "Use the coverage matrix to protect the modes already supported."
+    if unknown_roots:
+        ownership_title = "Give %d style %s a clear owner" % (
+            len(unknown_roots), unknown_root_label)
+        ownership_detail = (
+            "Settle those boundaries first, then add token-aware checks that prevent new drift."
+        )
+        ownership_href = "#measurement"
+        ownership_cta = "Review ownership"
+    else:
+        ownership_title = "Add token-aware checks to the delivery path"
+        ownership_detail = (
+            "The ownership boundary is clear enough to prevent new drift in lint and CI."
+        )
+        ownership_href = "#enforcement"
+        ownership_cta = "Plan guardrails"
+
+    friendly_grade = {
+        "pass": "Well supported",
+        "attention": "Worth a look",
+        "fail": "Needs action",
+        "blocked": "Needs evidence",
+        "not_applicable": "Not needed here",
+    }
+    vital_cards = []
+    for name in VITAL_ORDER:
+        vital = vitals.get(name, {}) or {}
+        grade = vital.get("grade", "blocked")
+        vital_cards.append(
+            '<a class="dashboard-vital" data-grade="%s" href="#vital-%s">'
+            '<span class="dashboard-vital-name">%s</span>'
+            '<span class="dashboard-vital-state">%s '
+            '<span class="dashboard-official">%s</span></span></a>' % (
+                esc(grade), esc(name), esc(name.replace("-", " ").capitalize()),
+                esc(friendly_grade.get(grade, "Needs review")), esc(grade),
+            )
+        )
+
+    confirmed = int(confidence.get("confirmed", 0) or 0)
+    blocked = int(confidence.get("blocked", 0) or 0)
+    unmeasured = int(confidence.get("unmeasured", 0) or 0)
+    blocked_text = "%d %s %s evidence" % (
+        blocked, "item" if blocked == 1 else "items",
+        "needs" if blocked == 1 else "need",
+    )
+    unmeasured_text = "%d %s unmeasured" % (
+        unmeasured, "item" if unmeasured == 1 else "items")
+    stage_position = "%d of %d" % (current_index + 1, len(stage_order)) \
+        if current_index >= 0 else "not resolved"
+    component_roadmap = render_dashboard_component_roadmap(report)
     return (
-        '<div class="glance" data-report-region="at-a-glance" '
-        'data-stage-json="%s">'
-        '<div class="gcard"><div class="gt"><span>Stage</span><span>next: %s</span></div>'
-        '<div class="gv"><code class="gstage">%s</code></div>'
-        '<div class="ladder" data-glance-mark="stage" aria-label="Current maturity stage: %s">%s</div>'
-        '<div class="gd">%s</div></div>'
-        '<div class="gcard"><div class="gt"><span>Eight vitals</span><span>%d checks</span></div>'
-        '<div class="seg" data-glance-mark="vitals">%s</div><div class="gd">%s</div></div>'
-        '<div class="gcard"><div class="gt"><span>Confidence</span><span>evidence units</span></div>'
-        '<div class="seg" data-glance-mark="confidence">%s</div>'
-        '<div class="gd"><b>%s</b> confirmed · <b>%s</b> blocked · <b>%s</b> unmeasured</div></div>'
-        '<div class="gcard"><div class="gt"><span>Leakage</span><span>%d consumer styles</span></div>'
-        '<div class="seg" data-glance-mark="leakage">%s</div>'
-        '<div class="gd"><b>%d</b> exact-value candidates · <b>%d</b> uncovered candidates</div></div>'
-        '<div class="gcard"><div class="gt"><span>Fix queue</span><span>%d verified entries</span></div>'
-        '<div class="ring" data-glance-mark="fix-queue" data-fix-total="%d" data-fix-verified="%d">'
-        '<svg viewBox="0 0 52 52" aria-hidden="true"><circle class="track" cx="26" cy="26" r="20"></circle>'
-        '<circle class="fill" cx="26" cy="26" r="20" stroke-dasharray="%.1f %.1f"></circle></svg>'
-        '<div><div class="rv">%d<small> / %d</small></div><div class="rd">semantically verified</div></div></div></div>'
-        '<div class="gcard" data-glance-mark="counted"><div class="gt"><span>Counted</span><span>%s tier</span></div>'
-        '<div class="gv">%d<small>tokens</small></div><div class="gd"><b>%d</b> measured families · '
-        '<b>%d</b> files scanned</div></div></div>' % (
-            json_attr(stage), esc(stage.get("next") or "none"),
-            esc(current_stage), esc(current_stage), ladder,
-            esc(stage.get("threshold") or "No threshold recorded."),
-            len(vitals), grade_segments, esc(grade_text), confidence_segments,
-            esc(confidence.get("confirmed", 0)), esc(confidence.get("blocked", 0)),
-            esc(confidence.get("unmeasured", 0)),
-            leakage.get("consumer_files_scanned", 0), leakage_segments,
-            exact_count, uncovered_count, verified,
-            len(queue), verified, ring_filled, ring_length - ring_filled,
-            verified, len(queue),
-            esc(report.get("rendering", {}).get("tier", "unresolved")),
-            run.get("token_count", 0), measured_families,
-            run.get("files_scanned", 0),
+        '<div class="dashboard" data-report-region="at-a-glance" data-stage-json="%s">'
+        '<div class="dashboard-hero"><h3>%s</h3><p>%s</p></div>'
+        '<div class="dashboard-ribbon">'
+        '<div class="dashboard-metric"><span class="dashboard-label">You’re here</span>'
+        '<span class="dashboard-value"><code>%s</code></span>'
+        '<span class="dashboard-helper">Stage %s · next: %s</span>'
+        '<div class="ladder" data-glance-mark="stage" aria-label="Current maturity stage: %s">%s</div></div>'
+        '<div class="dashboard-metric"><span class="dashboard-label">How the system is doing</span>'
+        '<span class="dashboard-value">%s</span><span class="dashboard-helper">%s</span>'
+        '<div class="seg" data-glance-mark="vitals" aria-label="Vital grades: %s">%s</div></div>'
+        '<div class="dashboard-metric"><span class="dashboard-label">What we could verify</span>'
+        '<span class="dashboard-value">%d confirmed</span>'
+        '<span class="dashboard-helper">%s · %s</span>'
+        '<div class="seg" data-glance-mark="confidence" aria-label="%d confirmed, %d blocked, %d unmeasured">%s</div></div>'
+        '<div class="dashboard-metric" data-glance-mark="counted"><span class="dashboard-label">Token inventory</span>'
+        '<span class="dashboard-value">%d concepts</span><span class="dashboard-helper">'
+        '%s · %d files scanned</span></div>'
+        '</div>'
+        '<div class="dashboard-main"><div class="dashboard-actions">'
+        '<div class="dashboard-section-head"><h4>Start here</h4><a href="#start">See all next steps</a></div>'
+        '<div class="dashboard-action-list">'
+        '<a class="dashboard-action" href="#leakage"><span class="dashboard-action-number">1</span><span>'
+        '<strong>Confirm what %d candidate %s %s</strong><p>%s</p>'
+        '<div class="seg" data-glance-mark="leakage" aria-label="%d candidate %s and %d uncovered %s">%s</div>'
+        '</span><span class="dashboard-action-cta">Review matches</span></a>'
+        '<a class="dashboard-action" href="#modes"><span class="dashboard-action-number">2</span><span>'
+        '<strong>%s</strong><p>%s</p></span><span class="dashboard-action-cta">Check themes</span></a>'
+        '<a class="dashboard-action" href="%s"><span class="dashboard-action-number">3</span><span>'
+        '<strong>%s</strong><p>%s</p></span><span class="dashboard-action-cta">%s</span></a>'
+        '</div><a class="dashboard-readiness" href="#fix-queue"><span><strong>Automation readiness</strong>'
+        '<span class="dashboard-helper">%s</span></span>'
+        '<div class="dashboard-progress" data-glance-mark="fix-queue" data-fix-total="%d" data-fix-verified="%d" '
+        'aria-label="%s"><i style="width:%.3f%%"></i></div>'
+        '</a></div>'
+        '<aside class="dashboard-side">'
+        '<div class="dashboard-side-block"><h4>Your design language</h4>'
+        '<div class="dashboard-type" data-font-verified="%s">%s</div><div class="dashboard-type-meta">%s</div>'
+        '<div class="dashboard-brand-colors">%s</div></div>'
+        '<div class="dashboard-side-block"><h4>%s</h4>'
+        '<div class="dashboard-component-name">%s</div><div class="dashboard-component-meta">%s</div>'
+        '<a class="dashboard-link" href="#component-usage">See the top %d %s</a></div>'
+        '<div class="dashboard-side-block"><h4>What this run followed</h4>'
+        '<div class="dashboard-component-name">%s</div><div class="dashboard-component-meta">'
+        '%d registered style %s · %d owned · %d need ownership</div>'
+        '<a class="dashboard-link" href="#measurement">See discovery evidence</a></div>'
+        '</aside></div>%s'
+        '<div class="dashboard-vitals"><div class="dashboard-section-head"><h4>Your eight system checks</h4>'
+        '<a href="#vitals">See the full evidence</a></div><div class="dashboard-vital-grid">%s</div></div>'
+        '</div>' % (
+            json_attr(stage), esc(headline), esc(supporting), esc(current_stage), esc(stage_position),
+            esc(stage.get("next") or "no next stage recorded"), esc(current_stage), ladder,
+            esc(health), esc(grade_text), esc(grade_text), grade_segments,
+            confirmed, esc(blocked_text), esc(unmeasured_text),
+            confirmed, blocked, unmeasured,
+            confidence_segments, run.get("token_count", 0),
+            esc(" · ".join(family_status)), run.get("files_scanned", 0),
+            exact_count, esc(match_label), esc(match_verb), esc(first_detail),
+            exact_count, esc(match_label),
+            uncovered_count, esc(uncovered_label), leakage_segments,
+            esc(mode_title), esc(mode_detail), esc(ownership_href), esc(ownership_title),
+            esc(ownership_detail), esc(ownership_cta), esc(fix_readiness),
+            len(queue), verified, esc(fix_readiness), verified_percent,
+            "true" if type_font_verified else "false", esc(type_label), esc(type_note),
+            "".join(brand_rows), esc(top_component_heading),
+            esc(component_name), esc(component_note), len(components),
+            esc(component_link_noun),
+            esc(profile_text), len(roots), esc(root_label),
+            len(roots) - len(unknown_roots), len(unknown_roots),
+            component_roadmap,
+            "".join(vital_cards),
         )
     )
 
@@ -1340,15 +1865,25 @@ def render_orphans_and_enforcement(report):
 
 
 def render_report_slots(document, report, tokens, discovery):
+    strategy = derive_adoption_strategy(report)
+    report["adoption_strategy"] = strategy
     repository = discovery.get("repository", {}) or {}
     title = "Design Token Vitals — %s @ %s" % (
         os.path.basename(str(repository.get("root") or "repository")),
         str(repository.get("ref") or "unknown")[:10],
     )
     document = replace_slot(document, "doc-title", '<title>%s</title>' % esc(title))
+    document = replace_slot(
+        document, "report-view-switcher",
+        render_report_view_switcher(
+            report.get("rendering", {}).get("view") or "snapshot"
+        ),
+    )
     document = replace_slot(document, "at-a-glance", render_at_a_glance(report))
     document = replace_slot(document, "exec-summary", render_exec_summary(report))
     document = replace_slot(document, "decisions", render_decisions(report))
+    document = replace_slot(
+        document, "adoption-strategy", render_adoption_strategy(strategy))
     document = replace_slot(document, "next-steps", render_next_steps(report))
     document = replace_slot(document, "fix-queue", render_fix_queue(report))
     document = replace_slot(document, "groups", render_groups(report))
@@ -1367,7 +1902,13 @@ def render_report_slots(document, report, tokens, discovery):
         document = replace_slot(
             document, "family-coverage", family_block(tokens, report))
     if not report.get("trend"):
-        document = re.sub(r'\n\s*<section id="trend">.*?</section>\n', "\n", document, count=1, flags=re.S)
+        document = re.sub(
+            r'\n\s*<section id="trend"[^>]*>.*?</section>\n',
+            "\n",
+            document,
+            count=1,
+            flags=re.S,
+        )
         document = re.sub(r'\s*<a href="#trend"[^>]*>.*?</a>', "", document, count=1)
     return document
 
@@ -1415,7 +1956,7 @@ def render_leakage(leakage):
             )
         )
     return (
-        '\n  <section id="leakage"><div class="eyebrow">Leakage</div>'
+        '\n  <section id="leakage" data-report-views="action evidence"><div class="eyebrow">Leakage</div>'
         '<h2>Hardcoded values, separated by what this run can prove</h2>'
         '<p class="lede">The fresh scan covers %d owned, graph-reachable consumer '
         'styles. It found %d exact-value candidate groups and %d groups with no '
@@ -1478,26 +2019,35 @@ def render_measurement(discovery, tokens, report, skill_version, generated):
     unknown_roots = [item for item in roots if item.get("ownership") == "unknown"]
     full_reachable = len(discovery.get("import_graph", {}).get("reachable", {}))
     owned_reachable = len(discovery.get("owned_import_graph", {}).get("reachable", {}))
-    unresolved = discovery.get("import_graph", {}).get("unresolved", [])
+    unresolved = unresolved_import_summary(discovery)
     concept_count = (tokens or {}).get(
         "concept_count", report.get("run", {}).get("token_count"))
-    source_count = len((tokens or {}).get("sources", []))
+    source_count = confirmed_definition_count((tokens or {}).get("sources", []))
     held_out = len((tokens or {}).get("candidate_or_local_override_sources", []))
     adapters = report.get("provenance", {}).get("adapter_versions", {})
+    rendering = report.get("rendering", {})
+    rendering_summary = "%s view · %s density" % (
+        rendering.get("view") or "unrecorded",
+        rendering.get("tier") or "unrecorded",
+    )
     summary = {
         "profiles": discovery.get("environment", []),
         "roots": len(roots), "owned_roots": len(owned_roots),
         "unknown_roots": len(unknown_roots),
         "reachable": full_reachable, "owned_reachable": owned_reachable,
-        "unresolved": len(unresolved), "concepts": concept_count,
+        "unresolved_total": unresolved["total"],
+        "unresolved_actionable": unresolved["actionable"],
+        "unresolved_by_reason": unresolved["by_reason"],
+        "concepts": concept_count,
         "token_sources": source_count, "held_out_sources": held_out,
     }
     return (
         '<div class="panel" data-measurement-summary-json="%s"><h3>Measured scope</h3>'
         '<p>%d profiles proved %d product roots: %d owned and %d unresolved in '
         'ownership. The full graph reaches %d files; the owned graph reaches %d. '
-        '%d imports remain classified, %s canonical concepts came from %d reachable '
-        'token-bearing sources, and %d candidate or override sources were held out.</p>'
+        '%d actionable imports remain unresolved. All %d classified import misses '
+        'remain visible by reason: %s. %s canonical concepts came from %d confirmed '
+        'definition sources, and %d candidate or override sources were held out.</p>'
         '</div><div class="panel" style="margin-top:18px" '
         'data-adapter-versions-json="%s"><h3>Provenance</h3>'
         '<dl class="meta"><dt>schema</dt><dd>%s</dd><dt>skill</dt><dd>%s</dd>'
@@ -1505,13 +2055,18 @@ def render_measurement(discovery, tokens, report, skill_version, generated):
         '<dt>generated</dt><dd>%s</dd><dt>rendering</dt><dd>%s</dd></dl></div>' % (
             json_attr(summary), len(discovery.get("environment", [])), len(roots),
             len(owned_roots), len(unknown_roots), full_reachable, owned_reachable,
-            len(unresolved), esc(concept_count if concept_count is not None else "unmeasured"),
+            unresolved["actionable"], unresolved["total"],
+            esc("; ".join(
+                "%d %s" % (count, reason)
+                for reason, count in unresolved["by_reason"].items()
+            ) or "none"),
+            esc(concept_count if concept_count is not None else "unmeasured"),
             source_count, held_out,
             json_attr(adapters),
             esc(report.get("schema_version")), esc(skill_version),
             esc(" · ".join(sorted(adapters)) or "none"),
             esc(report.get("provenance", {}).get("repo_ref") or "unrecorded"),
-            esc(generated), esc(report.get("rendering", {}).get("tier") or "unrecorded"),
+            esc(generated), esc(rendering_summary),
         )
     )
 
@@ -1526,7 +2081,9 @@ def render_runhead(discovery, tokens, report, skill_version):
         "reachable": len(discovery.get("import_graph", {}).get("reachable", {})),
         "owned_reachable": len(discovery.get("owned_import_graph", {}).get(
             "reachable", {})),
-        "token_sources": len((tokens or {}).get("sources", [])),
+        "token_sources": confirmed_definition_count(
+            (tokens or {}).get("sources", [])
+        ),
         "concepts": (tokens or {}).get(
             "concept_count", report.get("run", {}).get("token_count")),
     }
@@ -1534,7 +2091,7 @@ def render_runhead(discovery, tokens, report, skill_version):
         '<dl class="meta" data-runhead-summary-json="%s">'
         '<dt>profiles</dt><dd>%s</dd><dt>product roots</dt><dd>%d total · %d owned</dd>'
         '<dt>reachable source files</dt><dd>%d total · %d owned</dd>'
-        '<dt>token inventory</dt><dd>%s concepts · %d token-bearing sources</dd>'
+        '<dt>token inventory</dt><dd>%s concepts · %d confirmed definition sources</dd>'
         '<dt>repository</dt><dd>%s</dd><dt>skill</dt><dd>%s</dd></dl>' % (
             json_attr(summary), esc(" · ".join(summary["profiles"])),
             summary["roots"], summary["owned_roots"], summary["reachable"],
@@ -1587,7 +2144,7 @@ def render_section(discovery):
     conflicts = composition.get("conflicts", [])
     registry_sources = composition.get("registry_sources", [])
     return """
-  <section id="discovery-engine">
+  <section id="discovery-engine" data-report-views="evidence">
     <div class="eyebrow">Universal discovery</div>
     <h2>How the audit found the application</h2>
     <p class="lede">%d framework profiles composed into one evidence model. They proved %d product roots and %d owned component roots, while retaining %d disconnected root candidates, %d missing registered roots, and %d component-location candidates instead of silently promoting or discarding them. The report also keeps %d route, template, or demo surfaces outside production reachability.</p>
@@ -1659,7 +2216,7 @@ def sync_document_metadata(document, old_generated, generated,
 
 
 def augment(discovery_path, report_path, html_path, tokens_path=None,
-            leakage_path=None, refresh_template=False):
+            leakage_path=None, refresh_template=False, report_view=None):
     with open(discovery_path, encoding="utf-8") as handle:
         discovery = json.load(handle)
     tokens = None
@@ -1673,6 +2230,10 @@ def augment(discovery_path, report_path, html_path, tokens_path=None,
     discovery = enrich(discovery, tokens)
     with open(report_path, encoding="utf-8") as handle:
         report = json.load(handle)
+    selected_view = resolve_report_view(report_view)
+    rendering = report.setdefault("rendering", {})
+    rendering["view"] = selected_view
+    rendering["available_views"] = list(REPORT_VIEWS)
     old_generated = report.get("run", {}).get("generated_at")
     old_version = report.get("provenance", {}).get("skill_version")
     generated = datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
@@ -1712,6 +2273,7 @@ def augment(discovery_path, report_path, html_path, tokens_path=None,
         document = handle.read()
     if refresh_template:
         document = TEMPLATE_INSTRUCTIONS.sub(r'\1', document, count=1)
+    document = set_document_report_view(document, selected_view)
     section = render_section(discovery)
     if SECTION.search(document):
         document = SECTION.sub("\n" + section, document, count=1)
@@ -1754,6 +2316,7 @@ def augment(discovery_path, report_path, html_path, tokens_path=None,
     document = sync_document_metadata(
         document, old_generated, generated, old_version, skill_version
     )
+    document = prepare_progressive_disclosures(document)
     write_json(report_path, report)
     with open(html_path, "w", encoding="utf-8") as handle:
         handle.write(document)
@@ -1770,9 +2333,13 @@ def main(argv):
         "--refresh-template", action="store_true",
         help="start from the current report template before rendering every region",
     )
+    parser.add_argument(
+        "--report-view", choices=REPORT_VIEWS,
+        help="initial report depth: snapshot, action, or evidence (default: snapshot)",
+    )
     args = parser.parse_args(argv)
     augment(args.discovery, args.report_json, args.html, args.tokens,
-            args.leakage, args.refresh_template)
+            args.leakage, args.refresh_template, args.report_view)
     print("rendered universal discovery into %s and %s" % (
         args.report_json, args.html))
     return EXIT_OK

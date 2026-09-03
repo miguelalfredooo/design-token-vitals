@@ -25,7 +25,12 @@ def run_doc(grades=None, evidence=None, **over):
                 "scope": ["apps/v4"], "framework_versions": {"tailwindcss": "4.3.3"}},
         "stack": {"adapters": ["tailwind", "css-vars"]},
         "vitals": {v: {"grade": grades[v], "evidence": evidence.get(v, []), "note": None} for v in VITALS},
-        "rendering": {"tier": "full", "forms": {"color": "swatches", "leaks": "rows"}},
+        "rendering": {
+            "view": "snapshot",
+            "available_views": ["snapshot", "action", "evidence"],
+            "tier": "full",
+            "forms": {"color": "swatches", "leaks": "rows"},
+        },
     }
     for path, value in over.items():
         section, field = path.split("__")
@@ -33,8 +38,8 @@ def run_doc(grades=None, evidence=None, **over):
     return doc
 
 
-def compare(a, b):
-    """Run the comparison on two docs, with its report captured rather than printed."""
+def compare_with_output(a, b):
+    """Run the comparison on two docs and return its status and report."""
     with tempfile.TemporaryDirectory() as d:
         pa, pb = os.path.join(d, "a.json"), os.path.join(d, "b.json")
         for path, doc in ((pa, a), (pb, b)):
@@ -42,9 +47,15 @@ def compare(a, b):
                 json.dump(doc, handle)
         held, sys.stdout = sys.stdout, io.StringIO()
         try:
-            return compare_runs.main([pa, pb])
+            status = compare_runs.main([pa, pb])
+            output = sys.stdout.getvalue()
         finally:
             sys.stdout = held
+        return status, output
+
+
+def compare(a, b):
+    return compare_with_output(a, b)[0]
 
 
 class TestCompare(unittest.TestCase):
@@ -79,6 +90,23 @@ class TestCompare(unittest.TestCase):
         b = run_doc()
         del b["rendering"]["forms"]
         self.assertEqual(compare(a, b), 0)
+
+    def test_differing_initial_view_is_below_the_grade_level(self):
+        status, output = compare_with_output(
+            run_doc(), run_doc(rendering__view="evidence")
+        )
+        self.assertEqual(status, 0)
+        self.assertIn("DIFF  rendering.view", output)
+
+    def test_available_view_order_is_significant(self):
+        status, output = compare_with_output(
+            run_doc(),
+            run_doc(
+                rendering__available_views=["evidence", "action", "snapshot"]
+            ),
+        )
+        self.assertEqual(status, 0)
+        self.assertIn("DIFF  rendering.available_views", output)
 
     def test_wrong_argument_count_returns_2(self):
         held, sys.stdout = sys.stdout, io.StringIO()
