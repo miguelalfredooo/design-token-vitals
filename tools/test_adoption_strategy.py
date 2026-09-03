@@ -172,5 +172,36 @@ class TestStrategyValidation(unittest.TestCase):
         self.assertTrue(any("phases" in detail for detail in failure.detail))
 
 
+class TestStrategyProseCounts(unittest.TestCase):
+    """A count of one must read as one.
+
+    This section is written for a stakeholder, and "1 components with
+    confirmed token usage" is the sentence a reader stops at. Small repos
+    and early runs hit the singular constantly.
+    """
+
+    def singular_report(self):
+        report = report_fixture()
+        report["stack"]["adapters"] = ["css-vars"]
+        report["stack"]["token_sources"] = ["tokens.css"]
+        report["discovery"]["environment"] = ["vite"]
+        report["discovery"]["roots"] = [{"path": "app.css", "ownership": "owned"}]
+        report["component_usage"]["total_components_with_token_usage"] = 1
+        report["component_usage"]["top_20"] = [{"name": "src / Button"}]
+        return report
+
+    def test_no_plural_noun_follows_a_count_of_one(self):
+        strategy = adoption_strategy.derive(self.singular_report())
+        prose = " ".join(
+            [strategy["rationale"], strategy["headline"]]
+            + [item["evidence"] for item in strategy["integration_constraints"]]
+            + [item["evidence"] for item in strategy["rollout"]]
+            + [item["description"] for item in strategy["target_architecture"]]
+        )
+        for phrase in ("1 components", "1 profiles", "1 adapters", "1 sources",
+                       "1 concepts", "1 roots", "1 modes", "1 pairs", "1 imports"):
+            self.assertNotIn(phrase, prose, "%r reads as a plural" % phrase)
+
+
 if __name__ == "__main__":
     unittest.main()

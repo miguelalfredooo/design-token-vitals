@@ -1221,12 +1221,15 @@ class TestRule16IdentityIntegrity(unittest.TestCase):
             "16-identity-integrity",
         )
 
-    def test_template_sample_content_fails(self):
+    def test_template_sample_content_is_not_rule_16s_to_report(self):
+        """Moved to rule 18. Identity is about the font and the brand, not
+        about a region someone forgot to fill."""
         doc, html = self.identity_doc_and_html()
         html += "color.semantic.brand.base"
+        self.assertIsNone(validate_run.rule_16_identity_integrity(doc, html))
         self.assertEqual(
-            validate_run.rule_16_identity_integrity(doc, html).rule,
-            "16-identity-integrity",
+            validate_run.rule_18_no_template_sample_content(html).rule,
+            "18-template-sample-content",
         )
 
     def test_identity_cannot_verify_when_definitions_are_omitted(self):
@@ -1523,6 +1526,36 @@ class TestRule17AdoptionStrategy(unittest.TestCase):
         )
 
         self.assertIsNone(validate_run.rule_17_adoption_strategy(doc, html))
+
+
+class TestTemplateSampleContentIsItsOwnRule(unittest.TestCase):
+    """Leftover sample content is not an identity problem.
+
+    The sentinel sweep lived inside rule 16, so a report that still carried
+    the template's own `a91f4c07` was told it had an "identity integrity
+    problem" — which points the reader at the wrong file and the wrong fix.
+    """
+
+    def test_sample_content_is_not_reported_as_an_identity_failure(self):
+        doc = good_doc()
+        html = "<html><body>Compared against <code>a91f4c07</code>.</body></html>"
+        identity = validate_run.rule_16_identity_integrity(doc, html)
+        if identity is not None:
+            self.assertNotIn(
+                "template sample content", " ".join(identity.detail),
+                "rule 16 is still reporting leftover sample content")
+
+    def test_sample_content_fails_under_a_rule_that_names_it(self):
+        html = "<html><body>Compared against <code>a91f4c07</code>.</body></html>"
+        failure = validate_run.rule_18_no_template_sample_content(html)
+        self.assertIsNotNone(failure)
+        self.assertIn("sample", failure.rule)
+        self.assertTrue(any("a91f4c07" in detail for detail in failure.detail))
+
+    def test_a_clean_report_passes_the_sentinel_rule(self):
+        self.assertIsNone(
+            validate_run.rule_18_no_template_sample_content(
+                "<html><body>real findings</body></html>"))
 
 
 class TestStampOnlyMarksAPassingRun(unittest.TestCase):

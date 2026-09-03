@@ -1110,21 +1110,40 @@ def sync_leakage(report, leakage):
     report.setdefault("executive_summary", {}).setdefault(
         "affected", {})["owned_files"] = scanned
     leakage_vital = report.setdefault("vitals", {}).setdefault("leakage", {})
-    leakage_vital.update({
-        "grade": "blocked",
-        "evidence": [],
-        "note": (
+    if scanned:
+        note = (
             "%d exact-value candidate groups and %d uncovered candidate groups "
             "were measured across %d owned reachable consumer styles, but "
             "semantic equivalence and near misses remain unmeasured."
-        ) % (exact, uncovered, scanned),
-        "tiers": {
+        ) % (exact, uncovered, scanned)
+        tiers = {
             "redundant": None,
             "exact-value candidate": exact,
             "near-miss": None,
             "uncovered": None,
             "uncovered candidate": uncovered,
-        },
+        }
+    else:
+        # Rule 4, applied to this skill's own output: zero states the project
+        # has none, which a run that opened no consumer style never
+        # established. Reporting 0 here put "exact-value candidate 0" beside
+        # "redundant unmeasured" in one sentence of the strategy section.
+        note = (
+            "This run found no owned reachable consumer styles to classify, so "
+            "every leakage tier is unmeasured rather than zero. A repository "
+            "whose only stylesheet is itself a token source reaches this state "
+            "legitimately; a literal in a template or component is not yet "
+            "measured here."
+        )
+        tiers = {
+            "redundant": None,
+            "exact-value candidate": None,
+            "near-miss": None,
+            "uncovered": None,
+            "uncovered candidate": None,
+        }
+    leakage_vital.update({
+        "grade": "blocked", "evidence": [], "note": note, "tiers": tiers,
     })
 
 
@@ -1901,16 +1920,34 @@ def render_report_slots(document, report, tokens, discovery):
     if tokens:
         document = replace_slot(
             document, "family-coverage", family_block(tokens, report))
-    if not report.get("trend"):
-        document = re.sub(
-            r'\n\s*<section id="trend"[^>]*>.*?</section>\n',
-            "\n",
-            document,
-            count=1,
-            flags=re.S,
-        )
-        document = re.sub(r'\s*<a href="#trend"[^>]*>.*?</a>', "", document, count=1)
+    document = strip_trend_without_a_baseline(document, report)
     return document
+
+
+def strip_trend_without_a_baseline(document, report):
+    """Remove the trend section unless a baseline actually produced a comparison.
+
+    The test used to be `if not report.get("trend")`, which only caught a
+    missing key. A schema-shaped block of nulls — what the capability map
+    ships and what a run with no baseline carries — is truthy, so the
+    section survived with the template's own sample comparison in it, and
+    the validation gate caught it as leftover sample content on every fresh
+    report.
+    """
+    trend = report.get("trend") or {}
+    if isinstance(trend, dict):
+        movement = any(
+            trend.get(key) for key in
+            ("new", "resolved", "grew", "shrank", "regressions"))
+        has_baseline = bool(trend.get("baseline_ref")) or movement
+    else:
+        has_baseline = bool(trend)
+    if has_baseline:
+        return document
+    document = re.sub(
+        r'\n\s*<section id="trend"[^>]*>.*?</section>\n',
+        "\n", document, count=1, flags=re.S)
+    return re.sub(r'\s*<a href="#trend"[^>]*>.*?</a>', "", document, count=1)
 
 
 def render_leakage(leakage):

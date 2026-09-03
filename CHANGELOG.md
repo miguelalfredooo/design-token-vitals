@@ -99,6 +99,37 @@ exception.
 - Limited confirmed-source totals to canonical and alias definitions, and
   separated actionable imports from the complete unresolved-reason breakdown.
 
+### Fixed — four things a run against a real repository surfaced
+
+All four were found by driving the pipeline end to end rather than by reading it.
+
+- **A count of one now reads as one.** The strategy section is written for a
+  stakeholder and said "1 components with confirmed token usage", "1 active
+  framework profiles", "1 confirmed token-definition sources feed 1 styling or
+  framework adapters". A `count()` helper carries the noun and the verb, and a
+  test asserts no plural noun follows a count of one anywhere in the section.
+- **A run that scanned nothing no longer reports zero.** `sync_leakage` wrote
+  `exact-value candidate: 0` beside `redundant: unmeasured` when it had opened
+  no consumer style at all, so one sentence answered the same question two ways.
+  This is rule 4 applied to the skill's own output: zero states the project has
+  none, which a run that scanned nothing never established. With
+  `consumer_files_scanned` at zero, every tier is `null` and the note says why.
+- **Leftover template sample content is its own rule.** The sentinel sweep lived
+  inside rule 16, so a report still carrying `a91f4c07` was told it had an
+  "identity integrity problem" — which points the reader at the font and brand
+  evidence instead of at the region they forgot to fill. Now rule 18, and the
+  gate is eighteen rules.
+- **An empty trend block is as absent as a missing one.** The stripper tested
+  `if not report.get("trend")`, which only catches a missing key; the
+  schema-shaped block of nulls a no-baseline run carries is truthy, so the
+  section survived carrying the template's own sample comparison — and rule 16
+  then caught it, once, on every fresh report. `strip_trend_without_a_baseline`
+  decides on the baseline and the movement, not on the key.
+
+One thing that looked like a fifth was not. `start with src / MobileBottomNavigation`
+is the deliberate `owner / slug` component-name format, degrading where the owner
+is a source directory rather than a package. Left alone.
+
 ### Fixed — a standards id is not a finding id
 
 `collect_ids` treated any object with a twelve-character `id` as a finding.

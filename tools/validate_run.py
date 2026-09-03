@@ -116,7 +116,7 @@ def stamp_pass(report_json_path, doc, report_html_path, report_html_text):
     if report_html_path and report_html_text is not None:
         ok_note = (
             '<div class="validation-ok">&#10003; Validated &mdash; '
-            'all 17 rules passed %s</div>' % html_tools.escape(checked_at)
+            'all 18 rules passed %s</div>' % html_tools.escape(checked_at)
         )
         stamped = VALIDATION_BANNER_SLOT.sub(
             lambda m: m.group(1) + ok_note + m.group(2), report_html_text, count=1)
@@ -1858,10 +1858,6 @@ def rule_16_identity_integrity(doc, html=None):
                     bad.append("verified specimen declaration is not product-reachable")
 
     if html is not None:
-        sentinels = [value for value in FINISHED_REPORT_SENTINELS if value in html]
-        if sentinels:
-            bad.append("finished HTML still contains template sample content: %s" %
-                       ", ".join(sentinels))
         type_match = re.search(
             r'<!-- SLOT:inventory-type -->.*?<!-- /SLOT:inventory-type -->',
             html, re.S,
@@ -2106,8 +2102,28 @@ def validate(doc, html=None, current_skill=False, artifacts=None):
         rule_15_source_artifact_parity(doc, artifacts),
         rule_16_identity_integrity(doc, html),
         rule_17_adoption_strategy(doc, html),
+        rule_18_no_template_sample_content(html),
     ]
     return [c for c in checks if c is not None]
+
+
+def rule_18_no_template_sample_content(html):
+    """The report still describes the template's imaginary codebase.
+
+    This lived inside rule 16, so a report carrying `a91f4c07` was told it
+    had an identity-integrity problem — which points a reader at the font
+    and brand evidence rather than at the region they forgot to fill.
+    """
+    if html is None:
+        return None
+    sentinels = [value for value in FINISHED_REPORT_SENTINELS if value in html]
+    if not sentinels:
+        return None
+    return Failure(
+        "18-template-sample-content",
+        "%d region(s) still hold the template's own sample content" % len(sentinels),
+        sentinels[:8],
+    )
 
 
 def main(argv):
@@ -2163,7 +2179,7 @@ def main(argv):
         "failures": [{"rule": f.rule, "message": f.message, "detail": f.detail} for f in failures],
     })
     if not failures:
-        print("validate: pass — all seventeen rules hold")
+        print("validate: pass — all eighteen rules hold")
         if args.stamp:
             checked_at = stamp_pass(
                 args.report_json, doc,

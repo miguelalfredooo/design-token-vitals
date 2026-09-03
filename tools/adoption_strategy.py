@@ -69,6 +69,15 @@ ACTIONABLE_UNRESOLVED_REASONS = {
 }
 
 
+def count(n, singular, plural=None):
+    """`3 components`, and `1 component` — never `1 components`.
+
+    This section is read by a stakeholder, and a count of one is the common
+    case on a small repository or an early run.
+    """
+    return "%d %s" % (n, singular if n == 1 else (plural or singular + "s"))
+
+
 def _unique(values):
     return list(dict.fromkeys(value for value in values if value))
 
@@ -142,24 +151,24 @@ def derive(report):
 
     concept_text = str(concepts) if concepts is not None else "an unmeasured number of"
     component_text = (
-        "%d components with confirmed token usage" % component_count
+        count(component_count, "component") + " with confirmed token usage"
         if component_count is not None
         else "component adoption that remains %s" % component_state
     )
     rationale = (
-        "This run found %s canonical concepts across %d confirmed token-definition "
-        "sources, "
-        "%s, %d active framework profiles, and %d styling or framework adapters. "
+        "This run found %s canonical %s across %s, "
+        "%s, %s, and %s. "
         "A repository-wide component replacement would cross framework behavior "
         "and upgrade boundaries that this token audit does not measure. Use one "
         "semantic token contract across them, preserve framework-specific delivery "
         "adapters, and reserve shared component implementation for owned surfaces."
         % (
             concept_text,
-            len(token_sources),
+            "concept" if concepts == 1 else "concepts",
+            count(len(token_sources), "confirmed token-definition source"),
             component_text,
-            len(profiles),
-            len(adapters),
+            count(len(profiles), "active framework profile"),
+            count(len(adapters), "styling or framework adapter"),
         )
     )
 
@@ -224,8 +233,10 @@ def derive(report):
             "id": CONSTRAINT_IDS[0],
             "title": "Framework and ownership boundaries",
             "evidence": (
-                "%d active framework profiles; %d of %d production roots are "
-                "proven owned." % (len(profiles), len(owned_roots), len(roots))
+                "%s; %d of %s %s proven owned."
+                % (count(len(profiles), "active framework profile"),
+                   len(owned_roots), count(len(roots), "production root"),
+                   "is" if len(roots) == 1 else "are")
             ),
             "implication": (
                 "A global component replacement can turn upstream upgrades into "
@@ -237,8 +248,10 @@ def derive(report):
             "id": CONSTRAINT_IDS[1],
             "title": "Multiple delivery mechanisms",
             "evidence": (
-                "%d confirmed token-definition sources feed %d styling or framework "
-                "adapters." % (len(token_sources), len(adapters))
+                "%s %s %s."
+                % (count(len(token_sources), "confirmed token-definition source"),
+                   "feeds" if len(token_sources) == 1 else "feed",
+                   count(len(adapters), "styling or framework adapter"))
             ),
             "implication": (
                 "Unify the decisions in one typed graph, then generate compatible "
@@ -264,8 +277,11 @@ def derive(report):
             "id": CONSTRAINT_IDS[3],
             "title": "Runtime modes need compiled proof",
             "evidence": (
-                "%d modes are declared and %d bundle-by-mode pairs are resolved."
-                % (len(modes), len(resolved_pairs))
+                "%s %s declared and %s %s resolved."
+                % (count(len(modes), "mode"),
+                   "is" if len(modes) == 1 else "are",
+                   count(len(resolved_pairs), "bundle-by-mode pair"),
+                   "is" if len(resolved_pairs) == 1 else "are")
             ),
             "implication": (
                 "Source declarations prove intent, while compiled or runtime values "
@@ -277,9 +293,11 @@ def derive(report):
             "id": CONSTRAINT_IDS[4],
             "title": "Migration requires governance",
             "evidence": (
-                "Enforcement is graded %s and %d capabilities remain blocked or "
+                "Enforcement is graded %s and %s blocked or "
                 "unmeasured."
-                % (enforcement.get("grade") or "unmeasured", len(capability_work))
+                % (enforcement.get("grade") or "unmeasured",
+                   count(len(capability_work), "capability", "capabilities")
+                   + (" remains" if len(capability_work) == 1 else " remain"))
             ),
             "implication": (
                 "A token package alone will not stop new drift. Pair migration with "
@@ -299,8 +317,9 @@ def derive(report):
                 "would make later adoption claims unreliable."
             ),
             "evidence": (
-                "%d unresolved imports; %s capabilities still blocked or unmeasured."
-                % (len(unresolved), len(capability_work))
+                "%s; %s still blocked or unmeasured."
+                % (count(len(unresolved), "unresolved import"),
+                   count(len(capability_work), "capability", "capabilities"))
             ),
             "exit_criteria": (
                 "Every actionable import is resolved or explicitly exempted, production "
@@ -333,8 +352,12 @@ def derive(report):
                 "framework-specific projections."
             ),
             "evidence": (
-                "%s concepts currently span %d token-bearing sources and %d adapters."
-                % (concept_text, len(token_sources), len(adapters))
+                "%s %s currently %s %s and %s."
+                % (concept_text,
+                   "concept" if concepts == 1 else "concepts",
+                   "spans" if concepts == 1 else "span",
+                   count(len(token_sources), "token-bearing source"),
+                   count(len(adapters), "adapter"))
             ),
             "exit_criteria": (
                 "No projection is independently authored, aliases resolve without "
@@ -350,10 +373,10 @@ def derive(report):
                 "and verify the resulting values, not only their source declarations."
             ),
             "evidence": (
-                "%d declared modes; %d resolved bundle-by-mode pairs.%s"
+                "%s; %s.%s"
                 % (
-                    len(modes),
-                    len(resolved_pairs),
+                    count(len(modes), "declared mode"),
+                    count(len(resolved_pairs), "resolved bundle-by-mode pair"),
                     " %s" % mode_block if mode_block else "",
                 )
             ),
@@ -373,7 +396,8 @@ def derive(report):
             "evidence": (
                 "%s%s"
                 % (
-                    "%d measured components use tokens" % component_count
+                    "%s using tokens was measured" % count(
+                        component_count, "component")
                     if component_count is not None
                     else "Component adoption is %s" % component_state,
                     "; start with %s." % top_component if top_component else ".",

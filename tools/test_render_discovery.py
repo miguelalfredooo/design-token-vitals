@@ -636,6 +636,53 @@ class TestRendering(unittest.TestCase):
         self.assertEqual(report["executive_summary"]["affected"]["owned_files"], 42)
         self.assertIn("across 42 owned", report["vitals"]["leakage"]["note"])
 
+    def test_nothing_scanned_reports_no_tier_counts(self):
+        """Zero scanned files cannot yield a count of zero findings.
+
+        This is the skill's own rule 4, applied to itself: zero states the
+        project has none, which a run that scanned nothing never
+        established. The strategy section then printed "exact-value
+        candidate 0" beside "redundant unmeasured" — one sentence answering
+        the same question two ways.
+        """
+        report = {"run": {}, "executive_summary": {}, "vitals": {"leakage": {}}}
+        render_discovery.sync_leakage(report, {
+            "consumer_files_scanned": 0,
+            "exact_value_candidates": [],
+            "uncovered_candidates": [],
+        })
+        tiers = report["vitals"]["leakage"]["tiers"]
+        self.assertEqual(report["vitals"]["leakage"]["grade"], "blocked")
+        self.assertTrue(
+            all(value is None for value in tiers.values()),
+            "a run that scanned nothing reported a tier count: %r" % tiers)
+        self.assertIn("no owned reachable consumer styles",
+                      report["vitals"]["leakage"]["note"])
+
+    def test_an_empty_trend_block_is_removed_like_a_missing_one(self):
+        """No baseline means no trend section, however the block is spelled.
+
+        The stripper tested `if not report.get("trend")`, so a schema-shaped
+        block of nulls survived and shipped the template's own sample
+        comparison — which the validation gate then caught as leftover
+        sample content, once, on every fresh report.
+        """
+        document = (
+            '<body data-report-view="snapshot">'
+            '\n  <a href="#trend" data-tier="full">Trend</a>'
+            '\n  <section id="trend" data-report-views="action evidence">'
+            '\n    <b>Compared against <code>a91f4c07</code>.</b>'
+            '\n  </section>\n'
+            '</body>'
+        )
+        report = {"trend": {"baseline_ref": None, "compatible": None,
+                            "new": [], "resolved": [], "grew": [],
+                            "shrank": [], "regressions": []}}
+        stripped = render_discovery.strip_trend_without_a_baseline(document, report)
+        self.assertNotIn("a91f4c07", stripped)
+        self.assertNotIn('id="trend"', stripped)
+        self.assertNotIn('href="#trend"', stripped)
+
     def test_family_block_keeps_every_source_visible(self):
         sources = ["styles/source-%d.scss:%d" % (index, index)
                    for index in range(1, 7)]

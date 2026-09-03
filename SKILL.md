@@ -401,7 +401,7 @@ skill exists to catch.
 
 ### Validation gate — required before writing the report
 
-Run the seventeen rules as code, rather than checking yourself against them. The
+Run the eighteen rules as code, rather than checking yourself against them. The
 source-artifact inputs prevent an internally consistent but stale report from
 passing after a newer discovery or analysis step:
 
@@ -428,6 +428,9 @@ with the source token artifact. It fails when the closing unification strategy
 is absent, generic, stale against the report evidence, missing an integration
 constraint, architecture layer, or rollout phase, or inconsistent between JSON
 and HTML.
+It fails, as its own rule, when any region still holds the template's sample
+content — `a91f4c07` and the rest — rather than folding that into an identity
+complaint, because the fix is a region you did not fill, not the font evidence.
 With `--current-skill`, it also refuses a report stamped by an older copy of
 the skill, which prevents a stale report from passing after discovery logic
 changes.
