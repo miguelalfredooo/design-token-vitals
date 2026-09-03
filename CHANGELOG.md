@@ -14,9 +14,9 @@ far rested on someone pasting a local run into a pull request.
 
 `.github/workflows/checks.yml` runs, on every push to `main` and every pull
 request: the full `unittest` suite, `tools/palette.py`, `tools/taxonomy.py
---check`, `tools/check_voice.py`, and the validation gate against the bundled
-worked example. No third-party dependency, on a stock interpreter — the same
-constraint the skill itself runs under in the repositories it audits.
+--check`, and `tools/check_voice.py`. No third-party dependency, on a stock
+interpreter — the same constraint the skill itself runs under in the
+repositories it audits.
 
 It deliberately does **not** gate `examples/shadcn-ui/`, which would be the
 obvious fifth step. That report passes the gate only on the machine that
@@ -29,6 +29,41 @@ exists to catch. A published report not being independently re-checkable is a
 real gap; it is recorded here rather than hidden behind a step that could
 never have passed.
 
+### Fixed — an owned scope that excludes the framework entry no longer measures nothing
+
+Found by running the skill against a Vite + React design system whose
+registered entry is `index.html` at the repository root.
+With `--owned 'src/**'`, `discover_environment.py` reported a healthy
+"3 roots, 92 reachable" and `discover_tokens.py` then returned **0 canonical
+concepts across 0 reachable sources**. Nothing errored. Every tool that reads
+`owned_import_graph.reachable` — token discovery, component adoption, literal
+colors — measured nothing, and the run would have graded a design system with
+222 tokens as having none.
+
+`owned_seed_roots` was filtered out of `seed_roots`, which is built *before*
+the full graph is walked. A root found by convention is still a
+`static candidate` at that point and only earns `import-graph verified` once
+the walk has proved it, so `src/globals.css` and `src/main.jsx` never entered
+the owned list. The only seed root was `index.html`, which is not under
+`src/**`, leaving the owned graph with no roots at all.
+
+- `tools/discovery_engine.py` now seeds the owned graph from `product_roots`,
+  after the promotion, which is the same list `owned_roots` already used for
+  inferred ownership patterns.
+- `tools/test_discover_environment.py` gains a test built on that exact shape,
+  asserting the owned graph has roots, that `index.html` stays out of it, and
+  that token discovery finds the source — the harm was downstream and silent,
+  so it is asserted downstream too. Watched it fail first, then mutation-tested
+  it: the original bug and a second spelling (narrowing to
+  `framework-registered`) both turn it red, and an equivalent no-op mutation
+  leaves it green.
+- `test_explicit_owned_scope_excludes_unmatched_framework_roots` still passes,
+  which is what keeps the fix from over-broadening: an owned scope pointing at
+  a directory that does not exist still yields an empty owned graph.
+
+Against that repository, `--owned 'src/**'` alone now discovers 222 concepts
+across 7 sources, with 91 owned reachable files and `index.html` correctly
+excluded.
 
 ### Wave 4 — a report can no longer look finished when it isn't
 
