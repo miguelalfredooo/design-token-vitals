@@ -6,6 +6,30 @@ that produced it.
 
 ## Unreleased
 
+### Added — the repository runs its own checks
+
+This repository ships a skill whose first rule is that a guard nobody has
+watched fail is a guard nobody has tested, and it had no CI. Every merge so
+far rested on someone pasting a local run into a pull request.
+
+`.github/workflows/checks.yml` runs, on every push to `main` and every pull
+request: the full `unittest` suite, `tools/palette.py`, `tools/taxonomy.py
+--check`, `tools/check_voice.py`, and the validation gate against the bundled
+worked example. No third-party dependency, on a stock interpreter — the same
+constraint the skill itself runs under in the repositories it audits.
+
+It deliberately does **not** gate `examples/shadcn-ui/`, which would be the
+obvious fifth step. That report passes the gate only on the machine that
+produced it: rule 16 recomputes brand identity by reading
+`discovery.repository.root` off disk, and the audited checkout is not there on
+a runner. The local run that appeared to verify the step was reading a
+scratchpad tree left over from the session that generated the example — a
+green check bought with local state, which is the failure mode this skill
+exists to catch. A published report not being independently re-checkable is a
+real gap; it is recorded here rather than hidden behind a step that could
+never have passed.
+
+
 ### Wave 4 — a report can no longer look finished when it isn't
 
 A report handed to a reader with the validation gate never run looked
