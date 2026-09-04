@@ -64,6 +64,26 @@ the owned list. The only seed root was `index.html`, which is not under
 Against that repository, `--owned 'src/**'` alone now discovers 222 concepts
 across 7 sources, with 91 owned reachable files and `index.html` correctly
 excluded.
+### Fixed — a font family declared as a JS token array is no longer invisible
+
+`identity.typography` came back `blocked` — "No concrete reachable font-family
+token was confirmed" — on a design system whose typeface is a token. The
+declaration was `fontFamily.sans = ['"DM Sans"', 'ui-sans-serif', 'system-ui',
+'sans-serif']` in a reachable, canonical JS source, and the concept was
+discovered; only the value shape defeated the reader. `concrete_font_family`
+treated the literal as one CSS value, so the leading bracket failed the family
+name pattern and the whole stack was discarded.
+
+It now unwraps one array layer and lets the first entry answer exactly as it
+would in CSS: a stack leading with a generic is still rejected, an unresolved
+`var()` is still rejected, and a plain CSS stack is unchanged. Watched red
+first, then mutation-tested — reverting the unwrap and dropping the quote strip
+each turn it red, and an equivalent condition leaves it green.
+
+Found by running the skill against a Tailwind repository, where a JS token
+layer projected into `tailwind.config.js` is the normal shape rather than the
+exception.
+
 
 ### Wave 4 — a report can no longer look finished when it isn't
 

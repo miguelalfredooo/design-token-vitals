@@ -136,6 +136,19 @@ def concrete_font_family(value):
     value = str(value).strip()
     if not value or "var(" in value or "#{" in value:
         return None
+    # A JS token layer declares a font stack as a list, and Tailwind's
+    # `fontFamily` is exactly that: ['"DM Sans"', 'ui-sans-serif', …]. Read
+    # as one CSS value the leading bracket fails the name pattern below, so
+    # a design system whose typeface IS a token reported identity blocked.
+    # Unwrap one array layer and let the first entry answer as it would in
+    # CSS — the generic and unresolved rules still apply to it.
+    if value.startswith("[") and value.endswith("]"):
+        first = value[1:-1].split(",", 1)[0].strip()
+        if len(first) > 1 and first[0] == first[-1] and first[0] in "\"'":
+            first = first[1:-1].strip()
+        value = first
+        if not value or "var(" in value:
+            return None
     generic = {
         "serif", "sans-serif", "monospace", "cursive", "fantasy",
         "system-ui", "ui-serif", "ui-sans-serif", "ui-monospace",

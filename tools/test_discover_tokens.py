@@ -589,5 +589,41 @@ class TestTokenDiscovery(unittest.TestCase):
         self.assertEqual(updated["capability_ladder"]["steps"][0]["evidence"], [])
 
 
+class TestFontFamilyFromAJsTokenArray(unittest.TestCase):
+    """A JS token layer declares fontFamily as a list, not a string.
+
+    Tailwind's `fontFamily` takes a stack — `['"DM Sans"', 'ui-sans-serif',
+    'system-ui', 'sans-serif']` — and that is the literal source text a JS
+    token file carries. concrete_font_family read it as one CSS value, the
+    leading bracket failed the name pattern, and identity.typography came
+    back `blocked` on a design system whose typeface IS a token.
+    """
+
+    def test_a_bracketed_stack_resolves_to_its_first_real_family(self):
+        self.assertEqual(
+            discover_tokens.concrete_font_family(
+                "['\"DM Sans\"', 'ui-sans-serif', 'system-ui', 'sans-serif']"),
+            "DM Sans")
+
+    def test_a_double_quoted_stack_resolves_the_same_way(self):
+        self.assertEqual(
+            discover_tokens.concrete_font_family(
+                '["Plus Jakarta Sans", "system-ui", "sans-serif"]'),
+            "Plus Jakarta Sans")
+
+    def test_a_stack_that_leads_with_a_generic_is_still_rejected(self):
+        self.assertIsNone(
+            discover_tokens.concrete_font_family("['system-ui', 'sans-serif']"))
+
+    def test_an_unresolved_stack_is_still_rejected(self):
+        self.assertIsNone(
+            discover_tokens.concrete_font_family("[var(--font-display), 'serif']"))
+
+    def test_a_plain_css_stack_is_unchanged(self):
+        self.assertEqual(
+            discover_tokens.concrete_font_family('"DM Sans", ui-sans-serif'),
+            "DM Sans")
+
+
 if __name__ == "__main__":
     unittest.main()
