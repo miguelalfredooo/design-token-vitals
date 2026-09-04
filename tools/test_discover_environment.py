@@ -7,6 +7,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import discover_environment  # noqa: E402
+import discover_tokens  # noqa: E402
 
 
 def make_repo(files):
@@ -592,6 +593,46 @@ class TestDiscovery(unittest.TestCase):
                       if item["path"] == "app/layout.tsx")
         self.assertEqual(layout["ownership"], "unknown")
         self.assertEqual(result["owned_import_graph"]["reachable"], {})
+
+    def test_owned_graph_seeds_from_conventional_roots_the_graph_proved(self):
+        """A framework entry outside the owned scope must not empty the owned graph.
+
+        The registered Vite entry is index.html, at the repository root and so
+        outside `src/**`. The owned roots — main.jsx and globals.css — are found
+        by convention and only earn `import-graph verified` once the full graph
+        has been walked. Seeding the owned graph from the pre-promotion list left
+        it with no roots at all, and every tool that reads
+        `owned_import_graph.reachable` then measured nothing, silently.
+        """
+        root = make_repo({
+            "package.json": '{"devDependencies": {"vite": "^5.0.0"}}',
+            "vite.config.js": "export default {};",
+            "index.html": '<script type="module" src="/src/main.jsx"></script>',
+            "src/main.jsx": 'import "./globals.css";',
+            "src/globals.css": (
+                ":root {\n"
+                "  --color-brand: #6b65ff;\n"
+                "  --color-surface: #ffffff;\n"
+                "  --color-text: #242526;\n"
+                "  --space-2: 8px;\n"
+                "  --radius-md: 12px;\n"
+                "}\n"
+            ),
+        })
+        result = discover_environment.discover(root, ["src/**"])
+        entry = next(item for item in result["roots"]
+                     if item["path"] == "index.html")
+        self.assertEqual(entry["ownership"], "unknown")
+        self.assertNotEqual(result["owned_import_graph"]["roots"], [])
+        self.assertIn("src/globals.css",
+                      result["owned_import_graph"]["reachable"])
+        self.assertNotIn("index.html",
+                         result["owned_import_graph"]["reachable"])
+        # The harm was downstream and silent, so assert it there too.
+        tokens = discover_tokens.discover(root, result)
+        self.assertEqual([item["path"] for item in tokens["sources"]],
+                         ["src/globals.css"])
+        self.assertEqual(tokens["concept_count"], 5)
 
     def test_composed_profiles_are_retained_on_a_shared_root(self):
         root = make_repo({

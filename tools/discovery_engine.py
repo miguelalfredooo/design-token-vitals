@@ -499,8 +499,16 @@ def discover(root, owned_patterns=None, profile_ids=None, app_root=None,
     ]
     owned_roots = [item for item in product_roots
                    if item.get("ownership") == "owned"]
-    owned_seed_roots = [item for item in seed_roots
-                        if item.get("ownership") == "owned"]
+    # Seed the owned graph from `product_roots`, not from `seed_roots`.
+    # `seed_roots` is built before the full walk, so a root found by
+    # convention is still a `static candidate` there and never enters the
+    # owned list; it only earns `import-graph verified` above, once the
+    # graph has proved it. Seeding from the earlier list left a repository
+    # whose registered entry sits outside the owned scope — a Vite app with
+    # index.html at the root and `--owned 'src/**'` — with an owned graph of
+    # no roots, and every tool that reads `owned_import_graph.reachable`
+    # then measured nothing without saying so.
+    owned_seed_roots = list(owned_roots)
     inferred_patterns = inferred_owned_patterns(owned_roots, scope_prefix)
     owned_graph = import_graph.build(
         root, [item["path"] for item in owned_seed_roots], aliases=aliases,
