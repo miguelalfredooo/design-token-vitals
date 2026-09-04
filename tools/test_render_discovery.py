@@ -245,7 +245,7 @@ class TestRendering(unittest.TestCase):
                 "identity": {
                     "typography": {"state": "verified", "family": "DM Sans"},
                     "brand_colors": {"state": "verified", "colors": [{
-                        "token": "brand-primary", "value": "#6b65ff",
+                        "token": "brand-primary", "value": "#5b4bd6",
                     }]},
                 },
             },
@@ -399,7 +399,7 @@ class TestRendering(unittest.TestCase):
                     },
                     "brand_colors": {
                         "state": "blocked",
-                        "colors": [{"token": "brand-primary", "value": "#6b65ff"}],
+                        "colors": [{"token": "brand-primary", "value": "#5b4bd6"}],
                     },
                 },
             },

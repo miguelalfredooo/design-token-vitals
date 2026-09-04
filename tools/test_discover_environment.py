@@ -611,7 +611,7 @@ class TestDiscovery(unittest.TestCase):
             "src/main.jsx": 'import "./globals.css";',
             "src/globals.css": (
                 ":root {\n"
-                "  --color-brand: #6b65ff;\n"
+                "  --color-brand: #5b4bd6;\n"
                 "  --color-surface: #ffffff;\n"
                 "  --color-text: #242526;\n"
                 "  --space-2: 8px;\n"
