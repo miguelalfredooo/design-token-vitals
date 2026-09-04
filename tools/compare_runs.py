@@ -8,8 +8,9 @@ report.json files a pair of runs produced and reports where they agree.
     python3 tools/compare_runs.py a/report.json b/report.json
 
 Exit status is 1 when the two runs disagree on any graded vital, 0
-otherwise, and 2 on bad arguments — see tools/cli.py. Divergence below the grade level — a different evidence line for
-the same grade, a different rendering form — is reported and does not fail
+otherwise, and 2 on bad arguments — see tools/cli.py. Divergence below the
+grade level — a different evidence line, initial report view, rendering tier,
+or rendering form — is reported and does not fail
 the comparison on its own, because it does not change what the report says
 about the codebase.
 """
@@ -60,8 +61,8 @@ def norm(value):
     return value
 
 
-def row(label, a, b):
-    same = norm(a) == norm(b)
+def row(label, a, b, order_sensitive=False):
+    same = a == b if order_sensitive else norm(a) == norm(b)
     mark = "  ok  " if same else " DIFF "
     if same:
         return same, f"{mark} {label:<34} {shorten(a)}"
@@ -125,9 +126,15 @@ def main(argv):
                 print(f"{'':41}only in B: {item}")
 
     print("\n── how each run rendered " + "─" * 47)
-    same, line = row("rendering.tier", get(a, "rendering", "tier"), get(b, "rendering", "tier"))
-    other_diffs += not same
-    print(line)
+    for field in ("view", "available_views", "tier"):
+        same, line = row(
+            "rendering.%s" % field,
+            get(a, "rendering", field),
+            get(b, "rendering", field),
+            order_sensitive=field == "available_views",
+        )
+        other_diffs += not same
+        print(line)
     for section in FORM_SECTIONS:
         fa, fb = get(a, "rendering", "forms", section), get(b, "rendering", "forms", section)
         if fa is None and fb is None:

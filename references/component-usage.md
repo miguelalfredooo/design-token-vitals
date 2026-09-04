@@ -19,11 +19,12 @@ reader can correct the boundary.
 
 The base analyzer begins with files reachable from owned production roots.
 An adapter may add `component_roots`, but only with `framework-registered`,
-`import-graph verified` or `runtime-verified` evidence. Ownership by itself
-does not prove a file ships. Adjacent files whose normalized names match are
-grouped so patterns such as `Button.tsx`, `Button.module.css`,
-`Button.component.ts` and `Button/index.tsx` describe one component rather
-than unrelated surfaces.
+`import-graph verified` or `runtime verified` evidence. Ownership by itself
+does not prove a file ships. Group co-named files only after each file is
+independently present in the reachable graph or a proven component root.
+Never admit or count an adjacent file because its name matches. Once proven,
+patterns such as `Button.tsx`, `Button.module.css`, `Button.component.ts` and
+`Button/index.tsx` can describe one component rather than unrelated surfaces.
 
 ## What counts as usage
 
@@ -66,10 +67,41 @@ HTML; do not leave token details only in the working set.
 Preserve the syntax used at each consumer so `$space-sm` is not presented as
 `--space-sm`, and show both when a component consumes both projections.
 
+Group repeated locations by source file in the token-detail table. Show the
+first two locations for each file and place the remainder in a native
+`details` disclosure labeled “See N more locations in filename.” Keep every
+full `file:line` value in the HTML with its structured location attribute and
+in JSON. The disclosure tail is closed by default. Validation must enforce the
+one-file-label, two-location preview, hidden-count, default-closed state, and
+disclosure-tail structure. Open every location disclosure for print, render
+each full `file:line`, then restore its prior state with the rest of the report
+disclosures.
+
 Report the total number of identified components, additional measured style
 surfaces, and how many components sit below the Top 20.
-That remainder is not a hidden finding: Top 20 is intentionally a ranked
-adoption view. The raw counts still make its selection reproducible.
+The Top 20 is intentionally a ranked adoption view; the remainder represents
+lower-volume components. The raw counts still make its selection reproducible.
+
+## Roadmap bands
+
+Turn the ranked view into three planning bands using its confirmed reference
+total as the denominator. Assign a component from its cumulative share before
+adding that row:
+
+- `assess-first`: the rows that take the view from 0% through roughly 50%.
+- `plan-next`: the rows that take it from roughly 50% through 80%.
+- `focused-follow-up`: the remainder through 100%.
+
+The row that crosses a threshold stays in the band it began in. This keeps the
+split deterministic and prevents two equally ranked runs from producing
+different phases because of rounding. Record each component's share,
+cumulative share, and band, then record the member ids and reference share for
+each band under `component_usage.roadmap`.
+
+These bands order investigation by confirmed token footprint. A quality grade and
+migration decision still require leakage, modes, lineage, and a separate
+component-contract assessment. The report must name those checks before
+scheduling implementation.
 
 ## Reading the result
 

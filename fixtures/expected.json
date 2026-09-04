@@ -206,6 +206,6 @@
     "leakage": "attention"
   },
   "validation": {
-    "expected": "all eight rules pass"
+    "expected": "all current validation rules pass"
   }
 }

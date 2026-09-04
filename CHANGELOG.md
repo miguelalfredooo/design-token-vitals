@@ -84,6 +84,97 @@ Found by running the skill against a Tailwind repository, where a JS token
 layer projected into `tailwind.config.js` is the normal shape rather than the
 exception.
 
+### Package cleanup
+
+- Removed the superseded reference reports (`assets/reference/`) and the
+  implementation-plan and spec files under `docs/`, none of which participate
+  in the skill any more; `references/voice.md` and `references/leakage.md`
+  now point at `assets/report-template.html` as the one maintained copy
+  reference. `examples/shadcn-ui/` stays: it is the only end-to-end report a
+  reader can open before running anything.
+- Made run comparison view-aware and aligned the renderer's documented
+  Snapshot default with its behavior.
+- Replaced stale fixture counts and made report provenance show both the
+  initial view and rendering density.
+- Limited confirmed-source totals to canonical and alias definitions, and
+  separated actionable imports from the complete unresolved-reason breakdown.
+
+### Fixed — four things a run against a real repository surfaced
+
+All four were found by driving the pipeline end to end rather than by reading it.
+
+- **A count of one now reads as one.** The strategy section is written for a
+  stakeholder and said "1 components with confirmed token usage", "1 active
+  framework profiles", "1 confirmed token-definition sources feed 1 styling or
+  framework adapters". A `count()` helper carries the noun and the verb, and a
+  test asserts no plural noun follows a count of one anywhere in the section.
+- **A run that scanned nothing no longer reports zero.** `sync_leakage` wrote
+  `exact-value candidate: 0` beside `redundant: unmeasured` when it had opened
+  no consumer style at all, so one sentence answered the same question two ways.
+  This is rule 4 applied to the skill's own output: zero states the project has
+  none, which a run that scanned nothing never established. With
+  `consumer_files_scanned` at zero, every tier is `null` and the note says why.
+- **Leftover template sample content is its own rule.** The sentinel sweep lived
+  inside rule 16, so a report still carrying `a91f4c07` was told it had an
+  "identity integrity problem" — which points the reader at the font and brand
+  evidence instead of at the region they forgot to fill. Now rule 18, and the
+  gate is eighteen rules.
+- **An empty trend block is as absent as a missing one.** The stripper tested
+  `if not report.get("trend")`, which only catches a missing key; the
+  schema-shaped block of nulls a no-baseline run carries is truthy, so the
+  section survived carrying the template's own sample comparison — and rule 16
+  then caught it, once, on every fresh report. `strip_trend_without_a_baseline`
+  decides on the baseline and the movement, not on the key.
+
+One thing that looked like a fifth was not. `start with src / MobileBottomNavigation`
+is the deliberate `owner / slug` component-name format, degrading where the owner
+is a source directory rather than a package. Left alone.
+
+### Fixed — a standards id is not a finding id
+
+`collect_ids` treated any object with a twelve-character `id` as a finding.
+The unification strategy's standards baseline carries two that are twelve
+characters and not hex — `dtcg-2025.10` and `semver-2.0.0` — so validate_run
+rule 8 reported them as findings the HTML had failed to render. Wrong, and
+unreadable to anyone trying to act on it. `collect_ids` now matches the shape
+a finding id actually has: `sha1[:12]`, twelve hex characters. Found while
+re-integrating the validation gate onto this wave, by a test that went red.
+
+### Three report views
+
+- Added Snapshot, Action Plan, and Evidence as progressive-disclosure views
+  over one complete, validated audit.
+- Added `--report-view snapshot|action|evidence`, with Snapshot as the default,
+  and recorded the selection separately from token-count rendering density.
+- Added deep-link promotion, view-aware contents navigation, no-script full
+  evidence, and print output that always includes every report section.
+- Enforced the view contract for every finished report, not only universal
+  discovery runs. No-script output hides inert view controls and authors every
+  disclosure open; enhancement restores the intended default state.
+- Added a browser-level regression for view switching, deep-link promotion,
+  inventory-tab hashes, and before/after-print disclosure restoration.
+
+### Stable component-location rows
+
+- Grouped repeated Top 20 token locations by file and collapsed each file's
+  tail after two visible references, while preserving every `file:line` in
+  HTML, JSON, and print.
+- Added structural validation for the preview and disclosure tail, exact
+  `file:line` print output, and singular/plural disclosure labels.
+
+### Evidence-derived unification strategy
+
+- Added the report's final **Unification strategy** section. It selects a
+  token-first foundation or token-led hybrid from measured framework,
+  delivery, reachability, mode, inventory, and component-adoption facts.
+- Added five evidence-derived integration constraints, five target-architecture
+  layers, six gated rollout phases, explicit component-replacement limits, six
+  guardrails, and five baseline-to-target success measures.
+- Added a standards baseline covering the Design Tokens Format Module
+  2025.10, CSS Custom Properties Level 1, WCAG 2.2, and Semantic Versioning.
+- Added `references/adoption-strategy.md`, deterministic
+  `tools/adoption_strategy.py`, and validation rule 17 for JSON/HTML parity,
+  standard URLs, rollout order, and evidence freshness.
 
 ### Wave 4 — a report can no longer look finished when it isn't
 
@@ -122,8 +213,7 @@ and classifies each as `canonical`, `alias`, `consumer`, `generated`, or
 `unverified` before anything is counted. Two blind runs against
 shadcn-ui/ui had already agreed on all eight grades and still disagreed on
 `files_scanned` (3,686 vs 3,400) and `family_count` (13 vs 24) — the grades
-survived, the measurements underneath them did not. See
-`docs/superpowers/specs/2026-09-01-framework-aware-discovery.md`.
+survived, the measurements underneath them did not. The design is recorded in the pull request that introduced it (#14).
 
 Added:
 

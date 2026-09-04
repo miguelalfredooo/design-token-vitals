@@ -31,6 +31,42 @@ COMPOUND_STEM_SUFFIX = re.compile(r"\.(?:module|component|styles?|style)$", re.I
 PROVEN_COMPONENT_ROOT_CONFIDENCE = {
     "framework-registered", "import-graph verified", "runtime verified",
 }
+COMPONENT_CONFIDENCE_RANK = {
+    "path-inferred": 0,
+    "co-named-source": 1,
+    "framework-registered": 2,
+    "import-graph verified": 3,
+    "runtime verified": 4,
+}
+ROADMAP_BANDS = (
+    {
+        "id": "assess-first",
+        "label": "Assess first",
+        "threshold": 50,
+        "description": (
+            "The components that make up the first half of confirmed token use "
+            "in this ranked view."
+        ),
+    },
+    {
+        "id": "plan-next",
+        "label": "Plan next",
+        "threshold": 80,
+        "description": (
+            "The components that move the cumulative total from roughly 50% "
+            "to 80%."
+        ),
+    },
+    {
+        "id": "focused-follow-up",
+        "label": "Focused follow-up",
+        "threshold": 100,
+        "description": (
+            "The remaining ranked components, where confirmed token use is "
+            "more focused."
+        ),
+    },
+)
 
 
 def normalize(name):
@@ -62,8 +98,8 @@ def add_tree(files, path, root):
                 files.add(rel)
 
 
-def component_roots(discovery):
-    """Return adapter-proven component roots without treating ownership as reachability."""
+def component_root_records(discovery):
+    """Return adapter-proven component roots with their actual evidence."""
     roots = discovery.get("component_roots")
     if roots is None:
         roots = (discovery.get("components", {}) or {}).get("roots", [])
@@ -74,8 +110,25 @@ def component_roots(discovery):
         if (item.get("path") and
                 item.get("confidence") in PROVEN_COMPONENT_ROOT_CONFIDENCE and
                 item.get("ownership") == "owned"):
-            proven.append(item["path"])
+            proven.append(item)
     return proven
+
+
+def component_roots(discovery):
+    """Return adapter-proven component-root paths."""
+    return [item["path"] for item in component_root_records(discovery)]
+
+
+def strongest_component_root_confidence(path, records):
+    """Preserve the strongest proven root confidence covering a path."""
+    matches = [
+        item["confidence"] for item in records
+        if path_is_within(path, item["path"])
+    ]
+    return max(
+        matches,
+        key=lambda confidence: COMPONENT_CONFIDENCE_RANK[confidence],
+    ) if matches else None
 
 
 def analysis_files(root, discovery):
@@ -130,29 +183,18 @@ def component_identity(path):
         if len(slug_parts) > 1 and normalize(slug_parts[-2]) == normalize(slug_parts[-1]):
             slug_parts.pop()
         slug = "/".join(slug_parts)
-        kind = "component" if os.path.splitext(path)[1].lower() not in STYLE_EXTENSIONS else "style-surface"
+        kind = "surface"
     slug = slug.strip("/") or stem
     key = "%s::%s" % (owner.lower(), slug.lower())
     return key, "%s / %s" % (owner, slug), kind
 
 
-def co_named_files(root, paths):
-    """Add adjacent component source/style files that normalize to the same identity."""
-    expanded = set(paths)
-    for path in list(paths):
-        key = component_identity(path)[0]
-        directory = os.path.dirname(os.path.join(root, path))
-        try:
-            names = os.listdir(directory)
-        except OSError:
-            continue
-        for name in names:
-            candidate = os.path.relpath(os.path.join(directory, name), root)
-            if (os.path.isfile(os.path.join(root, candidate)) and
-                    os.path.splitext(name)[1].lower() in SOURCE_EXTENSIONS and
-                    not is_excluded(candidate) and component_identity(candidate)[0] == key):
-                expanded.add(candidate)
-    return sorted(expanded)
+def path_is_within(path, directory):
+    """Return whether a repository-relative path is inside a proven root."""
+    normalized_path = path.replace("\\", "/").strip("/")
+    normalized_directory = directory.replace("\\", "/").strip("/")
+    return (normalized_path == normalized_directory or
+            normalized_path.startswith(normalized_directory + "/"))
 
 
 def strip_comments_preserving_lines(text):
@@ -236,6 +278,61 @@ def references_in_text(text, concepts):
     return found
 
 
+def rounded_percent(numerator, denominator):
+    return round(100.0 * numerator / denominator, 1) if denominator else 0.0
+
+
+def build_roadmap(rows):
+    """Split the ranked view into cumulative-use bands without claiming quality."""
+    total = sum(item.get("references", 0) for item in rows)
+    band_rows = {item["id"]: [] for item in ROADMAP_BANDS}
+    running = 0
+    for row in rows:
+        band = ROADMAP_BANDS[-1]
+        if total:
+            for candidate in ROADMAP_BANDS:
+                if running * 100 < candidate["threshold"] * total:
+                    band = candidate
+                    break
+        running += row.get("references", 0)
+        row["share_of_ranked_references"] = rounded_percent(
+            row.get("references", 0), total
+        )
+        row["cumulative_share_of_ranked_references"] = rounded_percent(
+            running, total
+        )
+        row["roadmap_band"] = band["id"]
+        band_rows[band["id"]].append(row)
+
+    bands = []
+    for band in ROADMAP_BANDS:
+        members = band_rows[band["id"]]
+        if not members:
+            continue
+        references = sum(item.get("references", 0) for item in members)
+        bands.append({
+            "id": band["id"],
+            "label": band["label"],
+            "description": band["description"],
+            "start_rank": members[0]["rank"],
+            "end_rank": members[-1]["rank"],
+            "component_ids": [item["id"] for item in members],
+            "references": references,
+            "share_of_ranked_references": rounded_percent(references, total),
+        })
+    return {
+        "state": "measured",
+        "basis": (
+            "Confirmed canonical token-reference occurrences in the ranked "
+            "component view. This ranks investigation by token footprint. "
+            "Migration safety, runtime frequency, and component quality need "
+            "separate evidence."
+        ),
+        "ranked_references": total,
+        "bands": bands,
+    }
+
+
 def analyze(root, discovery, tokens, limit=20):
     root = os.path.abspath(root)
     concepts = {item["id"]: item for item in tokens.get("concepts", [])}
@@ -243,17 +340,36 @@ def analyze(root, discovery, tokens, limit=20):
         item.get("path") for item in tokens.get("sources", [])
         if item.get("role") in ("canonical", "alias")
     }
-    paths = co_named_files(root, analysis_files(root, discovery))
+    paths = analysis_files(root, discovery)
+    proven_component_roots = component_root_records(discovery)
     groups = {}
     for path in paths:
         key, name, kind = component_identity(path)
-        group = groups.setdefault(key, {"name": name, "kind": kind, "paths": set()})
+        group = groups.setdefault(key, {
+            "name": name, "kind": kind, "paths": set(),
+            "has_source": False, "has_style": False, "confidences": set(),
+        })
         group["paths"].add(path)
+        is_style = os.path.splitext(path)[1].lower() in STYLE_EXTENSIONS
+        group["has_style"] = group["has_style"] or is_style
+        group["has_source"] = group["has_source"] or not is_style
+        root_confidence = strongest_component_root_confidence(
+            path, proven_component_roots
+        )
         if kind == "component":
+            group["confidences"].add("path-inferred")
+        if kind == "component" or root_confidence:
             group["kind"] = "component"
-        if os.path.splitext(path)[1].lower() not in STYLE_EXTENSIONS:
+        if root_confidence:
+            group["confidences"].add(root_confidence)
+    for group in groups.values():
+        if group["has_source"] and group["has_style"]:
             group["kind"] = "component"
-            group["confidence"] = "co-named-source"
+            group["confidences"].add("co-named-source")
+        group["confidence"] = max(
+            group["confidences"] or {"path-inferred"},
+            key=lambda confidence: COMPONENT_CONFIDENCE_RANK[confidence],
+        )
     units = {}
     scanned = 0
     for path in paths:
@@ -317,6 +433,7 @@ def analyze(root, discovery, tokens, limit=20):
         selected.extend(surfaces[:limit - len(selected)])
     for index, item in enumerate(selected, 1):
         item["rank"] = index
+    roadmap = build_roadmap(selected)
     shown_components = sum(1 for item in selected if item["kind"] == "component")
     fallback_surfaces = len(selected) - shown_components
     return {
@@ -339,6 +456,7 @@ def analyze(root, discovery, tokens, limit=20):
             {"syntax": "scss-variable", "state": "measured", "evidence": "$token references excluding declaration left-hand sides"},
             {"syntax": "framework-generated-utility", "state": "unmeasured", "evidence": "requires an active adapter to resolve utility output to canonical tokens"},
         ],
+        "roadmap": roadmap,
         "top_20": selected,
     }
 

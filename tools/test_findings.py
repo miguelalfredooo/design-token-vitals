@@ -146,6 +146,22 @@ class TestCollectIds(unittest.TestCase):
         doc = {"run": {"repo_ref": "63c1308"}, "id": "short"}
         self.assertEqual(collect_ids(doc), set())
 
+    def test_a_twelve_character_slug_is_not_a_finding_id(self):
+        """Length alone is not identity.
+
+        A finding id is sha1[:12], so it is always twelve hex characters.
+        The adoption strategy's standards baseline happens to carry two ids
+        that are twelve characters and not hex — `dtcg-2025.10` and
+        `semver-2.0.0`. Collected as findings, validate_run rule 8 reports
+        them as findings the HTML failed to render, which is both wrong and
+        unreadable to anyone trying to act on it.
+        """
+        doc = {"adoption_strategy": {"standards": [
+            {"id": "dtcg-2025.10"}, {"id": "semver-2.0.0"},
+            {"id": "css-custom-properties-1"}, {"id": "wcag-2.2"},
+        ]}, "fix_queue": [{"id": "0b79f18f2b07"}]}
+        self.assertEqual(collect_ids(doc), {"0b79f18f2b07"})
+
 
 if __name__ == "__main__":
     unittest.main()

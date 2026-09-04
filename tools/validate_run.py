@@ -3,7 +3,7 @@
 
     python3 tools/validate_run.py .token-vitals/report.json [--html report.html]
 
-Sixteen rules, from the framework-aware discovery and actionable-report
+Seventeen rules, from the framework-aware discovery and actionable-report
 designs. Each one describes a report that looks finished and is not, and
 every one of them has produced a plausible-looking report at some point.
 Exit status is 1 when any rule fails, 2 on bad arguments — see tools/cli.py.
@@ -25,7 +25,14 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cli import EXIT_FINDING, EXIT_OK, add_json_flag, emit_json  # noqa: E402
+from adoption_strategy import (  # noqa: E402
+    CONSTRAINT_IDS,
+    PHASE_IDS,
+    STANDARDS,
+    derive as derive_adoption_strategy,
+)
 from findings import collect_ids, is_automatable  # noqa: E402
+from analyze_component_usage import build_roadmap  # noqa: E402
 from discover_tokens import (  # noqa: E402
     MAX_EMBEDDED_FONT_BYTES,
     concrete_color_value,
@@ -40,9 +47,17 @@ from discover_tokens import (  # noqa: E402
 )
 from render_discovery import (  # noqa: E402
     INVENTORY_TABS_SCRIPT,
+    REPORT_VIEWS,
+    REPORT_VIEW_SECTIONS,
+    confirmed_definition_count,
     enrich,
     next_step_items,
     normalized_concepts,
+    unresolved_import_summary,
+)
+from render_component_usage import (  # noqa: E402
+    LOCATION_PREVIEW_LIMIT,
+    grouped_locations,
 )
 
 from taxonomy import FAMILIES  # noqa: E402
@@ -101,7 +116,7 @@ def stamp_pass(report_json_path, doc, report_html_path, report_html_text):
     if report_html_path and report_html_text is not None:
         ok_note = (
             '<div class="validation-ok">&#10003; Validated &mdash; '
-            'all 16 rules passed %s</div>' % html_tools.escape(checked_at)
+            'all 18 rules passed %s</div>' % html_tools.escape(checked_at)
         )
         stamped = VALIDATION_BANNER_SLOT.sub(
             lambda m: m.group(1) + ok_note + m.group(2), report_html_text, count=1)
@@ -263,7 +278,7 @@ def rule_12_unresolved_classification(doc):
 def component_usage_section(document):
     if document is None:
         return None
-    match = re.search(r'<section id="component-usage">.*?</section>', document, re.S)
+    match = re.search(r'<section id="component-usage"[^>]*>.*?</section>', document, re.S)
     return match.group(0) if match else ""
 
 
@@ -281,6 +296,20 @@ def structured_tag(section, tag, marker_name, marker_value):
     match = re.search(r'<%s\b[^>]*%s[^>]*>' % (
         tag, re.escape(marker)), section)
     return match.group(0) if match else None
+
+
+def component_detail_block(section, component_id):
+    marker = html_attribute("data-component-detail", component_id)
+    opening = re.search(
+        r'<details\b[^>]*%s[^>]*>' % re.escape(marker), section
+    )
+    if not opening:
+        return None
+    tail = section[opening.end():]
+    next_component = re.search(
+        r'<details\b[^>]*data-component-detail=', tail
+    )
+    return tail[:next_component.start()] if next_component else tail
 
 
 def displayed_token_name(token):
@@ -324,6 +353,29 @@ def rule_13_component_usage(doc, html=None):
              for row in rows if isinstance(row, dict)]
     if order != sorted(order):
         bad.append("rows do not follow the documented stable ranking")
+    roadmap = usage.get("roadmap")
+    if not isinstance(roadmap, dict):
+        bad.append("measured component usage has no roadmap object")
+    else:
+        expected_rows = [{
+            "id": row.get("id"),
+            "rank": row.get("rank"),
+            "references": row.get("references", 0),
+        } for row in rows if isinstance(row, dict)]
+        expected_roadmap = build_roadmap(expected_rows)
+        if roadmap != expected_roadmap:
+            bad.append("component roadmap does not match ranked reference evidence")
+        for row, expected in zip(rows, expected_rows):
+            for field in (
+                    "roadmap_band", "share_of_ranked_references",
+                    "cumulative_share_of_ranked_references"):
+                if row.get(field) != expected.get(field):
+                    bad.append("%s: %s does not match ranked reference evidence" % (
+                        row.get("name") or row.get("id") or "?", field))
+    if section and isinstance(roadmap, dict):
+        marker = json_html_attribute("data-component-roadmap-json", roadmap)
+        if marker not in section:
+            bad.append("HTML component roadmap is missing or stale")
     for row in rows:
         if not isinstance(row, dict):
             bad.append("a component row is not an object")
@@ -353,34 +405,52 @@ def rule_13_component_usage(doc, html=None):
         if section:
             component_id = row.get("id", "")
             row_match = re.search(
-                r'<tr[^>]*%s[^>]*>' % re.escape(html_attribute("data-component", component_id)),
-                section,
+                r'(<tr[^>]*%s[^>]*>)(.*?)</tr>' % re.escape(
+                    html_attribute("data-component", component_id)),
+                section, re.S,
             )
             if not row_match:
                 bad.append("%s: HTML has no ranked component row" % label)
             else:
-                tag = row_match.group(0)
+                tag = row_match.group(1)
+                row_body = row_match.group(2)
                 for name, value in (
                     ("data-component-kind", row.get("kind")),
                     ("data-component-references", row.get("references")),
                     ("data-component-distinct-tokens", row.get("distinct_tokens")),
+                    ("data-component-roadmap-band", row.get("roadmap_band")),
+                    ("data-component-share", "%.1f" % row.get(
+                        "share_of_ranked_references", 0.0)),
                 ):
                     if html_attribute(name, value) not in tag:
                         bad.append("%s: HTML component %s does not match JSON" % (label, name))
+                visible_numbers = re.findall(
+                    r'<td class="num">\s*([^<]+?)\s*</td>', row_body)
+                expected_numbers = [str(value) for value in (
+                    row.get("rank", 0), row.get("references", 0),
+                    row.get("distinct_tokens", 0),
+                    len(row.get("paths", []) or []),
+                )]
+                if visible_numbers != expected_numbers:
+                    bad.append("%s: HTML visible roadmap counts do not match JSON" % label)
+                for visible in (
+                    '<code>%s</code>' % html_tools.escape(str(label)),
+                    '<span class="component-share-label">%.1f%%</span>' % row.get(
+                        "share_of_ranked_references", 0.0),
+                    'href="#component-detail-%s"' % html_tools.escape(
+                        str(component_id), quote=True),
+                ):
+                    if visible not in row_body:
+                        bad.append("%s: HTML visible roadmap value does not match JSON" % label)
             for path in row.get("paths") or []:
                 marker = html_attribute("data-component-path", path)
                 visible = ">%s</span>" % html_tools.escape(str(path))
                 if marker not in section or visible not in section:
                     bad.append("%s: HTML is missing component path %s" % (label, path))
-            detail_match = re.search(
-                r'<details[^>]*%s[^>]*>(.*?)</details>' % re.escape(
-                    html_attribute("data-component-detail", component_id)),
-                section, re.S,
-            )
-            if not detail_match:
+            detail = component_detail_block(section, component_id)
+            if detail is None:
                 bad.append("%s: HTML has no token-detail block" % label)
                 continue
-            detail = detail_match.group(1)
             for token in tokens:
                 if not isinstance(token, dict):
                     continue
@@ -411,9 +481,85 @@ def rule_13_component_usage(doc, html=None):
                 for location in token.get("locations") or []:
                     marker = html_attribute("data-token-location", location)
                     visible = ">%s</span>" % html_tools.escape(str(location))
-                    if marker not in token_body or visible not in token_body:
+                    accessible = html_attribute("aria-label", location)
+                    if (token_body.count(marker) != 1 or
+                            (visible not in token_body and accessible not in token_body)):
                         bad.append("%s / %s: HTML is missing location %s" % (
                             label, token_id, location))
+                for path, group in grouped_locations(token.get("locations") or []):
+                    if path is None or len(group) < 2:
+                        continue
+                    expected_preview = min(len(group), LOCATION_PREVIEW_LIMIT)
+                    expected_hidden = len(group) - expected_preview
+                    wrapper = structured_tag(
+                        token_body, "div", "data-location-file", path
+                    )
+                    if wrapper is None or 'class="location-group"' not in wrapper:
+                        bad.append("%s / %s: repeated locations are not grouped for %s" % (
+                            label, token_id, path))
+                        continue
+                    for name, value in (
+                        ("data-location-count", len(group)),
+                        ("data-location-preview", expected_preview),
+                    ):
+                        if html_attribute(name, value) not in wrapper:
+                            bad.append("%s / %s: %s has wrong %s" % (
+                                label, token_id, path, name))
+                    file_label = '<span class="path location-file">%s</span>' % (
+                        html_tools.escape(path)
+                    )
+                    if token_body.count(file_label) != 1:
+                        bad.append("%s / %s: %s is not shown once as a file label" % (
+                            label, token_id, path))
+                    disclosure = re.search(
+                        r'<details\b[^>]*%s[^>]*>' % re.escape(
+                            html_attribute("data-location-file", path)
+                        ),
+                        token_body,
+                    )
+                    if expected_hidden == 0:
+                        if disclosure:
+                            bad.append("%s / %s: %s has an unnecessary location disclosure" % (
+                                label, token_id, path))
+                        continue
+                    if disclosure is None:
+                        bad.append("%s / %s: %s has no location disclosure tail" % (
+                            label, token_id, path))
+                        continue
+                    authored_open = re.search(
+                        r"\sopen(?:\s|=|>)", disclosure.group(0)
+                    )
+                    enhanced_closed = html_attribute(
+                        "data-report-default-open", "false"
+                    ) in disclosure.group(0)
+                    if authored_open and not enhanced_closed:
+                        bad.append("%s / %s: %s location disclosure is open by default" % (
+                            label, token_id, path))
+                    if html_attribute("data-location-hidden", expected_hidden) not in disclosure.group(0):
+                        bad.append("%s / %s: %s has the wrong hidden-location count" % (
+                            label, token_id, path))
+                    noun = "location" if expected_hidden == 1 else "locations"
+                    summary = "<summary>See %d more %s in %s</summary>" % (
+                        expected_hidden, noun, html_tools.escape(os.path.basename(path))
+                    )
+                    disclosure_end = token_body.find("</details>", disclosure.end())
+                    if disclosure_end < 0:
+                        bad.append("%s / %s: %s location disclosure is not closed" % (
+                            label, token_id, path))
+                        continue
+                    disclosure_body = token_body[disclosure.start():disclosure_end]
+                    if summary not in disclosure_body:
+                        bad.append("%s / %s: %s location disclosure has the wrong summary" % (
+                            label, token_id, path))
+                    for index, (location, _line) in enumerate(group):
+                        marker = html_attribute("data-token-location", location)
+                        in_tail = marker in disclosure_body
+                        if index < expected_preview and in_tail:
+                            bad.append("%s / %s: %s preview location is hidden" % (
+                                label, token_id, location))
+                        if index >= expected_preview and not in_tail:
+                            bad.append("%s / %s: %s disclosure location is visible by default" % (
+                                label, token_id, location))
     if bad:
         return Failure("13-component-usage", "%d component-usage problem(s)" % len(bad), bad[:8])
     return None
@@ -445,7 +591,7 @@ def rule_14_profile_engine(doc, html=None, current_skill=False):
                 bad.append("%s has wrong %s in HTML" % (label, name))
 
     if html is not None:
-        match = re.search(r'<section id="discovery-engine">.*?</section>', html, re.S)
+        match = re.search(r'<section id="discovery-engine"[^>]*>.*?</section>', html, re.S)
         section = match.group(0) if match else ""
         if not section:
             bad.append("HTML has no discovery-engine section")
@@ -856,6 +1002,7 @@ def rule_14_profile_engine(doc, html=None, current_skill=False):
                     bad.append("%s: canonical concept is missing or stale in HTML" % name)
     if html is not None and isinstance(concepts, list):
         roots = discovery.get("roots", []) or []
+        unresolved = unresolved_import_summary(discovery)
         summary = {
             "profiles": discovery.get("environment", []),
             "roots": len(roots),
@@ -867,10 +1014,13 @@ def rule_14_profile_engine(doc, html=None, current_skill=False):
                 "reachable", {})),
             "owned_reachable": len(discovery.get("owned_import_graph", {}).get(
                 "reachable", {})),
-            "unresolved": len(discovery.get("import_graph", {}).get(
-                "unresolved", [])),
+            "unresolved_total": unresolved["total"],
+            "unresolved_actionable": unresolved["actionable"],
+            "unresolved_by_reason": unresolved["by_reason"],
             "concepts": len(concepts),
-            "token_sources": len(discovery.get("token_sources", []) or []),
+            "token_sources": confirmed_definition_count(
+                discovery.get("token_sources", []) or []
+            ),
             "held_out_sources": len(inventory.get(
                 "candidate_or_local_override_sources", []) or []),
         }
@@ -957,10 +1107,85 @@ def rule_5_family_coverage(doc):
     return None
 
 
+def report_view_contract_problems(doc, html):
+    """Validate the progressive report shell for every finished HTML document."""
+    if not re.search(r'<(?:!doctype|html|body)\b', html, re.I):
+        return []
+    bad = []
+    selected_view = get(doc, "rendering", "view")
+    available_views = get(doc, "rendering", "available_views", default=[])
+    if selected_view not in REPORT_VIEWS:
+        bad.append("rendering.view is missing or invalid")
+    if available_views != list(REPORT_VIEWS):
+        bad.append("rendering.available_views does not declare the three report views")
+    body_tag = re.search(r'<body\b[^>]*>', html)
+    if not body_tag or html_attribute(
+            "data-report-view", selected_view or "") not in body_tag.group(0):
+        bad.append("HTML initial report view disagrees with JSON")
+    switcher = re.search(r'<nav\b[^>]*class="report-view-switcher"[^>]*>', html)
+    if not switcher:
+        bad.append("HTML has no report-view switcher")
+    else:
+        switcher_tag = switcher.group(0)
+        if html_attribute("data-report-view-default", selected_view or "") not in switcher_tag:
+            bad.append("report-view switcher default disagrees with JSON")
+        if json_html_attribute(
+                "data-report-views-json", list(REPORT_VIEWS)) not in switcher_tag:
+            bad.append("report-view switcher does not declare all three views")
+    view_buttons = re.findall(r'<button\b[^>]*data-report-view-button="[^"]+"[^>]*>', html)
+    button_views = [
+        re.search(r'data-report-view-button="([^"]+)"', tag).group(1)
+        for tag in view_buttons
+    ]
+    if button_views != list(REPORT_VIEWS):
+        bad.append("report-view buttons are missing, duplicated, or out of order")
+    selected_buttons = [
+        tag for tag in view_buttons if html_attribute("aria-pressed", "true") in tag
+    ]
+    if (len(selected_buttons) != 1 or selected_view is None or
+            html_attribute("data-report-view-button", selected_view) not in
+            selected_buttons[0]):
+        bad.append("report-view button selection disagrees with JSON")
+    section_tags = re.findall(r'<section\b[^>]*\bid="([^"]+)"[^>]*>', html)
+    for section_id in section_tags:
+        expected_views = REPORT_VIEW_SECTIONS.get(section_id)
+        if expected_views is None:
+            bad.append("%s section has no report-view contract" % section_id)
+            continue
+        tag = re.search(
+            r'<section\b[^>]*\bid="%s"[^>]*>' % re.escape(section_id), html
+        ).group(0)
+        if html_attribute(
+                "data-report-views", " ".join(expected_views)) not in tag:
+            bad.append("%s section has the wrong report-view visibility" % section_id)
+    for marker, label in (
+            (".report-view-switcher { display: none; }",
+             "no-script report-view control hiding"),
+            (".report-views--ready .report-view-switcher { display: block; }",
+             "script-ready report-view control display")):
+        if marker not in html:
+            bad.append("report views lack %s" % label)
+    disclosure_tags = re.findall(r'<details\b[^>]*>', html, re.I)
+    for tag in disclosure_tags:
+        if not re.search(r'\sopen(?:\s|=|>)', tag, re.I):
+            bad.append("a disclosure is closed in the no-script document")
+            break
+        if not re.search(
+                r'\bdata-report-default-open="(?:true|false)"', tag, re.I):
+            bad.append("a disclosure does not record its enhanced default state")
+            break
+    if disclosure_tags and (
+            "disclosure.dataset.reportDefaultOpen" not in html or
+            "disclosure.open = disclosure.dataset.reportDefaultOpen" not in html):
+        bad.append("the report controller does not restore disclosure defaults")
+    return bad
+
+
 def rule_6_html_matches_json(doc, html):
     """The HTML truncated something the JSON still holds, without saying so."""
     if html is None:
         return None
+    view_bad = report_view_contract_problems(doc, html)
     if get(doc, "discovery", "engine", "name") == "universal-profile-engine":
         required = (
             "at-a-glance", "exec-summary", "decisions", "fix-queue",
@@ -968,7 +1193,7 @@ def rule_6_html_matches_json(doc, html):
             "modes-coverage", "modes-gaps", "orphans", "enforcement",
         )
         regions = {}
-        bad = []
+        bad = list(view_bad)
         for name in required:
             match = re.search(
                 r'<!-- SLOT:%s -->(.*?)<!-- /SLOT:%s -->' % (
@@ -1017,6 +1242,74 @@ def rule_6_html_matches_json(doc, html):
         if "at-a-glance" in regions and json_html_attribute(
                 "data-stage-json", doc.get("stage", {})) not in regions["at-a-glance"]:
             bad.append("at-a-glance stage disagrees with JSON")
+        component_usage = doc.get("component_usage", {}) or {}
+        component_roadmap = component_usage.get("roadmap", {}) or {}
+        if ("at-a-glance" in regions and
+                component_usage.get("state") == "measured" and
+                component_usage.get("top_20") and
+                json_html_attribute(
+                    "data-dashboard-component-roadmap-json",
+                    component_roadmap,
+                ) not in regions["at-a-glance"]):
+            bad.append("at-a-glance component roadmap disagrees with JSON")
+        if ("at-a-glance" in regions and
+                component_usage.get("state") == "measured" and
+                component_usage.get("top_20")):
+            dashboard_region = regions["at-a-glance"]
+            dashboard_rows = component_usage.get("top_20", [])[:5]
+            if dashboard_region.count('data-dashboard-component="') != len(
+                    dashboard_rows):
+                bad.append("at-a-glance component row count disagrees with JSON")
+            band_labels = {
+                item.get("id"): item.get("label")
+                for item in component_roadmap.get("bands", [])
+                if isinstance(item, dict)
+            }
+            for row in dashboard_rows:
+                if not isinstance(row, dict):
+                    continue
+                label = row.get("name") or row.get("id") or "?"
+                marker = html_attribute(
+                    "data-dashboard-component", row.get("id", ""))
+                rendered = re.search(
+                    r'<tr\b[^>]*%s[^>]*>(.*?)</tr>' % re.escape(marker),
+                    dashboard_region, re.S,
+                )
+                if not rendered:
+                    bad.append("%s: dashboard row is missing" % label)
+                    continue
+                tag = rendered.group(0).split(">", 1)[0] + ">"
+                body = rendered.group(1)
+                for name, value in (
+                    ("data-roadmap-band", row.get("roadmap_band")),
+                    ("data-component-references", row.get("references")),
+                    ("data-component-distinct-tokens", row.get("distinct_tokens")),
+                    ("data-component-paths", len(row.get("paths", []) or [])),
+                    ("data-component-share", "%.1f" % row.get(
+                        "share_of_ranked_references", 0.0)),
+                ):
+                    if html_attribute(name, value) not in tag:
+                        bad.append("%s: dashboard %s disagrees with JSON" % (
+                            label, name))
+                visible_numbers = re.findall(
+                    r'<td class="num">\s*([^<]+?)\s*</td>', body)
+                expected_numbers = [str(value) for value in (
+                    row.get("rank", 0), row.get("references", 0),
+                    row.get("distinct_tokens", 0),
+                    len(row.get("paths", []) or []),
+                )]
+                if visible_numbers != expected_numbers:
+                    bad.append("%s: dashboard visible counts disagree with JSON" % label)
+                for visible in (
+                    '<code>%s</code>' % html_tools.escape(str(label)),
+                    '<span class="component-share-label">%.1f%%</span>' % row.get(
+                        "share_of_ranked_references", 0.0),
+                    '<span class="component-roadmap-state">%s</span>' %
+                    html_tools.escape(str(band_labels.get(
+                        row.get("roadmap_band"), "Review"))),
+                ):
+                    if visible not in body:
+                        bad.append("%s: dashboard visible value disagrees with JSON" % label)
         if "exec-summary" in regions and json_html_attribute(
                 "data-executive-summary-json",
                 doc.get("executive_summary", {})) not in regions["exec-summary"]:
@@ -1073,6 +1366,12 @@ def rule_6_html_matches_json(doc, html):
                 "%d required HTML region/parity problem(s)" % len(bad),
                 bad[:12],
             )
+    elif view_bad:
+        return Failure(
+            "6-html-json-parity",
+            "%d report-view contract problem(s)" % len(view_bad),
+            view_bad[:12],
+        )
     declared = get(doc, "rendering", "truncated", default=[]) or []
     # Every truncation the HTML performs has to be declared in the JSON.
     shown = re.findall(r'class="trunc"[^>]*>(.*?)</div>', html, re.S)
@@ -1559,10 +1858,6 @@ def rule_16_identity_integrity(doc, html=None):
                     bad.append("verified specimen declaration is not product-reachable")
 
     if html is not None:
-        sentinels = [value for value in FINISHED_REPORT_SENTINELS if value in html]
-        if sentinels:
-            bad.append("finished HTML still contains template sample content: %s" %
-                       ", ".join(sentinels))
         type_match = re.search(
             r'<!-- SLOT:inventory-type -->.*?<!-- /SLOT:inventory-type -->',
             html, re.S,
@@ -1712,6 +2007,82 @@ def rule_16_identity_integrity(doc, html=None):
     return None
 
 
+def rule_17_adoption_strategy(doc, html=None):
+    """The closing unification strategy must be evidence-derived and complete."""
+    if get(doc, "discovery", "engine", "name") != "universal-profile-engine":
+        return None
+    actual = doc.get("adoption_strategy")
+    expected = derive_adoption_strategy(doc)
+    bad = []
+    if not isinstance(actual, dict):
+        return Failure(
+            "17-adoption-strategy",
+            "the universal report has no adoption_strategy object",
+        )
+    if actual != expected:
+        bad.append("adoption_strategy does not match the report evidence")
+    if [item.get("id") for item in actual.get("rollout", [])] != PHASE_IDS:
+        bad.append("rollout phases are missing, duplicated, or out of order")
+    expected_standards = [item["id"] for item in STANDARDS]
+    if [item.get("id") for item in actual.get("standards", [])] != expected_standards:
+        bad.append("standards baseline is missing or reordered")
+    if actual.get("standards") != STANDARDS:
+        bad.append("standard names, roles, or URLs have drifted")
+    if len(actual.get("target_architecture", [])) != 5:
+        bad.append("target architecture does not contain all five layers")
+    if [item.get("id") for item in actual.get(
+            "integration_constraints", [])] != CONSTRAINT_IDS:
+        bad.append("integration constraints are missing, duplicated, or out of order")
+    if len(actual.get("success_metrics", [])) != 5:
+        bad.append("success measures do not contain all five baselines")
+    if len(actual.get("guardrails", [])) != 6:
+        bad.append("strategy guardrails do not contain all six rules")
+
+    if html is not None:
+        section_match = re.search(
+            r'<section id="strategy"[^>]*>.*?</section>', html, re.S)
+        section = section_match.group(0) if section_match else ""
+        if not section:
+            bad.append("HTML has no final strategy section")
+        else:
+            if section_match.start() > html.find("<footer>"):
+                bad.append("strategy section does not appear before the footer")
+            if json_html_attribute("data-adoption-strategy-json", actual) not in section:
+                bad.append("structured strategy JSON is missing or stale in HTML")
+            if html_attribute("data-report-region", "adoption-strategy") not in section:
+                bad.append("adoption strategy region is unrendered")
+            for item in actual.get("target_architecture", []):
+                if html_attribute("data-strategy-layer", item.get("id")) not in section:
+                    bad.append("architecture layer is missing from HTML: %s" % item.get("id"))
+            for item in actual.get("integration_constraints", []):
+                if html_attribute(
+                        "data-strategy-constraint", item.get("id")) not in section:
+                    bad.append(
+                        "integration constraint is missing from HTML: %s"
+                        % item.get("id")
+                    )
+            for item in actual.get("rollout", []):
+                marker = html_attribute("data-rollout-phase", item.get("id"))
+                order = html_attribute("data-rollout-order", item.get("phase"))
+                if marker not in section or order not in section:
+                    bad.append("rollout phase is missing or stale in HTML: %s" % item.get("id"))
+            for item in actual.get("standards", []):
+                if html_attribute("data-strategy-standard", item.get("id")) not in section:
+                    bad.append("standard is missing from HTML: %s" % item.get("id"))
+                if html_attribute("href", item.get("url")) not in section:
+                    bad.append("standard URL is missing from HTML: %s" % item.get("id"))
+            for item in actual.get("success_metrics", []):
+                if html_attribute("data-strategy-metric", item.get("id")) not in section:
+                    bad.append("success measure is missing from HTML: %s" % item.get("id"))
+    if bad:
+        return Failure(
+            "17-adoption-strategy",
+            "%d adoption-strategy problem(s)" % len(bad),
+            bad[:12],
+        )
+    return None
+
+
 def validate(doc, html=None, current_skill=False, artifacts=None):
     checks = [
         rule_1_discovery_evidence(doc),
@@ -1730,8 +2101,29 @@ def validate(doc, html=None, current_skill=False, artifacts=None):
         rule_14_profile_engine(doc, html, current_skill),
         rule_15_source_artifact_parity(doc, artifacts),
         rule_16_identity_integrity(doc, html),
+        rule_17_adoption_strategy(doc, html),
+        rule_18_no_template_sample_content(html),
     ]
     return [c for c in checks if c is not None]
+
+
+def rule_18_no_template_sample_content(html):
+    """The report still describes the template's imaginary codebase.
+
+    This lived inside rule 16, so a report carrying `a91f4c07` was told it
+    had an identity-integrity problem — which points a reader at the font
+    and brand evidence rather than at the region they forgot to fill.
+    """
+    if html is None:
+        return None
+    sentinels = [value for value in FINISHED_REPORT_SENTINELS if value in html]
+    if not sentinels:
+        return None
+    return Failure(
+        "18-template-sample-content",
+        "%d region(s) still hold the template's own sample content" % len(sentinels),
+        sentinels[:8],
+    )
 
 
 def main(argv):
@@ -1787,7 +2179,7 @@ def main(argv):
         "failures": [{"rule": f.rule, "message": f.message, "detail": f.detail} for f in failures],
     })
     if not failures:
-        print("validate: pass — all sixteen rules hold")
+        print("validate: pass — all eighteen rules hold")
         if args.stamp:
             checked_at = stamp_pass(
                 args.report_json, doc,
@@ -1799,7 +2191,7 @@ def main(argv):
         print("FAIL  %-22s %s" % (f.rule, f.message))
         for line in f.detail:
             print("%26s%s" % ("", line))
-    print("\n%d of 16 rules failed. The report claims more than the run established." % len(failures))
+    print("\n%d of 17 rules failed. The report claims more than the run established." % len(failures))
     return EXIT_FINDING
 
 

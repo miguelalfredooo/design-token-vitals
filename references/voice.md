@@ -10,11 +10,16 @@ and generated prose — in one voice.
 |---|---|---|
 | Static chrome | Headings, ledes, tooltips, legend, panel titles | Ships in `assets/report-template.html`; identical every run |
 | Slotted sentences | Vital cards, truncation lines, family rows | Slot templates below; fill the slots, never rewrite the sentence |
-| Generated | A callout connecting two findings | The rules below, plus `assets/reference/*.html` as worked examples |
+| Generated | A callout connecting two findings | The rules below, checked against the maintained report template |
 
 ## Rules
 
 - Write in second person. Say what a finding means for the reader before stating the principle.
+- On the dashboard, lead with the plain-language meaning and keep the audit term as secondary evidence. For example, show `Needs evidence` before `blocked`, and `Worth a look` before `attention`.
+- Pair every concern with a concrete next action. A reader should never have to translate a status into what to do next.
+- Use calm, specific labels that answer the reader's question: `You’re here`, `How the system is doing`, `What we could verify`, and `Start here`.
+- Describe component planning as token footprint: `Where component token work has the widest footprint`, `Assess first`, `Plan next`, and `Focused follow-up`. State that this measures references inside code rather than runtime impressions or screen frequency.
+- Be confident only where the evidence is confident. Name the verified type family, brand colors, framework profiles, and component counts; when proof is missing, name the missing evidence instead of showing generic sample content.
 - Explain a term the first time it appears. Keep the real vocabulary: semantic token, primitive, mode, ramp, orphan.
 - State the positive instead of denying an alternative.
 - Say "hardcoded values" in prose. Use "literal" only as a table label for a code value.
@@ -64,8 +69,7 @@ truncation:      Showing the {shown} largest {noun}. The other {rest} hold {summ
 family-evidence: {path}
 ```
 
-## Worked examples
+## Maintained reference
 
-`assets/reference/small.html` and `assets/reference/large.html` are worked
-examples of a finished report. A few dozen real sentences constrain tone
-better than a paragraph of description.
+`assets/report-template.html` is the only maintained report and copy
+reference. Generated prose should sound at home beside its static chrome.

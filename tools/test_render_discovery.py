@@ -3,12 +3,14 @@ import json
 import hashlib
 from html.parser import HTMLParser
 import os
+import re
 import sys
 import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import discover_environment  # noqa: E402
+import analyze_component_usage  # noqa: E402
 import render_discovery  # noqa: E402
 
 
@@ -66,6 +68,128 @@ class TestRendering(unittest.TestCase):
         self.assertIn('window.addEventListener("beforeprint"', rendered)
         self.assertIn('window.addEventListener("afterprint"', rendered)
         self.assertIn("disclosure.open = wasOpen", rendered)
+        self.assertIn("const setReportView", rendered)
+        self.assertIn("revealHashTarget", rendered)
+        self.assertIn("target.scrollIntoView", rendered)
+        self.assertIn('document.documentElement.classList.add("report-views--ready")', rendered)
+        self.assertIn(
+            'disclosure.open = disclosure.dataset.reportDefaultOpen === "true"',
+            rendered,
+        )
+
+    def test_progressive_disclosures_are_open_without_script_and_restore_defaults(self):
+        document = (
+            '<details><summary>Closed by default</summary><p>A</p></details>'
+            '<details open class="kept"><summary>Open by default</summary><p>B</p></details>'
+        )
+
+        rendered = render_discovery.prepare_progressive_disclosures(document)
+
+        self.assertIn(
+            '<details open data-report-default-open="false">', rendered
+        )
+        self.assertIn(
+            '<details open data-report-default-open="true" class="kept">',
+            rendered,
+        )
+        self.assertEqual(
+            render_discovery.prepare_progressive_disclosures(rendered), rendered
+        )
+
+    def test_report_view_switcher_has_three_plain_language_choices(self):
+        rendered = render_discovery.render_report_view_switcher("action")
+        self.assertIn('data-report-view-default="action"', rendered)
+        self.assertIn('data-report-views-json="[&quot;snapshot&quot;,&quot;action&quot;,&quot;evidence&quot;]"', rendered)
+        self.assertEqual(rendered.count('data-report-view-button="'), 3)
+        self.assertIn(
+            'data-report-view-button="action" aria-pressed="true"', rendered
+        )
+        for label, helper in (
+                ("Snapshot", "What matters now"),
+                ("Action Plan", "What to do next"),
+                ("Evidence", "How we know")):
+            self.assertIn("<strong>%s</strong>" % label, rendered)
+            self.assertIn("<span>%s</span>" % helper, rendered)
+
+    def test_report_view_resolution_defaults_and_rejects_unknown_values(self):
+        self.assertEqual(render_discovery.resolve_report_view(), "snapshot")
+        self.assertEqual(
+            render_discovery.resolve_report_view("evidence"), "evidence"
+        )
+        with self.assertRaisesRegex(ValueError, "report view must be one of"):
+            render_discovery.resolve_report_view("brief")
+
+    def test_measurement_names_initial_view_and_density(self):
+        _root, discovery = fixture()
+        rendered = render_discovery.render_measurement(
+            discovery,
+            {"concept_count": 1, "sources": []},
+            {
+                "schema_version": "1",
+                "rendering": {"view": "action", "tier": "collapsed"},
+                "provenance": {"adapter_versions": {}},
+            },
+            "local-test",
+            "2026-09-03T00:00:00Z",
+        )
+        self.assertIn("action view · collapsed density", rendered)
+
+    def test_provenance_separates_confirmed_sources_and_actionable_imports(self):
+        _root, discovery = fixture()
+        discovery["import_graph"]["unresolved"] = [
+            {"reason": "external package"},
+            {"reason": "missing local source"},
+            {"reason": "unsupported resolver"},
+        ]
+        tokens = {
+            "concept_count": 4,
+            "sources": [
+                {"role": "canonical"},
+                {"role": "alias"},
+                {"role": "candidate"},
+                {"role": "consumer-override"},
+            ],
+            "candidate_or_local_override_sources": [{}, {}],
+        }
+        report = {
+            "schema_version": "1",
+            "rendering": {"view": "snapshot", "tier": "full"},
+            "provenance": {"adapter_versions": {}},
+        }
+
+        measurement = render_discovery.render_measurement(
+            discovery, tokens, report, "local-test", "2026-09-03T00:00:00Z"
+        )
+        runhead = render_discovery.render_runhead(
+            discovery, tokens, report, "local-test"
+        )
+
+        self.assertIn("2 confirmed definition sources", measurement)
+        self.assertIn("2 confirmed definition sources", runhead)
+        self.assertIn("2 actionable imports remain unresolved", measurement)
+        self.assertIn("All 3 classified import misses", measurement)
+        self.assertIn("1 external package; 1 missing local source", measurement)
+        self.assertIn("1 unsupported resolver", measurement)
+
+    def test_template_sections_follow_the_fixed_view_contract(self):
+        with open(render_discovery.TEMPLATE_PATH, encoding="utf-8") as handle:
+            template = handle.read()
+        for section_id, views in render_discovery.REPORT_VIEW_SECTIONS.items():
+            if section_id == "discovery-engine":
+                continue
+            tag = re.search(
+                r'<section\b[^>]*\bid="%s"[^>]*>' % re.escape(section_id),
+                template,
+            )
+            self.assertIsNotNone(tag, section_id)
+            self.assertIn(
+                'data-report-views="%s"' % " ".join(views), tag.group(0)
+            )
+        self.assertNotIn('section data-report-views="', template)
+        self.assertNotIn('section hidden', template)
+        self.assertIn(
+            'section[data-report-views] { display: block !important; }', template
+        )
 
     def test_template_has_accessible_inventory_family_relationships(self):
         with open(render_discovery.TEMPLATE_PATH, encoding="utf-8") as handle:
@@ -87,7 +211,15 @@ class TestRendering(unittest.TestCase):
         )
         self.assertIn('<!-- SLOT:inventory-tabs-script -->', template)
 
-    def test_at_a_glance_keeps_visual_marks_with_an_empty_fix_queue(self):
+    def test_dashboard_links_have_visible_keyboard_focus(self):
+        with open(render_discovery.TEMPLATE_PATH, encoding="utf-8") as handle:
+            template = handle.read()
+        self.assertIn(".dashboard-action:focus-visible", template)
+        self.assertIn(".dashboard-readiness:focus-visible", template)
+        self.assertIn(".dashboard-vital:focus-visible", template)
+        self.assertIn(".dashboard-link:focus-visible", template)
+
+    def test_dashboard_keeps_evidence_and_plain_language_with_an_empty_fix_queue(self):
         rendered = render_discovery.render_at_a_glance({
             "stage": {
                 "current": "declared", "next": "adopted",
@@ -108,14 +240,219 @@ class TestRendering(unittest.TestCase):
             "fix_queue": [],
             "run": {"token_count": 20, "files_scanned": 4},
             "rendering": {"tier": "full"},
-            "inventory": {"families": {}},
+            "inventory": {
+                "families": {},
+                "identity": {
+                    "typography": {"state": "verified", "family": "DM Sans"},
+                    "brand_colors": {"state": "verified", "colors": [{
+                        "token": "brand-primary", "value": "#5b4bd6",
+                    }]},
+                },
+            },
+            "component_usage": {"top_20": [{
+                "name": "layout / qotd", "distinct_tokens": 12,
+                "references": 30,
+            }]},
+            "discovery": {"roots": [{
+                "path": "app.scss", "ownership": "unknown",
+                "profiles": ["discourse"],
+            }]},
         })
+        self.assertIn('class="dashboard" data-report-region="at-a-glance"', rendered)
+        self.assertIn("Your token foundation is in place", rendered)
+        self.assertIn("You’re here", rendered)
+        self.assertIn("How the system is doing", rendered)
+        self.assertIn("What we could verify", rendered)
+        self.assertIn("Needs evidence", rendered)
+        self.assertIn("DM Sans", rendered)
+        self.assertIn("brand-primary", rendered)
+        self.assertIn("layout / qotd", rendered)
+        self.assertIn("Discourse", rendered)
         self.assertIn('class="ladder" data-glance-mark="stage"', rendered)
         self.assertEqual(rendered.count('class="seg" data-glance-mark='), 3)
-        self.assertIn('class="ring" data-glance-mark="fix-queue"', rendered)
+        self.assertIn('class="dashboard-progress" data-glance-mark="fix-queue"', rendered)
         self.assertEqual(rendered.count("data-glance-mark="), 6)
         self.assertIn('data-fix-total="0" data-fix-verified="0"', rendered)
-        self.assertIn('stroke-dasharray="0.0 125.7"', rendered)
+        self.assertIn('style="width:0.000%"', rendered)
+        self.assertIn("No automatic changes are queued yet", rendered)
+        self.assertIn('class="dashboard-readiness" href="#fix-queue"', rendered)
+        self.assertIn('href="#measurement"', rendered)
+        self.assertIn("Review ownership", rendered)
+        self.assertNotIn("<svg", rendered)
+
+    def test_dashboard_component_roadmap_shows_five_evidenced_rows(self):
+        components = [{
+            "id": "component-%d" % index,
+            "rank": index,
+            "name": "app / component-%d" % index,
+            "kind": "component",
+            "references": 7 - index,
+            "distinct_tokens": index,
+        } for index in range(1, 7)]
+        roadmap = analyze_component_usage.build_roadmap(components)
+
+        rendered = render_discovery.render_dashboard_component_roadmap({
+            "component_usage": {
+                "state": "measured",
+                "roadmap": roadmap,
+                "top_20": components,
+            },
+        })
+
+        self.assertIn(
+            "Where component token work has the widest footprint", rendered
+        )
+        self.assertIn('data-dashboard-component-roadmap-json=', rendered)
+        self.assertEqual(rendered.count('data-dashboard-component="'), 5)
+        self.assertIn('role="region" tabindex="0"', rendered)
+        self.assertIn('aria-labelledby="dashboard-component-roadmap-title"', rendered)
+        self.assertIn('href="#component-detail-component-1"', rendered)
+        self.assertIn('data-component-paths="0"', rendered)
+        self.assertIn("app / component-5", rendered)
+        self.assertNotIn("app / component-6", rendered)
+        self.assertIn("Assess first", rendered)
+        self.assertIn("Plan next", rendered)
+        self.assertIn("Focused follow-up", rendered)
+        self.assertIn("95.2%", rendered)
+
+    def test_dashboard_calls_mixed_component_and_surface_rows_entries(self):
+        components = [
+            {
+                "id": "component", "rank": 1, "name": "app / component",
+                "kind": "component", "references": 2,
+                "distinct_tokens": 1, "paths": ["app/component.scss"],
+            },
+            {
+                "id": "surface", "rank": 2, "name": "app / route",
+                "kind": "surface", "references": 1,
+                "distinct_tokens": 1, "paths": ["app/routes/home.ts"],
+            },
+        ]
+        roadmap = analyze_component_usage.build_roadmap(components)
+
+        rendered = render_discovery.render_dashboard_component_roadmap({
+            "component_usage": {
+                "state": "measured", "fallback_surfaces": 1,
+                "roadmap": roadmap, "top_20": components,
+            },
+        })
+
+        self.assertIn("These 2 entries", rendered)
+        self.assertIn("Explore all 2 entries", rendered)
+        self.assertIn("component and surface token work", rendered)
+
+    def test_dashboard_side_copy_names_fallback_surfaces(self):
+        rendered = render_discovery.render_at_a_glance({
+            "stage": {"current": "unresolved"},
+            "vitals": {}, "executive_summary": {"confidence_split": {}},
+            "leakage_analysis": {}, "fix_queue": [],
+            "run": {"token_count": 0, "files_scanned": 1},
+            "inventory": {"families": {}, "identity": {}},
+            "component_usage": {
+                "fallback_surfaces": 1,
+                "top_20": [{
+                    "name": "app / route", "kind": "surface",
+                    "references": 3, "distinct_tokens": 1,
+                }],
+            },
+            "discovery": {"roots": []},
+        })
+
+        self.assertIn("Most connected component or surface", rendered)
+        self.assertIn("See the top 1 entry", rendered)
+
+    def test_single_fallback_roadmap_uses_singular_copy(self):
+        components = [{
+            "id": "surface", "rank": 1, "name": "app / route",
+            "kind": "surface", "references": 3, "distinct_tokens": 1,
+            "paths": ["app/routes/home.ts"],
+        }]
+        roadmap = analyze_component_usage.build_roadmap(components)
+
+        rendered = render_discovery.render_dashboard_component_roadmap({
+            "component_usage": {
+                "state": "measured", "fallback_surfaces": 1,
+                "roadmap": roadmap, "top_20": components,
+            },
+        })
+
+        self.assertIn("This component or surface accounts for", rendered)
+        self.assertIn("Explore all 1 entry", rendered)
+
+    def test_dashboard_does_not_promote_blocked_identity_candidates(self):
+        rendered = render_discovery.render_at_a_glance({
+            "stage": {"current": "unresolved"},
+            "vitals": {},
+            "executive_summary": {"confidence_split": {}},
+            "leakage_analysis": {},
+            "fix_queue": [],
+            "run": {"token_count": 3, "files_scanned": 1},
+            "inventory": {
+                "families": {
+                    "color": {"state": "measured"},
+                    "typography": {"state": "unmeasured"},
+                },
+                "identity": {
+                    "typography": {
+                        "state": "blocked", "family": "DM Sans",
+                        "candidates": [{"family": "DM Sans"}],
+                    },
+                    "brand_colors": {
+                        "state": "blocked",
+                        "colors": [{"token": "brand-primary", "value": "#5b4bd6"}],
+                    },
+                },
+            },
+            "discovery": {
+                "environment": ["discourse", "rails-sprockets", "monorepo"],
+                "roots": [],
+            },
+        })
+        self.assertIn("across 1 measured family", rendered)
+        self.assertIn("1 measured family · 1 family needs evidence", rendered)
+        self.assertIn("Candidates: DM Sans", rendered)
+        self.assertIn('data-font-verified="false"', rendered)
+        self.assertNotIn("brand-primary", rendered)
+        self.assertIn("Brand colors need stronger source evidence", rendered)
+        self.assertIn("Discourse + Rails Sprockets + Monorepo", rendered)
+
+    def test_dashboard_distinguishes_absent_families_from_evidence_gaps(self):
+        rendered = render_discovery.render_at_a_glance({
+            "stage": {"current": "declared"},
+            "vitals": {"coverage": {"grade": "blocked"}},
+            "executive_summary": {"confidence_split": {}},
+            "leakage_analysis": {},
+            "fix_queue": [],
+            "run": {"token_count": 4, "files_scanned": 2},
+            "inventory": {"families": {
+                "color": {"state": "measured"},
+                "motion": {"state": "unmeasured"},
+                "elevation": {"state": "absent"},
+            }},
+            "discovery": {"roots": []},
+        })
+
+        self.assertIn(
+            "1 measured family · 1 family needs evidence · 1 absent family",
+            rendered,
+        )
+        self.assertNotIn("2 families need evidence", rendered)
+        self.assertIn("More evidence needed", rendered)
+
+    def test_dashboard_does_not_overstate_an_ungraded_run(self):
+        rendered = render_discovery.render_at_a_glance({
+            "stage": {"current": "unresolved"},
+            "vitals": {},
+            "executive_summary": {"confidence_split": {}},
+            "leakage_analysis": {},
+            "fix_queue": [],
+            "run": {"token_count": 0, "files_scanned": 0},
+            "inventory": {"families": {}},
+            "discovery": {"roots": []},
+        })
+
+        self.assertIn("Not yet graded", rendered)
+        self.assertNotIn("Well supported", rendered)
 
     def test_stage_summary_handles_a_punctuated_threshold(self):
         rendered = render_discovery.stage_summary({"stage": {
@@ -299,6 +636,53 @@ class TestRendering(unittest.TestCase):
         self.assertEqual(report["executive_summary"]["affected"]["owned_files"], 42)
         self.assertIn("across 42 owned", report["vitals"]["leakage"]["note"])
 
+    def test_nothing_scanned_reports_no_tier_counts(self):
+        """Zero scanned files cannot yield a count of zero findings.
+
+        This is the skill's own rule 4, applied to itself: zero states the
+        project has none, which a run that scanned nothing never
+        established. The strategy section then printed "exact-value
+        candidate 0" beside "redundant unmeasured" — one sentence answering
+        the same question two ways.
+        """
+        report = {"run": {}, "executive_summary": {}, "vitals": {"leakage": {}}}
+        render_discovery.sync_leakage(report, {
+            "consumer_files_scanned": 0,
+            "exact_value_candidates": [],
+            "uncovered_candidates": [],
+        })
+        tiers = report["vitals"]["leakage"]["tiers"]
+        self.assertEqual(report["vitals"]["leakage"]["grade"], "blocked")
+        self.assertTrue(
+            all(value is None for value in tiers.values()),
+            "a run that scanned nothing reported a tier count: %r" % tiers)
+        self.assertIn("no owned reachable consumer styles",
+                      report["vitals"]["leakage"]["note"])
+
+    def test_an_empty_trend_block_is_removed_like_a_missing_one(self):
+        """No baseline means no trend section, however the block is spelled.
+
+        The stripper tested `if not report.get("trend")`, so a schema-shaped
+        block of nulls survived and shipped the template's own sample
+        comparison — which the validation gate then caught as leftover
+        sample content, once, on every fresh report.
+        """
+        document = (
+            '<body data-report-view="snapshot">'
+            '\n  <a href="#trend" data-tier="full">Trend</a>'
+            '\n  <section id="trend" data-report-views="action evidence">'
+            '\n    <b>Compared against <code>a91f4c07</code>.</b>'
+            '\n  </section>\n'
+            '</body>'
+        )
+        report = {"trend": {"baseline_ref": None, "compatible": None,
+                            "new": [], "resolved": [], "grew": [],
+                            "shrank": [], "regressions": []}}
+        stripped = render_discovery.strip_trend_without_a_baseline(document, report)
+        self.assertNotIn("a91f4c07", stripped)
+        self.assertNotIn('id="trend"', stripped)
+        self.assertNotIn('href="#trend"', stripped)
+
     def test_family_block_keeps_every_source_visible(self):
         sources = ["styles/source-%d.scss:%d" % (index, index)
                    for index in range(1, 7)]
@@ -392,6 +776,11 @@ class TestRendering(unittest.TestCase):
             discovery_path, report_path, html_path, tokens_path)
         with open(report_path, encoding="utf-8") as handle:
             report = json.load(handle)
+        self.assertEqual(report["rendering"]["view"], "snapshot")
+        self.assertEqual(
+            report["rendering"]["available_views"],
+            list(render_discovery.REPORT_VIEWS),
+        )
         self.assertEqual(
             report["discovery"]["capabilities"]["token_source_discovery"],
             "verified",
@@ -432,6 +821,44 @@ class TestRendering(unittest.TestCase):
             rendered.index('id="discovery-engine"'),
             rendered.index('<div class="eyebrow">Measurement</div>'),
         )
+
+    def test_augment_records_and_renders_requested_report_view(self):
+        root, discovery = fixture()
+        discovery_path = os.path.join(root, "discovery.json")
+        report_path = os.path.join(root, "report.json")
+        html_path = os.path.join(root, "report.html")
+        with open(discovery_path, "w", encoding="utf-8") as handle:
+            json.dump(discovery, handle)
+        with open(report_path, "w", encoding="utf-8") as handle:
+            json.dump({"run": {}, "provenance": {}}, handle)
+        with open(render_discovery.TEMPLATE_PATH, encoding="utf-8") as handle:
+            template = handle.read()
+        with open(html_path, "w", encoding="utf-8") as handle:
+            handle.write(template)
+
+        render_discovery.augment(
+            discovery_path, report_path, html_path,
+            refresh_template=True, report_view="evidence",
+        )
+
+        with open(report_path, encoding="utf-8") as handle:
+            report = json.load(handle)
+        with open(html_path, encoding="utf-8") as handle:
+            rendered = handle.read()
+        self.assertEqual(report["rendering"]["view"], "evidence")
+        self.assertIn('<body data-report-view="evidence">', rendered)
+        self.assertIn('data-report-view-default="evidence"', rendered)
+        self.assertIn(
+            'data-report-view-button="evidence" aria-pressed="true"', rendered
+        )
+        self.assertNotIn('<section id="trend"', rendered)
+        self.assertNotIn("a91f4c07", rendered)
+        disclosure_tags = re.findall(r'<details\b[^>]*>', rendered)
+        self.assertTrue(disclosure_tags)
+        self.assertTrue(all(" open " in tag for tag in disclosure_tags))
+        self.assertTrue(all(
+            'data-report-default-open="' in tag for tag in disclosure_tags
+        ))
 
     def test_invalid_html_does_not_partially_update_report_json(self):
         root, discovery = fixture()

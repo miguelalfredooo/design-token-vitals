@@ -180,8 +180,6 @@ finding. Nothing about your codebase can leave two distinct findings tied
 all the way down, so a re-run of the report always shows you the same
 order.
 
-`assets/reference/small.html` renders the tiers as tables, one row
-per finding, inside the Leakage section. `assets/reference/large.html`
-shows the same tiers ranked by blast radius, truncated to the largest
-few with a summary line for the rest — the shape your report takes once
-your codebase has too many findings to show in full.
+Choose the leakage form from the count thresholds in `references/report.md`.
+The maintained template and renderer preserve every finding in the report;
+larger tails use an accessible disclosure instead of a shorter data set.

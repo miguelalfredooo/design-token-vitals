@@ -41,5 +41,73 @@ class TestNoLayoutInline(unittest.TestCase):
         self.assertFalse(is_data("padding:2px 8px"))
 
 
+class TestPrintLocationEvidence(unittest.TestCase):
+    def test_print_uses_the_full_structured_location(self):
+        with open(TEMPLATE, encoding="utf-8") as fh:
+            template = fh.read()
+
+        self.assertIn("content: attr(data-token-location)", template)
+
+
+class TestComponentRoadmapTable(unittest.TestCase):
+    def setUp(self):
+        with open(TEMPLATE, encoding="utf-8") as fh:
+            self.template = fh.read()
+
+    def test_roadmap_headers_have_protected_readable_widths(self):
+        self.assertIn(
+            ".component-roadmap-band table { min-width: 600px; table-layout: fixed;",
+            self.template,
+        )
+        self.assertIn(
+            ".component-roadmap-band th { padding-top: 10px; font-size: 10.5px; white-space: nowrap; }",
+            self.template,
+        )
+        widths = {1: 34, 2: 250, 3: 84, 4: 62, 5: 58, 6: 64}
+        for column, width in widths.items():
+            selector = (
+                ".component-roadmap-band th:nth-child(%d), "
+                ".component-roadmap-band td:nth-child(%d) { width: %dpx; }"
+                % (column, column, width)
+            )
+            self.assertIn(selector, self.template)
+
+    def test_roadmap_scroll_is_contained_and_print_can_reflow(self):
+        self.assertIn("overscroll-behavior-inline: contain; scrollbar-gutter: stable", self.template)
+        self.assertIn(
+            ".component-roadmap-band .tbl-scroll[tabindex]:focus-visible { outline-offset: -2px; }",
+            self.template,
+        )
+        self.assertIn(
+            "@media (max-width: 1120px) {\n    .component-roadmap-grid { grid-template-columns: 1fr; overflow: visible; }",
+            self.template,
+        )
+        self.assertIn(
+            ".component-roadmap-band table { min-width: 0; table-layout: auto; }",
+            self.template,
+        )
+
+    def test_roadmap_scrollers_have_keyboard_labels(self):
+        heading_ids = re.findall(
+            r'<h3 id="(component-roadmap-band-[^"]+-title)">',
+            self.template,
+        )
+        scroller_ids = re.findall(
+            r'<div class="tbl-scroll" role="region" tabindex="0" '
+            r'aria-labelledby="(component-roadmap-band-[^"]+-title)">',
+            self.template,
+        )
+        table_ids = re.findall(
+            r'<table aria-labelledby="(component-roadmap-band-[^"]+-title)">',
+            self.template,
+        )
+        self.assertEqual(len(heading_ids), 3)
+        self.assertEqual(len(set(heading_ids)), 3)
+        self.assertCountEqual(scroller_ids, heading_ids)
+        self.assertCountEqual(table_ids, heading_ids)
+        self.assertIn('<div class="component-roadmap-grid">', self.template)
+        self.assertNotIn('<div class="component-roadmap-grid" role=', self.template)
+
+
 if __name__ == "__main__":
     unittest.main()

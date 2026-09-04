@@ -127,6 +127,13 @@ def rank(findings):
     return sorted(findings, key=key)
 
 
+# A finding id is sha1[:12] — twelve hex characters, always. Matching on
+# length alone collected the adoption strategy's `dtcg-2025.10` and
+# `semver-2.0.0`, which are twelve characters and not findings, and
+# validate_run rule 8 then reported them as findings the HTML had dropped.
+FINDING_ID = re.compile(r"^[0-9a-f]{12}$")
+
+
 def collect_ids(doc):
     """Every finding id anywhere in a report document.
 
@@ -137,7 +144,7 @@ def collect_ids(doc):
 
     def walk(node):
         if isinstance(node, dict):
-            if isinstance(node.get("id"), str) and len(node["id"]) == 12:
+            if FINDING_ID.match(str(node.get("id", ""))):
                 ids.add(node["id"])
             for value in node.values():
                 walk(value)
