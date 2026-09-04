@@ -6,6 +6,23 @@ that produced it.
 
 ## Unreleased
 
+### Changed — the published tree carries no client identifiers
+
+The repository is public, and five spots in it named a client, its brand
+colour, or the machine a report was produced on. None were introduced by the
+work above; all had been on `main` since the example was first committed.
+
+- A client name in `references/report.md` and `tools/test_discover_tokens.py`.
+- That client's brand hex in `assets/report-template.html` and six fixtures.
+- `examples/shadcn-ui/report.json` recorded `discovery.repository.root` as an
+  absolute path carrying a username and a session UUID.
+
+The example report is 121,727 lines. Re-dumping it to change one value
+produced a diff that changed every line, which in a public repository is the
+thing people actually read — so it was rebuilt from the original bytes with a
+single string replacement, and parsing both trees confirms exactly one
+semantic difference. One line changed instead of 121,682.
+
 ### Added — the repository runs its own checks
 
 This repository ships a skill whose first rule is that a guard nobody has
