@@ -30,6 +30,15 @@ What is still moving: framework-profile coverage, runtime verification, and
 the leakage cascade's genuinely ambiguous cases. A later version can discover
 more evidence or change how a close call gets graded.
 
+This repository runs its own checks. `.github/workflows/checks.yml` runs the
+full suite, `tools/palette.py`, `tools/taxonomy.py --check` and
+`tools/check_voice.py` on every push to `main` and every pull request, on a
+stock interpreter with no third-party dependency — the same constraint the
+skill runs under in the repositories it audits. It deliberately does not gate
+the bundled `examples/shadcn-ui/` report, which passes only on the machine
+that produced it; that gap is recorded rather than hidden behind a step that
+could not pass.
+
 Trust a report the way you would trust a colleague's reading of your
 codebase: check its evidence. Every finding points at a line you can open.
 Pin the skill version when comparing runs over time; the comparison tool
@@ -176,6 +185,7 @@ guardrail the run re-derives each time is a rule that drifts.
 | `tools/profile_extractors.py` | Executes validated profile-declared registration, config-array, and build-JSON root extractors for built-in and custom frameworks |
 | `tools/discover_tokens.py` | Finds CSS, Sass, DTCG, Style Dictionary, conservative JS/TS theme, and component-embedded declarations; classifies canonical sources, projections, overrides, and unverified candidates |
 | `tools/analyze_component_usage.py` | Ranks identified components by confirmed canonical token use and derives deterministic cumulative-footprint bands for roadmap planning |
+| `tools/audit_literal_colors.py` | Groups hardcoded colors by normalized value and reports each group with its sites, without treating two colors that merely share a value as one intent |
 | `tools/adoption_strategy.py` | Derives and renders the framework-aware unification model, standards baseline, architecture, rollout gates, guardrails, and success measures from the report's measured evidence |
 | `tools/render_discovery.py` | Rebuilds finished runs from the current template; records Snapshot, Action Plan, or Evidence independently from data density; preserves deep links, no-script completeness, and full print output; keeps summaries, decisions, ownership, lineage, coverage, token inventory, leakage, and provenance identical in report JSON and HTML |
 | `tools/render_component_usage.py` | Renders the dashboard’s five-row token-footprint table, the complete three-band component roadmap, and every component-to-token evidence location |
