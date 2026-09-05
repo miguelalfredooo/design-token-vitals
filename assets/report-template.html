@@ -111,79 +111,219 @@
   to sit here; it was removed on purpose. Do not restore it. The --sans and
   --mono custom properties below already carry real fallback stacks
   (ui-sans-serif / system-ui / -apple-system / "Segoe UI" and
-  ui-monospace / SFMono-Regular / Menlo), so the page still uses IBM Plex
-  for anyone who already has it installed, and degrades cleanly for
+  ui-monospace / SFMono-Regular / Menlo), so the page still uses its named
+  faces for anyone who already has them installed, and degrades cleanly for
   everyone else, offline or in a sandbox.
+
+  THE FACES CHANGED 2026-09-04 and the rule did not: the report now names
+  Fraunces (display), Inter (text) and JetBrains Mono (labels) to match the
+  portfolio this tool is written up on. Named first, real stacks behind them,
+  still no <link>. The footer's "nothing leaves your machine" stays true,
+  which is the whole reason this note exists.
 -->
 <style>
   :root {
-    --ground: #FBFBFC;
+    /* THE miguelariascreative PORTFOLIO PALETTE. Values are taken from that
+       surface's own tokens.module.css rather than re-derived, so the report
+       and the case study describing it cannot drift apart. Every text pair
+       below was measured against WCAG's relative-luminance formula, not
+       eyeballed; the figure after each is its contrast on --ground.
+
+       WHY --ink-mute EQUALS --ink-soft. Its own lighter value measured 3.79:1,
+       under the 4.5 floor, and it carries 39 colour declarations in this
+       template — the largest body-text role in the file. The portfolio hit the
+       same wall and collapsed its --ink-3 into --ink-2 for the same reason. A
+       third grey nobody can read is not a third step. */
+    --ground: #F7FCF4;          /* the mint-white the whole system sits on */
     --surface: #FFFFFF;
-    --surface-sunk: #F4F5F7;
-    --line: #E3E4EA;
-    --line-strong: #CDCFD8;
-    --ink: #15161C;
-    --ink-soft: #4A4D5C;
-    --ink-mute: #696C7B;
-    --accent: #1F5F6B;
-    --accent-soft: #E4F0F2;
+    /* #F2F5EF, not the #EAEDE7 this first used. Two things measure against
+       the sunk tint and both were failing: the pink hatch needs 3:1 GRAPHIC
+       contrast (2.97) and the blocked/na grey needs 4.5:1 TEXT contrast
+       (4.31). One value clears both — 3.19 and 4.62 — which is why the tint
+       moved rather than the two things sitting on it. */
+    --surface-sunk: #F2F5EF;
+    --line: #CAD0C7;
+    --line-strong: #A6AEA2;
+    --ink: #2D3C23;             /* 11.33 — a very dark GREEN, never black */
+    --ink-soft: #6A7067;        /*  4.89 */
+    --ink-mute: #6A7067;        /*  4.89 — see above */
 
-    --pass: #397248;
-    --pass-bg: #EAF2EB;
-    --fail: #B3402F;
-    --fail-bg: #FAEBE8;
-    --warn: #895F10;
-    --warn-bg: #FAF1DF;
-    --block: #5B5B7A;
+    /* --accent IS INK, AND THAT IS THE PORT, NOT A COMPROMISE. This template
+       uses --accent for `color` ten times. The portfolio's accent is #FFDD33,
+       which measures 1.68:1 as type — unreadable. That surface never sets the
+       yellow as text: it writes ink and marks it with a yellow UNDERLINE, and
+       reserves blue for outbound links only. So the text accent is ink, and
+       the yellow arrives as --mark, below, for the underlines, chips and
+       borders that are the actual signature. */
+    --accent: #2D3C23;
+    --accent-soft: #EDF2EA;
+    --mark: #FFDD33;            /* MARK ONLY — never a text colour, never a fill */
+
+    /* Status. --pass is the portfolio's link blue doing double duty exactly as
+       it does there; --fail is its --danger. --warn is the brand yellow
+       DARKENED to #7A5A08 (6.13) because the yellow itself cannot be read as
+       type — the same correction the portfolio makes to --link in dark. The
+       -bg tints are derived from each hue in OKLCH at a fixed lightness and
+       chroma, so the three wash together as one family instead of being
+       picked one at a time. */
+    --pass: #1264C2;            /*  5.56 */
+    --pass-bg: #E3F2FF;
+    --fail: #C0271F;            /*  5.68 */
+    --fail-bg: #FFE9E5;
+    --warn: #7A5A08;            /*  6.13 */
+    --warn-bg: #FAEFDA;
+    /* BLOCKED IS HATCHED, NOT FILLED — a hatched track reads "no reading
+       taken", a filled one at 0% reads "scored nothing", and this tool's whole
+       posture is the difference between them.
+
+       --block-line KEEPS ITS PINK ACROSS THE RE-SKIN. The first pass made it a
+       neutral grey to match the portfolio's own hatching, and
+       test_palette.py caught it: the pink is a decision this repo already
+       made, guarded by name, and it is the only value here that must clear 3:1
+       GRAPHIC contrast on four different grounds rather than a text ratio. Grey
+       measured 1.93-2.28 against them. A re-skin does not get to overrule a
+       tested decision in the thing being re-skinned.
+
+       --block-bg / --na-bg STAY A REAL TINT. Flattening them to the surface
+       cleared the contrast and broke
+       test_blocked_text_is_checked_against_its_actual_tint, which exists
+       precisely so blocked text cannot be graded against a background it never
+       sits on. The tint moved instead. */
+    --block: #6A7067;
     --block-line: #C86D84;
-    --block-bg: #EEEEF3;
-    --na: #646776;
-    --na-bg: #F2F3F5;
+    --block-bg: #F2F5EF;
+    --na: #6A7067;
+    --na-bg: #F2F5EF;
+    /* TEXT SITTING ON THE PINK HATCH — its own token, because two rules do it
+       (.split .block and .cm .c[data-s="blocked"]) and a colour chosen twice
+       diverges the first time either moves.
 
-    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+       It is NOT --ink-soft, which is what both used and what neither could
+       afford: on the ~50/50 hatch field the grey measured 2.68 in light and
+       3.41 in dark, so this label failed AA in both themes before the re-skin
+       went near it.
+
+       IT IS YELLOW IN DARK AND INK IN LIGHT, and the asymmetry is forced by
+       the ground rather than chosen. The hatch field resolves to ~#DDB1BA in
+       light and ~#744651 in dark. Yellow measures 5.71 on the dark field — the
+       best reading available there — and 1.41 on the light one, which no size
+       or weight rescues. The dark green gets 6.21 on the light field. Same
+       intent both ways: the mark where the mark can be read, ink where it
+       cannot. */
+    --hatch-ink: #2D3C23;
+    /* WHY THE HATCH IS THINNER THAN IT WAS. Every blocked hatch ran at 50%
+       coverage — a 2px stripe on a 4px period, or 3px on 6px. That is a lot of
+       saturated pink to read text through, and the text on it is the point:
+       the field it resolves to went from #DDB1BA to #E4C8CC in light and from
+       #744651 to #573940 in dark, taking --hatch-ink from 6.21 to 7.54 and
+       from 5.71 to 7.58 respectively.
+
+       THE STRIPE WIDTH IS UNCHANGED AND SO IS ITS COLOUR. Only the PERIOD grew
+       — 2px on 6, 3px on 9 — so each stripe is still #C86D84 at full strength
+       and still clears the 3:1 graphic-contrast floor that
+       test_blocked_hatch_is_light_pink_and_clears_graphic_contrast measures.
+       Lightening the pink itself, or dropping opacity onto it, would have made
+       that guard's arithmetic describe a colour the page no longer paints. The
+       hatch reads as a hatch; there is simply less of it per inch. */
+
+    /* NO NETWORK REQUEST — see the note in <head>. Each face is named first
+       and falls back to a real stack, so a machine with the fonts installed
+       gets the portfolio's own faces and every other machine gets clean
+       system type, offline and in a sandbox alike. Two scales, one face each:
+       Fraunces for display, Inter for text. They are never crossed. */
+    --display: Fraunces, ui-serif, Georgia, "Times New Roman", serif;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
     --col: 1120px;
   }
 
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --ground: #101116;
-      --surface: #171922;
-      --surface-sunk: #1E212B;
-      --line: #2A2D39;
-      --line-strong: #3A3E4D;
-      --ink: #EDEEF2;
-      --ink-soft: #B4B8C6;
-      --ink-mute: #858A9B;
-      --accent: #4FBFD1;
-      --accent-soft: #16303550;
-      --pass: #78C08B;  --pass-bg: #1B2A20;
-      --fail: #E58A78;  --fail-bg: #2E1D1A;
-      --warn: #D9AE5E;  --warn-bg: #2C2416;
-      --block: #A0A2C0; --block-line: #C86D84; --block-bg: #22232F;
-      --na: #858A9B;    --na-bg: #1C1E27;
+      --ground: #242526;
+      --surface: #2E2F2D;
+      --surface-sunk: #1F201E;
+      --line: rgba(255, 255, 255, 0.14);
+      --line-strong: rgba(255, 255, 255, 0.28);
+      --ink: #F5F5F5;           /* 14.08 on ground */
+      --ink-soft: #A8AFA4;      /*  6.82 */
+      --ink-mute: #A8AFA4;      /*  6.82 — collapsed, as in light */
+      --accent: #F5F5F5;
+      --accent-soft: #33352F;
+      --mark: #FFDD33;          /* unchanged across themes: a brand fill that
+                                   darkened with the theme would stop being one */
+      --pass: #6BA8F5;  --pass-bg: #1B2634;
+      --fail: #FF8A80;  --fail-bg: #32201E;
+      --warn: #E0B85A;  --warn-bg: #2C2414;
+      --block: #A8AFA4; --block-line: #C86D84; --block-bg: #1F201E;
+      --na: #A8AFA4;    --na-bg: #1F201E;
+      --hatch-ink: #FFDD33;   /* 5.71 on the hatch — see the light tier */
     }
   }
 
   :root[data-theme="dark"] {
-    --ground: #101116;
-    --surface: #171922;
-    --surface-sunk: #1E212B;
-    --line: #2A2D39;
-    --line-strong: #3A3E4D;
-    --ink: #EDEEF2;
-    --ink-soft: #B4B8C6;
-    --ink-mute: #858A9B;
-    --accent: #4FBFD1;
-    --accent-soft: #16303550;
-    --pass: #78C08B;  --pass-bg: #1B2A20;
-    --fail: #E58A78;  --fail-bg: #2E1D1A;
-    --warn: #D9AE5E;  --warn-bg: #2C2416;
-    --block: #A0A2C0; --block-line: #C86D84; --block-bg: #22232F;
-    --na: #858A9B;    --na-bg: #1C1E27;
+    --ground: #242526;
+    --surface: #2E2F2D;
+    --surface-sunk: #1F201E;
+    --line: rgba(255, 255, 255, 0.14);
+    --line-strong: rgba(255, 255, 255, 0.28);
+    --ink: #F5F5F5;         /* 14.08 on ground */
+    --ink-soft: #A8AFA4;    /*  6.82 */
+    --ink-mute: #A8AFA4;    /*  6.82 — collapsed, as in light */
+    --accent: #F5F5F5;
+    --accent-soft: #33352F;
+    --mark: #FFDD33;        /* unchanged across themes: a brand fill that
+                         darkened with the theme would stop being one */
+    --pass: #6BA8F5;  --pass-bg: #1B2634;
+    --fail: #FF8A80;  --fail-bg: #32201E;
+    --warn: #E0B85A;  --warn-bg: #2C2414;
+    --block: #A8AFA4; --block-line: #C86D84; --block-bg: #1F201E;
+    --na: #A8AFA4;    --na-bg: #1F201E;
+    --hatch-ink: #FFDD33;   /* 5.71 on the hatch — see the light tier */
   }
 
   * { box-sizing: border-box; }
+
+  /* ─── Scrollbars ──────────────────────────────────────────────────────────
+     Transparent track, yellow handle. The track is the page showing through,
+     so a report reads as one sheet rather than as content in a chrome-coloured
+     gutter — and it is one of the few places the mark can be a FILL without
+     breaking the rule that keeps it under 2% of the frame: a 10px handle is a
+     mark by area no matter how tall the document is.
+
+     THE RING IS NOT DECORATION. #FFDD33 on the light ground measures 1.68:1,
+     and a scrollbar handle is a UI component, which WCAG 1.4.11 asks to clear
+     3:1 against what sits next to it. The yellow cannot, at any size. An ink
+     hairline gives it a discernible boundary instead of a louder colour —
+     the same fix .fanout-swatch already uses in the portfolio, where a #ffffff
+     swatch on a white card would otherwise have no edge at all. In dark the
+     yellow already clears 8.79:1 on its own and the ring simply reads as a
+     highlight.
+
+     Both engines, because they share nothing: scrollbar-color is the standard
+     property Firefox implements, ::-webkit-scrollbar is the WebKit/Blink
+     pseudo-element tree.
+
+     AND IT COSTS THE OVERLAY. Defining ::-webkit-scrollbar at all opts those
+     elements out of macOS/Chrome overlay scrollbars: they become classic,
+     always present, and reserve their 10px instead of floating over content.
+     On the page that is invisible. Inside a .tbl-scroll it is 10px off the
+     table's usable measure — which is why scrollbar-gutter: stable was already
+     set there, and why the roadmap bands are better off stacked at full width
+     than scrolling. Stated because an earlier draft of this note claimed the
+     opposite. */
+  :root {
+    scrollbar-color: var(--mark) transparent;
+    scrollbar-width: thin;
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--mark);
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px var(--ink);
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--mark); filter: brightness(0.94); }
 
   body {
     background: var(--ground);
@@ -203,8 +343,17 @@
     justify-content: space-between; gap: 24px;
     padding-bottom: 20px; border-bottom: 2px solid var(--ink);
   }
+  /* THE DOCUMENT'S TITLE, and one of the three places the display face
+     appears: this, the dashboard headline, and every h2. Everything else on
+     the page is Inter. Two scales, one face each, never crossed.
+
+     weight 700, not 600. Fraunces is an optical-size variable face and reads
+     noticeably lighter than a neutral sans at the same nominal weight, so
+     carrying 600 across would quietly demote the largest thing on the page.
+     The tighter letter-spacing stays: it was set for a 30px display line and
+     that is still what this is. */
   .runhead h1 {
-    margin: 0; font-size: 30px; font-weight: 600;
+    margin: 0; font-family: var(--display); font-size: 30px; font-weight: 700;
     letter-spacing: -0.022em; text-wrap: balance;
   }
   .sampletag {
@@ -232,7 +381,12 @@
   }
   .eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
-  h2 { margin: 0 0 6px; font-size: 21px; font-weight: 550; letter-spacing: -0.014em; }
+  /* THE DISPLAY FACE, and the only place it appears. Two scales, one face
+     each — Fraunces for display, Inter for text — and they are never crossed,
+     which is why every other rule in this file keeps var(--sans). weight 700
+     rather than 550: Fraunces is an optical-size variable face and reads
+     lighter than a neutral sans at the same nominal weight. */
+  h2 { margin: 0 0 6px; font-family: var(--display); font-size: 21px; font-weight: 700; letter-spacing: -0.014em; }
   .lede { margin: 0 0 22px; max-width: 68ch; color: var(--ink-soft); font-size: 14.5px; }
 
   /* ---------- vitals ---------- */
@@ -250,7 +404,7 @@
   .vital[data-grade="attention"]::before { background: var(--warn); }
   .vital[data-grade="not_applicable"]::before   { background: var(--line-strong); }
   .vital[data-grade="blocked"]::before {
-    background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 6px);
+    background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 9px);
   }
   .vital h3 { margin: 0 0 7px; font-size: 14.5px; font-weight: 550; letter-spacing: -0.005em; }
   .vital p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
@@ -273,7 +427,7 @@
   .grade[data-g="not_applicable"]::before { background: transparent; border: 1px dashed var(--na); }
   .grade[data-g="blocked"] { color: var(--block); background: var(--block-bg); }
   .grade[data-g="blocked"]::before {
-    background: repeating-linear-gradient(135deg, var(--block-line) 0 2px, transparent 2px 4px);
+    background: repeating-linear-gradient(135deg, var(--block-line) 0 2px, transparent 2px 6px);
   }
 
   /* ---------- legend ---------- */
@@ -329,7 +483,7 @@
   .pip[data-s="fail"]  { background: var(--fail); }
   .pip[data-s="not_applicable"]   { background: transparent; border: 1px dashed var(--line-strong); }
   .pip[data-s="blocked"] {
-    background: repeating-linear-gradient(135deg, var(--block-line) 0 2px, transparent 2px 4px);
+    background: repeating-linear-gradient(135deg, var(--block-line) 0 2px, transparent 2px 6px);
   }
 
   code, .path { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
@@ -601,7 +755,7 @@
     }
     .contents-label { margin: 0 0 8px; }
     .contents a { border: none; background: transparent; padding: 5px 8px; border-left: 2px solid transparent; border-radius: 0; }
-    .contents a:hover { border-left-color: var(--accent); background: var(--surface); }
+    .contents a:hover { border-left-color: var(--mark); background: var(--surface); }
     .contents-more > summary { border: none; border-left: 2px solid transparent; border-radius: 0; background: transparent; }
     .contents-more[open] > summary { border-left-color: var(--accent); }
     .contents-more-links { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 0 8px; padding: 4px 0; border: 0; background: transparent; }
@@ -619,12 +773,12 @@
      so the fixed report controller opens every disclosure for beforeprint
      and restores the reader's exact open/closed state afterprint. */
   @media print {
-    body { background: #fff; color: #000; }
+    body { background: var(--surface); color: var(--ink); }
     .report-view-switcher, .contents, .ihelp .info { display: none; }
     .tip {
       position: static; opacity: 1; visibility: visible; display: block;
       max-width: none; margin: 4px 0 0; padding: 0; box-shadow: none;
-      background: transparent; color: #333; font-size: 10px; line-height: 1.35;
+      background: transparent; color: var(--ink-soft); font-size: 10px; line-height: 1.35;
       text-transform: none; letter-spacing: 0; font-weight: 400;
     }
     .tip::before { display: none; }
@@ -636,7 +790,7 @@
     #strategy .panel { break-inside: avoid; page-break-inside: avoid; }
     section + section { break-before: auto; }
     h2 { break-after: avoid; }
-    details { border: 1px solid #bbb; }
+    details { border: 1px solid var(--line-strong); }
     .location-file { display: none; }
     .location-lines { display: block; }
     .location-line {
@@ -651,7 +805,19 @@
     .token-tabs__panel { display: block !important; padding-top: 12px; }
     section[data-report-views] { display: block !important; }
     summary::before { display: none; }
-    a { color: inherit; text-decoration: none; }
+    /* INK TEXT, YELLOW UNDERLINE — the portfolio's in-page link treatment, and
+     the reason --mark exists. The colour moves to the UNDERLINE, where it is a
+     shape rather than a contrast problem: #FFDD33 measures 1.68:1 as type and
+     cannot be read, while as a 2px rule under ink it is unmissable. Never a
+     filled button, and never blue — blue is outbound only on this surface. */
+  a { color: inherit; text-decoration: none; }
+  .dashboard-section-head a:hover, .dashboard-link:hover,
+  .contents a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--mark);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.15em;
+  }
     .sw i, .ramp i, .out i, .pair i, .cell, .c, .pip, .track i, .gbar i, .bar-row i,
     .dashboard-brand-color i, .dashboard-vital-state::before, .dashboard-progress i {
       -webkit-print-color-adjust: exact; print-color-adjust: exact;
@@ -902,8 +1068,12 @@
     background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px;
   }
   .dashboard-hero { padding: 30px 32px 26px; border-bottom: 1px solid var(--line); }
+  /* The overview's headline — the one sentence that says what the run found,
+     and the largest type in the document at its 38px ceiling. Display face for
+     the same reason as the h1 above; the clamp is untouched. */
   .dashboard-hero h3 {
-    max-width: 760px; margin: 0 0 10px; font-size: clamp(25px, 3vw, 38px);
+    max-width: 760px; margin: 0 0 10px; font-family: var(--display);
+    font-weight: 700; font-size: clamp(25px, 3vw, 38px);
     line-height: 1.12; letter-spacing: -0.032em; text-wrap: balance;
   }
   .dashboard-hero p { max-width: 76ch; margin: 0; color: var(--ink-soft); font-size: 15px; }
@@ -1003,7 +1173,7 @@
   .seg i[data-g="attention"], .seg i[data-t="near-miss"] { background: var(--warn); }
   .seg i[data-t="candidate"] { background: var(--warn); }
   .seg i[data-g="fail"], .seg i[data-t="redundant"] { background: var(--fail); }
-  .seg i[data-g="blocked"], .seg i[data-k="blocked"] { background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 6px), var(--surface-sunk); }
+  .seg i[data-g="blocked"], .seg i[data-k="blocked"] { background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 9px), var(--surface-sunk); }
   .seg i[data-g="not_applicable"], .seg i[data-k="unmeasured"], .seg i[data-t="uncovered"] { background: var(--line-strong); }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
   .legend b { font-weight: 600; color: var(--ink-soft); }
@@ -1021,20 +1191,34 @@
   .component-roadmap-intro h3 { margin: 0; }
   .component-roadmap-intro p { flex: 1 1 520px; margin: 0; color: var(--ink-soft); font-size: 13px; }
   .component-roadmap-intro span { color: var(--ink-mute); font-family: var(--mono); font-size: 11px; }
+  /* THE THREE BANDS STACK. They were a row of three at minmax(340px, 1fr),
+     which needs 1,032px plus gaps inside a 1,120px measure — so the row
+     overflowed and each band's table was read through a horizontal scroller.
+     The table is the evidence; making it the one thing you cannot see without
+     dragging was backwards.
+
+     Stacked, every band gets the full measure and every column of its table is
+     visible at once. The bands are a SEQUENCE anyway — assess first, plan
+     next, focused follow-up — and a sequence reads down a page, not across a
+     scroller that hides the third item until someone finds it. */
   .component-roadmap-grid {
-    display: grid; grid-template-columns: repeat(3, minmax(340px, 1fr));
-    gap: 12px; align-items: start; overflow-x: auto; padding-bottom: 4px;
+    display: grid; grid-template-columns: 1fr;
+    gap: 12px; align-items: start;
   }
   .component-roadmap-band {
     overflow: hidden; border: 1px solid var(--line-strong); border-radius: 7px;
     background: var(--surface);
   }
-  .component-roadmap-band > header { min-height: 154px; padding: 16px 16px 14px; border-top: 3px solid var(--accent); background: var(--accent-soft); }
+  /* No min-height. 154px existed so three headers standing side by side agreed
+     on a baseline; stacked, that floor is dead panel above every table. Same
+     for the 54px on the paragraph below. Taking a box out of a row retires the
+     rules that were only holding the row together. */
+  .component-roadmap-band > header { padding: 16px 16px 14px; border-top: 3px solid var(--accent); background: var(--accent-soft); }
   .component-roadmap-band[data-roadmap-band="plan-next"] > header { border-top-color: var(--warn); background: var(--warn-bg); }
   .component-roadmap-band[data-roadmap-band="focused-follow-up"] > header { border-top-color: var(--pass); background: var(--pass-bg); }
   .component-roadmap-kicker { color: var(--ink-mute); font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; }
   .component-roadmap-band h3 { margin: 4px 0 5px; font-size: 18px; }
-  .component-roadmap-band header p { min-height: 54px; margin: 0 0 8px; color: var(--ink-soft); font-size: 11.5px; line-height: 1.45; }
+  .component-roadmap-band header p { margin: 0 0 8px; color: var(--ink-soft); font-size: 11.5px; line-height: 1.45; }
   .component-roadmap-band header strong { color: var(--ink-soft); font-family: var(--mono); font-size: 10.5px; font-weight: 500; }
   .component-roadmap-band .tbl-scroll {
     padding: 0 12px 8px; overscroll-behavior-inline: contain; scrollbar-gutter: stable;
@@ -1099,8 +1283,8 @@
     font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums;
   }
   .split .ok    { background: var(--pass-bg); color: var(--pass); }
-  .split .block { background: repeating-linear-gradient(135deg, var(--block-line) 0 2px, transparent 2px 4px),
-                              var(--surface-sunk); color: var(--ink-soft); }
+  .split .block { background: repeating-linear-gradient(135deg, var(--block-line) 0 2px, transparent 2px 6px),
+                              var(--surface-sunk); color: var(--hatch-ink); }
   .split .unk   { background: var(--surface-sunk); color: var(--ink-mute); }
 
   /* ---------- priority, shown with its inputs ---------- */
@@ -1141,8 +1325,8 @@
   }
   .cm .c[data-s="measured"]       { background: var(--pass-bg); color: var(--pass); }
   .cm .c[data-s="unmeasured"]     { background: var(--surface-sunk); color: var(--ink-mute); }
-  .cm .c[data-s="blocked"]        { color: var(--ink-soft);
-    background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 6px); }
+  .cm .c[data-s="blocked"]        { color: var(--hatch-ink);
+    background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 9px); }
   .cm .c[data-s="not_applicable"] { color: var(--na); }
   .cm th.fam { text-align: center; font-size: 9.5px; }
   .cm td:first-child { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
@@ -1184,7 +1368,6 @@
   }
 
   @media (max-width: 1120px) {
-    .component-roadmap-grid { grid-template-columns: 1fr; overflow: visible; }
   }
 
   @media (max-width: 620px) {
