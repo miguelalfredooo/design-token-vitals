@@ -78,10 +78,23 @@ class TestComponentRoadmapTable(unittest.TestCase):
             ".component-roadmap-band .tbl-scroll[tabindex]:focus-visible { outline-offset: -2px; }",
             self.template,
         )
-        self.assertIn(
-            "@media (max-width: 1120px) {\n    .component-roadmap-grid { grid-template-columns: 1fr; overflow: visible; }",
-            self.template,
-        )
+        # WAS a max-width:1120px override that stacked the grid and turned its
+        # scroller off. The grid now stacks at EVERY width — the bands are a
+        # sequence, and a band's table is the evidence, so it should never need
+        # dragging to read — which made that override dead code restating the
+        # base rule. The contract this guarded is unchanged and strictly
+        # stronger, so it is asserted as a PROPERTY rather than as the old
+        # spelling: one column, and no horizontal scroller on the grid itself.
+        # Containment is unaffected: .tbl-scroll inside each band keeps its own
+        # overflow-x for a table too wide even at full measure.
+        grid_rule = re.search(r"\.component-roadmap-grid \{[^}]*\}", self.template)
+        self.assertIsNotNone(grid_rule, "the roadmap grid rule has been renamed or removed")
+        self.assertIn("grid-template-columns: 1fr", grid_rule.group(0))
+        self.assertNotIn("overflow", grid_rule.group(0))
+        # Deliberately NOT a document-wide assertNotIn on "repeat(3," — other
+        # grids in this template use three columns legitimately, and a guard
+        # that fires on correct code elsewhere is as broken as one that never
+        # fires. Scoped to this rule's own body, above.
         self.assertIn(
             ".component-roadmap-band table { min-width: 0; table-layout: auto; }",
             self.template,

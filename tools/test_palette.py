@@ -52,7 +52,10 @@ class TestTemplate(unittest.TestCase):
         )
 
     def test_blocked_text_is_checked_against_its_actual_tint(self):
-        broken = self.html.replace("--block: #5B5B7A", "--block: #6D6D6D", 1)
+        # Literals track the palette. #8A8F87 measures 3.00 on --block-bg, which
+        # fails AA — if this ever stops biting, the assertion below is vacuous.
+        broken = self.html.replace("--block: #6A7067", "--block: #8A8F87", 1)
+        self.assertNotEqual(broken, self.html, "mutation did not apply — the literal has drifted")
         _, failures = palette.check(broken)
         self.assertTrue(any(
             foreground == "--block" and background == "--block-bg"
@@ -61,7 +64,8 @@ class TestTemplate(unittest.TestCase):
 
     def test_the_check_is_not_vacuous(self):
         """A template with a failing pair must be reported, or the test above means nothing."""
-        broken = self.html.replace("--pass: #397248", "--pass: #A0D0A8", 1)
+        broken = self.html.replace("--pass: #1264C2", "--pass: #A8C8EE", 1)
+        self.assertNotEqual(broken, self.html, "mutation did not apply — the literal has drifted")
         _, failures = palette.check(broken)
         self.assertTrue(any(fg == "--pass" for _, fg, _, _, _, _ in failures))
 
