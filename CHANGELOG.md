@@ -6,6 +6,42 @@ that produced it.
 
 ## Unreleased
 
+### Measured — `naming-coherence` does not need a tool yet
+
+`naming-coherence` is graded by judgment, which principle 7 says is a rule
+that drifts. A grammar counter was built to settle it: separator and case
+per token name, counted inside each syntax, with a `file:line` per grammar.
+It works, 21 tests cover it, and nine mutations were watched going red.
+
+Across twelve repositories with a measurable token layer, the graded signal
+fired **zero** times. Every one reported a single grammar. The only run that
+ever went red was a mutant written by hand for the purpose. The one real
+finding it produced in twelve runs was a spelling pair — `bg` beside
+`background` in one stylesheet — which two of the twelve shared because one
+inherited the file from the other.
+
+So the tool stays on `feat/naming-coherence-detector`, unmerged. Six hundred
+lines to reproduce the answer an agent already reaches by eye, on the vital
+this skill twice names as the one that would be buried in a blended score, is
+a trade worth refusing. The sample is a real limit on that conclusion: all
+twelve are one author's, recent, and written under a house rule that mandates
+kebab names. A legacy codebase with two decades of naming in it is the case
+that would fire, and none was reachable to test.
+
+Two facts the build turned up, either of which would cost a session to
+rediscover:
+
+- Grammars have to be counted **inside** a syntax. A JS identifier cannot
+  hold a hyphen, so a system that writes kebab in CSS and camel in a theme
+  object has one convention in two languages. Counted across syntaxes, a
+  codebase whose 365 custom properties agree with each other grades `fail`
+  because four object keys are camel — which grades the language.
+- Discovery reports theme objects, DTCG files and scss maps as dotted paths.
+  The dots are the structure the value sits in; the name is the **leaf**. Read
+  whole, a group named `brand-colors` lends its hyphen to every single-word
+  token underneath it, and the file grades `pass` on a grammar none of its
+  tokens use.
+
 ### Changed — the published tree carries no client identifiers
 
 The repository is public, and five spots in it named a client, its brand
