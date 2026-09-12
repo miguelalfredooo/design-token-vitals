@@ -1149,3 +1149,76 @@ class TestSiblingAdmissionIsNarrow(unittest.TestCase):
             "src/tokens/shapes.js": self.THEME_OBJECT,
         }, 'import "./globals.css";\nimport "./tokens/widgets.js";\nimport "./tokens/shapes.js";')
         self.assertNotIn("src/tokens/shapes.js", confirmed)
+
+
+class TestWrappedObjectsKeepTheirPath(unittest.TestCase):
+    """`Object.freeze({` opens an object, and the reader has to see that.
+
+    The object-open pattern required the line to end in a bare `{`, so a
+    frozen object never pushed onto the nesting stack and every leaf inside
+    it got a BARE name. Four different components' `height` values collapsed
+    into one concept called `height` and were then reported as a conflict —
+    two distinct tokens merged, a false duplicate invented, and every count
+    downstream wrong. `Object.freeze` is the common idiom in a token module.
+    """
+
+    WRAPPERS = ("Object.freeze(", "Object.seal(", "defineTokens(", "")
+
+    def decls(self, wrapper):
+        open_ = wrapper + "{"
+        close = "})," if wrapper else "},"
+        last = "})" if wrapper else "}"
+        text = (
+            "export const geometry = %s\n"
+            "  card: %s\n"
+            "    size: %s\n"
+            "      height: '63.5px',\n"
+            "    %s\n"
+            "  %s\n"
+            "  chip: %s\n"
+            "    size: %s\n"
+            "      height: '5px',\n"
+            "    %s\n"
+            "  %s\n"
+            "%s\n"
+        ) % (open_, open_, open_, close, close, open_, open_, close, close, last)
+        return dict((name, value) for name, value, _, _ in
+                    discover_tokens.declarations(text, "tokens.js"))
+
+    def test_every_wrapper_keeps_the_full_path(self):
+        for wrapper in self.WRAPPERS:
+            with self.subTest(wrapper=wrapper or "plain"):
+                found = self.decls(wrapper)
+                self.assertIn("geometry.card.size.height", found)
+                self.assertIn("geometry.chip.size.height", found)
+
+    def test_a_css_custom_property_key_stays_global(self):
+        """`'--button-border'` in a JS object IS the CSS variable of that name.
+
+        The fix above would otherwise prefix it with its JS container and
+        break the link to the same variable declared in a stylesheet — which
+        is the whole reason a profile module writes keys in that spelling.
+        """
+        text = (
+            "export const profile = Object.freeze({\n"
+            "  '--button-border': '#e9e9ea',\n"
+            "  size: Object.freeze({\n"
+            "    '--card-gap': '8px',\n"
+            "    height: '4px',\n"
+            "  }),\n"
+            "})\n")
+        found = dict((name, value) for name, value, _, _ in
+                     discover_tokens.declarations(text, "tokens.js"))
+        self.assertIn("--button-border", found)
+        self.assertIn("--card-gap", found)
+        self.assertIn("profile.size.height", found)
+
+    def test_two_components_no_longer_collapse_into_one_concept(self):
+        found = self.decls("Object.freeze(")
+        self.assertNotIn("height", found)
+        self.assertEqual(len(found), 2)
+
+    def test_the_two_values_stay_attached_to_their_own_component(self):
+        found = self.decls("Object.freeze(")
+        self.assertEqual(found["geometry.card.size.height"], "63.5px")
+        self.assertEqual(found["geometry.chip.size.height"], "5px")

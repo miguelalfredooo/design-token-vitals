@@ -114,9 +114,14 @@ def stamp_pass(report_json_path, doc, report_html_path, report_html_text):
         fh.write("\n")
 
     if report_html_path and report_html_text is not None:
+        # The count is derived for the same reason the summary line's was: a
+        # literal here said 18 while nineteen rules ran, and the number a
+        # reader sees on a finished report is the last place that should
+        # drift.
         ok_note = (
             '<div class="validation-ok">&#10003; Validated &mdash; '
-            'all 18 rules passed %s</div>' % html_tools.escape(checked_at)
+            'all %d rules passed %s</div>'
+            % (rule_count(), html_tools.escape(checked_at))
         )
         stamped = VALIDATION_BANNER_SLOT.sub(
             lambda m: m.group(1) + ok_note + m.group(2), report_html_text, count=1)

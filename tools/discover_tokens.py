@@ -51,8 +51,16 @@ THIRD_PARTY_BRAND_NAMES = {
 JS_SOURCE_EXTENSIONS = {".js", ".jsx", ".ts", ".tsx", ".gjs", ".gts", ".mjs", ".cjs"}
 EMBEDDED_STYLE_EXTENSIONS = {".vue", ".svelte", ".astro"}
 JSON_EXTENSIONS = {".json", ".jsonc"}
+# `Object.freeze({` opens an object exactly as `{` does, and a token module
+# is the most likely place in a codebase to find one. Requiring a bare brace
+# meant a frozen object never entered the nesting stack, so every leaf inside
+# it got a BARE name: four components' `height` values collapsed into one
+# concept called `height`, which then read as a duplicate definition. Two
+# distinct tokens merged and a false conflict was invented, in the same line
+# of code.
 JS_OBJECT_START = re.compile(
-    r"^\s*(?:(?:export\s+)?(?:const|let|var)\s+)?['\"]?([a-zA-Z0-9_-]+)['\"]?\s*(?::|=)\s*\{\s*,?\s*$"
+    r"^\s*(?:(?:export\s+)?(?:const|let|var)\s+)?['\"]?([a-zA-Z0-9_-]+)['\"]?"
+    r"\s*(?::|=)\s*(?:[A-Za-z_$][\w$.]*\s*\(\s*)?\{\s*,?\s*$"
 )
 JS_LITERAL = re.compile(
     r"^\s*['\"]?([a-zA-Z0-9_-]+)['\"]?\s*:\s*("
@@ -870,7 +878,14 @@ def js_declarations(text, source_name=False):
         if literal:
             while stack and indent <= stack[-1][0]:
                 stack.pop()
-            name = ".".join([item[1] for item in stack] + [literal.group(1)])
+            leaf = literal.group(1)
+            # A key spelled `--foo` names a CSS custom property, and a custom
+            # property is global. Prefixing it with the JS object that
+            # happens to carry it would break the link to the same variable
+            # declared in a stylesheet — which is the only reason a profile
+            # module writes keys in that spelling at all.
+            name = (leaf if leaf.startswith("--") else
+                    ".".join([item[1] for item in stack] + [leaf]))
             found.append((name, literal.group(2).strip("'\"`"),
                           "js-theme-object", offset + literal.start()))
         offset += len(line)

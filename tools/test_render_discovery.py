@@ -14,6 +14,20 @@ import analyze_component_usage  # noqa: E402
 import render_discovery  # noqa: E402
 
 
+def template_text():
+    """Read the report template, closing the handle.
+
+    A bare `open(...).read()` leaks the descriptor until the garbage
+    collector runs, and the suite was emitting eleven ResourceWarnings for
+    this one file. Noise in a test run is where a real warning goes to hide.
+    """
+    path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "assets", "report-template.html")
+    with open(path, encoding="utf-8") as handle:
+        return handle.read()
+
+
 class InventoryParser(HTMLParser):
     def __init__(self):
         super().__init__()
@@ -935,10 +949,7 @@ class TestConfidenceAndLineageRegions(unittest.TestCase):
     }
 
     def render(self, unlock=None, lineage=None, freshness=None):
-        document = open(
-            os.path.join(os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__))), "assets/report-template.html"),
-            encoding="utf-8").read()
+        document = template_text()
         return render_discovery.render_confidence_slots(
             document,
             self.UNLOCK if unlock is None else unlock,
@@ -1009,20 +1020,14 @@ class TestEverySectionHasAViewContract(unittest.TestCase):
     """
 
     def test_the_registry_covers_every_section_in_the_template(self):
-        template = open(
-            os.path.join(os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__))), "assets/report-template.html"),
-            encoding="utf-8").read()
+        template = template_text()
         ids = re.findall(r'<section\b[^>]*\bid="([^"]+)"', template)
         self.assertTrue(ids)
         missing = [i for i in ids if i not in render_discovery.REPORT_VIEW_SECTIONS]
         self.assertEqual(missing, [], "sections with no view contract")
 
     def test_every_registered_section_declares_those_views_in_the_markup(self):
-        template = open(
-            os.path.join(os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__))), "assets/report-template.html"),
-            encoding="utf-8").read()
+        template = template_text()
         for match in re.finditer(r'<section\b([^>]*)\bid="([^"]+)"([^>]*)>', template):
             attrs = match.group(1) + match.group(3)
             section_id = match.group(2)

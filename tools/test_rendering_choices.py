@@ -6,8 +6,10 @@ than an error. Both rules were already deterministic and written down, and
 both are functions of a count the run already has — so nobody should be
 typing them.
 """
+import json
 import os
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -67,3 +69,65 @@ class TestApply(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheCliProducesTheWholeBlock(unittest.TestCase):
+    """A CLI that only takes a token count leaves the real work by hand.
+
+    The per-section forms are functions of each section's OWN count, and the
+    run has already measured every one of them — but the command accepted a
+    bare integer, so an operator had to read the thresholds out of the
+    reference and apply them themselves. That is the authoring decision this
+    module exists to remove.
+    """
+
+    def artifacts(self):
+        directory = tempfile.mkdtemp()
+        tokens = {
+            "concept_count": 1104,
+            "family_states": {
+                "color": {"state": "counted", "count": 491},
+                "typography": {"state": "counted", "count": 162},
+                "spacing": {"state": "counted", "count": 62},
+                "motion": {"state": "not-visible"},
+            },
+        }
+        leakage = {"exact_value_candidates": [], "uncovered_candidates": [{"x": 1}]}
+        discovery = {"orphans": {"owned": ["a.css"], "outside_owned_scope": []}}
+        for name, doc in (("tokens", tokens), ("leakage", leakage),
+                          ("discovery", discovery)):
+            with open(os.path.join(directory, name + ".json"), "w",
+                      encoding="utf-8") as handle:
+                json.dump(doc, handle)
+        return directory
+
+    def run_cli(self, directory):
+        out = os.path.join(directory, "rendering.json")
+        code = rendering_choices.main([
+            "--tokens", os.path.join(directory, "tokens.json"),
+            "--leakage", os.path.join(directory, "leakage.json"),
+            "--discovery", os.path.join(directory, "discovery.json"),
+            "--json", out])
+        self.assertEqual(code, 0)
+        with open(out, encoding="utf-8") as handle:
+            return json.load(handle)
+
+    def test_it_emits_the_list_size_from_the_real_token_count(self):
+        self.assertEqual(self.run_cli(self.artifacts())["tier"], "summary")
+
+    def test_it_emits_a_form_for_every_section(self):
+        forms = self.run_cli(self.artifacts())["forms"]
+        self.assertEqual(set(forms), set(rendering_choices.SECTIONS))
+
+    def test_a_section_form_reflects_that_sections_own_measured_count(self):
+        forms = self.run_cli(self.artifacts())["forms"]
+        # 491 colors sits between the swatch-grid threshold (~300) and the
+        # ramp threshold (~1000) in references/report.md's own table.
+        self.assertEqual(forms["color"], "swatches")
+        self.assertEqual(forms["leaks"], "rows")
+
+    def test_a_family_the_run_could_not_see_counts_as_nothing_not_as_zero(self):
+        """`not-visible` carries no number, so it contributes none."""
+        counts = rendering_choices.section_counts(
+            {"family_states": {"motion": {"state": "not-visible"}}}, {}, {})
+        self.assertEqual(counts["spacing"], 0)

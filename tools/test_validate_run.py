@@ -1754,3 +1754,37 @@ class TestRule19ConfidenceSplit(unittest.TestCase):
         doc = self.doc()
         doc["confidence"]["decisions_owed"] = ["coverage"]
         self.assertIsNotNone(validate_run.rule_19_confidence_split(doc, None))
+
+
+class TestNoRuleCountIsWrittenDownTwice(unittest.TestCase):
+    """The number on a finished report is the last place that may drift.
+
+    Two literals held it and both were already wrong: the summary line said
+    17 and the stamped banner said 18, while nineteen rules ran. A count of a
+    list cannot be checked by reading it.
+    """
+
+    def source(self):
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "validate_run.py")
+        with open(path, encoding="utf-8") as handle:
+            return handle.read()
+
+    def test_no_literal_rule_count_survives_in_the_source(self):
+        import re as _re
+        found = _re.findall(r"all (\d+) rules|of (\d+) rules", self.source())
+        self.assertEqual(found, [], "a rule count is written down as a literal")
+
+    def test_the_stamped_banner_carries_the_derived_count(self):
+        directory = tempfile.mkdtemp()
+        doc, html = TestStampOnlyMarksAPassingRun().gated_pair()
+        json_path = os.path.join(directory, "report.json")
+        html_path = os.path.join(directory, "report.html")
+        with open(json_path, "w", encoding="utf-8") as fh:
+            json.dump(doc, fh)
+        with open(html_path, "w", encoding="utf-8") as fh:
+            fh.write(html)
+        validate_run.main([json_path, "--html", html_path, "--stamp"])
+        with open(html_path, encoding="utf-8") as fh:
+            stamped = fh.read()
+        self.assertIn("all %d rules passed" % validate_run.rule_count(), stamped)
