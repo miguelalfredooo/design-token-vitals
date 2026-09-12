@@ -67,7 +67,7 @@ class TestDiscovery(unittest.TestCase):
             "plugins/acme/plugin.rb": 'register_asset "stylesheets/missing.scss"\n',
         })
         result = discover_environment.discover(root, ["plugins/acme"])
-        self.assertEqual(result["capabilities"]["production_roots"], "blocked")
+        self.assertEqual(result["capabilities"]["production_roots"], "not-visible")
         self.assertEqual(
             result["missing_registered_roots"][0]["path"],
             "plugins/acme/assets/stylesheets/missing.scss",
@@ -127,7 +127,7 @@ class TestDiscovery(unittest.TestCase):
         self.assertEqual(result["environment"], ["storybook"])
         self.assertEqual(result["roots"], [])
         self.assertTrue(result["surface_roots"])
-        self.assertEqual(result["capabilities"]["production_roots"], "blocked")
+        self.assertEqual(result["capabilities"]["production_roots"], "not-visible")
 
     def test_monorepo_with_multiple_apps_requires_selection(self):
         root = make_repo({
@@ -145,10 +145,10 @@ class TestDiscovery(unittest.TestCase):
         blocked = discover_environment.discover(root)
         self.assertEqual(
             blocked["profile_composition"]["application_selection"]["state"],
-            "blocked",
+            "not-visible",
         )
-        self.assertEqual(blocked["capabilities"]["production_roots"], "blocked")
-        self.assertEqual(blocked["capabilities"]["import_resolution"], "blocked")
+        self.assertEqual(blocked["capabilities"]["production_roots"], "not-visible")
+        self.assertEqual(blocked["capabilities"]["import_resolution"], "not-visible")
         self.assertEqual(blocked["import_graph"]["reachable"], {})
 
         selected = discover_environment.discover(root, app_root="apps/web")
@@ -210,7 +210,7 @@ class TestDiscovery(unittest.TestCase):
         result = discover_environment.discover(root)
         self.assertEqual(
             result["profile_composition"]["application_selection"]["state"],
-            "blocked",
+            "not-visible",
         )
 
     def test_static_next_stylesheet_is_not_its_own_reachability_proof(self):
@@ -496,8 +496,8 @@ class TestDiscovery(unittest.TestCase):
         }
         profiles = []
         for profile_id, state in (("optimistic", "verified"),
-                                  ("cautious", "blocked"),
-                                  ("unknown", "unmeasured")):
+                                  ("cautious", "not-visible"),
+                                  ("unknown", "not-visible")):
             profiles.append({
                 "id": profile_id, "kind": "framework",
                 "priority": 90 if state == "verified" else 80,
@@ -524,11 +524,13 @@ class TestDiscovery(unittest.TestCase):
         with open(profile_path, "w", encoding="utf-8") as handle:
             json.dump({"profiles": profiles}, handle)
         result = discover_environment.discover(root, profile_files=[profile_path])
-        self.assertEqual(result["capabilities"]["mode_resolution"], "blocked")
+        self.assertEqual(result["capabilities"]["mode_resolution"], "not-visible")
         self.assertEqual(len(result["profile_composition"]["conflicts"]), 1)
         self.assertEqual(
             result["profile_composition"]["conflicts"][0]["states"],
-            ["blocked", "unmeasured", "verified"],
+            # Two states, not three: "could not see it" stopped being two
+        # different words that nothing downstream told apart.
+        ["not-visible", "verified"],
         )
         self.assertEqual(
             result["profile_composition"]["conflicts"][0]["resolution"],
@@ -573,7 +575,7 @@ class TestDiscovery(unittest.TestCase):
         with open(profile_path, "w", encoding="utf-8") as handle:
             json.dump({"profiles": profiles}, handle)
         result = discover_environment.discover(root, profile_files=[profile_path])
-        self.assertEqual(result["capabilities"]["import_resolution"], "blocked")
+        self.assertEqual(result["capabilities"]["import_resolution"], "not-visible")
         conflict = next(
             item for item in result["profile_composition"]["conflicts"]
             if item["capability"] == "import_resolution"
@@ -649,7 +651,7 @@ class TestDiscovery(unittest.TestCase):
         root = make_repo({"styles/main.css": ":root { --x: 1px; }"})
         result = discover_environment.discover(root)
         self.assertEqual(result["environment"], ["unknown"])
-        self.assertEqual(result["capabilities"]["production_roots"], "blocked")
+        self.assertEqual(result["capabilities"]["production_roots"], "not-visible")
 
 
 if __name__ == "__main__":

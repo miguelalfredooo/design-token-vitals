@@ -3,7 +3,7 @@
 Profiles change how evidence is found, never what an audit may claim.
 Every adapter records the same evidence ledger and uses the same confidence
 labels: `framework-registered`, `import-graph verified`, `static candidate`,
-`runtime verified`, or `blocked`.
+`runtime verified`, or `not-visible`.
 
 ## Executable profile contract
 

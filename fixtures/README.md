@@ -38,7 +38,7 @@ expectation to match a run, which turns the test into a mirror.
 | `components/card.tsx` | A second file for `8px`, so blast radius is 2 files rather than 1. Also `20px`, which only the derived scale covers |
 | `components/badge.tsx` | A near-miss: `#2563ec`, one hex step from `#2563eb` |
 | `components/chart.tsx` | Two uncovered values: no layer token and no opacity token exists |
-| `theme.config.json` | Declares `high-contrast`, which nothing resolves. `mode-completeness` must be `blocked` |
+| `theme.config.json` | Declares `high-contrast`, which nothing resolves. `mode-completeness` must be `not-visible` |
 | `pnpm-workspace.yaml`, `packages/ui/` | **A workspace package imported by name.** `globals.css` imports `ui/theme.css`; the file is `packages/ui/src/theme.css`. A graph that cannot read the workspace reports it as unresolved and the file as an orphan. It defines no tokens, so it does not change the count |
 | `app/components.css`, last rule | **A string value holding markup.** `content: "<b onmouseover=alert(1)>new</b>"`. A run that renders it unescaped has shipped an injection; `validate_run.py` rule 9 catches it |
 | `dist/bundle.css` | Generated output carrying a sourceMappingURL. Holds `#2563eb`; must never be reported |
@@ -57,9 +57,9 @@ pattern-matched its way to a plausible report:
    token source and nothing imports it.
 3. **`--unused-legacy-accent` is the only orphan token.** Every other token
    is referenced from `app/components.css`.
-4. **`mode-completeness` is `blocked`.** Light and dark resolve;
+4. **`mode-completeness` is `not-visible`.** Light and dark resolve;
    `high-contrast` is declared and resolves nowhere.
-5. **Fourteen families are `absent`, not `0`.** The fixture declares tokens
+5. **Fourteen families are `none-used`, not `0`.** The fixture declares tokens
    for five families only.
 6. **`dist/` and `node_modules/` contribute nothing.** Both hold literals
    that would otherwise read as leaks.
@@ -72,10 +72,10 @@ pattern-matched its way to a plausible report:
 
 Recorded so nobody mistakes a passing run here for full coverage:
 
-- **A resolving mode set.** Every mode path here ends in `blocked`. A second
+- **A resolving mode set.** Every mode path here ends in `not-visible`. A second
   fixture is needed where all declared modes resolve and
   `mode-completeness` grades normally.
 - **Scale.** Twenty-one tokens sit in the `full` rendering tier, so the
-  `collapsed` and `family-only` forms and the density rules go untested.
+  `short` and `summary` forms and the density rules go untested.
 - **A monorepo.** Scope derivation with more than one plausible app is
   unexercised.

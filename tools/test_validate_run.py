@@ -37,9 +37,9 @@ def good_doc():
             "resolved_modes": ["light", "dark"],
         },
         "declared": {"modes": ["light", "dark"]},
-        "vitals": {"mode-completeness": {"grade": "pass"}},
+        "vitals": {"mode-completeness": {"grade": "healthy"}},
         "inventory": {"families": {
-            f: {"state": "measured", "count": 3, "note": None} for f in FAMILIES
+            f: {"state": "counted", "count": 3, "note": None} for f in FAMILIES
         }},
         "rendering": {"truncated": []},
     }
@@ -110,24 +110,24 @@ class TestRule3ModeResolution(unittest.TestCase):
     def test_blocked_needs_no_resolved_output(self):
         d = good_doc()
         d["discovery"].pop("resolved_modes")
-        d["vitals"]["mode-completeness"]["grade"] = "blocked"
+        d["vitals"]["mode-completeness"]["grade"] = "not-visible"
         self.assertNotIn("3-mode-resolution", rules_failed(d))
 
 
 class TestRule4UnmeasuredAsZero(unittest.TestCase):
     def test_unmeasured_family_reported_as_zero_fails(self):
         d = good_doc()
-        d["inventory"]["families"]["motion"] = {"state": "unmeasured", "count": 0, "note": "no build"}
+        d["inventory"]["families"]["motion"] = {"state": "not-visible", "count": 0, "note": "no build"}
         self.assertIn("4-unmeasured-as-zero", rules_failed(d))
 
     def test_unmeasured_family_without_a_note_fails(self):
         d = good_doc()
-        d["inventory"]["families"]["motion"] = {"state": "unmeasured", "count": None}
+        d["inventory"]["families"]["motion"] = {"state": "not-visible", "count": None}
         self.assertIn("4-unmeasured-as-zero", rules_failed(d))
 
     def test_absent_family_may_report_zero(self):
         d = good_doc()
-        d["inventory"]["families"]["motion"] = {"state": "absent", "count": 0}
+        d["inventory"]["families"]["motion"] = {"state": "none-used", "count": 0}
         self.assertNotIn("4-unmeasured-as-zero", rules_failed(d))
 
     def test_unknown_state_fails(self):
@@ -138,7 +138,7 @@ class TestRule4UnmeasuredAsZero(unittest.TestCase):
     def test_leakage_cannot_be_graded_when_semantic_equivalence_is_unmeasured(self):
         d = good_doc()
         d["vitals"]["leakage"] = {
-            "grade": "attention",
+            "grade": "watch",
             "tiers": {"redundant": None, "exact-value candidate": 24},
         }
         self.assertIn("4-unmeasured-as-zero", rules_failed(d))
@@ -146,7 +146,7 @@ class TestRule4UnmeasuredAsZero(unittest.TestCase):
     def test_blocked_leakage_may_report_exact_value_candidates(self):
         d = good_doc()
         d["vitals"]["leakage"] = {
-            "grade": "blocked",
+            "grade": "not-visible",
             "tiers": {"redundant": None, "exact-value candidate": 24},
         }
         self.assertNotIn("4-unmeasured-as-zero", rules_failed(d))
@@ -268,7 +268,7 @@ class TestRule6HtmlJsonParity(unittest.TestCase):
                 "cumulative_share_of_ranked_references"):
             row[field] = roadmap_row[field]
         d["component_usage"] = {
-            "state": "measured", "shown": 1, "fallback_surfaces": 0,
+            "state": "counted", "shown": 1, "fallback_surfaces": 0,
             "roadmap": roadmap, "top_20": [row],
         }
         slots = (
@@ -578,7 +578,7 @@ class TestUniversalDiscoveryRules(unittest.TestCase):
             "detection": "verified", "production_roots": "verified",
             "import_resolution": "verified", "token_source_discovery": "verified",
             "ownership": "verified", "mode_resolution": "verified",
-            "runtime_verification": "unmeasured",
+            "runtime_verification": "not-visible",
         }
         d["discovery"]["import_graph"] = {
             "roots": [{"path": "app/globals.css", "root_type": "common",
@@ -622,7 +622,7 @@ class TestRule13ComponentUsage(unittest.TestCase):
         roadmap_row = {"id": component_id, "rank": 1, "references": 2}
         roadmap = validate_run.build_roadmap([roadmap_row])
         d["component_usage"] = {
-            "state": "measured",
+            "state": "counted",
             "shown": 1,
             "roadmap": roadmap,
             "top_20": [{
@@ -805,7 +805,7 @@ class TestRule13ComponentUsage(unittest.TestCase):
 
     def test_unmeasured_usage_requires_a_note(self):
         d = good_doc()
-        d["component_usage"] = {"state": "unmeasured", "top_20": []}
+        d["component_usage"] = {"state": "not-visible", "top_20": []}
         self.assertIn("13-component-usage", rules_failed(d))
 
 
@@ -1036,7 +1036,7 @@ class TestRule14ProfileEngine(unittest.TestCase):
 
     def test_ladder_state_must_match_capability(self):
         d = self.profile_doc()
-        d["discovery"]["capability_ladder"]["steps"][0]["state"] = "blocked"
+        d["discovery"]["capability_ladder"]["steps"][0]["state"] = "not-visible"
         self.assertEqual(
             validate_run.rule_14_profile_engine(d).rule,
             "14-profile-engine",
@@ -1139,7 +1139,7 @@ class TestRule15SourceArtifactParity(unittest.TestCase):
 
     def test_exact_component_and_leakage_artifacts_pass(self):
         d = good_doc()
-        d["component_usage"] = {"state": "unmeasured"}
+        d["component_usage"] = {"state": "not-visible"}
         d["leakage_analysis"] = {"consumer_files_scanned": 2}
         d["run"] = {"files_scanned": 2}
         self.assertIsNone(validate_run.rule_15_source_artifact_parity(d, {
@@ -1364,7 +1364,7 @@ class TestRule16IdentityIntegrity(unittest.TestCase):
     def test_blocked_brand_cannot_render_a_swatch(self):
         doc, html = self.identity_doc_and_html()
         brand = doc["inventory"]["identity"]["brand_colors"]
-        brand.update({"state": "blocked", "confidence": "unresolved", "colors": []})
+        brand.update({"state": "not-visible", "confidence": "unresolved", "colors": []})
         self.assertEqual(
             validate_run.rule_16_identity_integrity(doc, html).rule,
             "16-identity-integrity",
@@ -1373,7 +1373,7 @@ class TestRule16IdentityIntegrity(unittest.TestCase):
     def test_blocked_brand_cannot_render_markerless_generic_swatches(self):
         doc, html = self.identity_doc_and_html()
         brand = doc["inventory"]["identity"]["brand_colors"]
-        brand.update({"state": "blocked", "confidence": "unresolved", "colors": []})
+        brand.update({"state": "not-visible", "confidence": "unresolved", "colors": []})
         html = render_discovery.color_block([], brand)
         html = html.replace(
             "<h3>Brand identity colors</h3>",

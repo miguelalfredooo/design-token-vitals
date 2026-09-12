@@ -41,8 +41,8 @@ assumption:
   Tokens Studio exports
 
 Search for every family in `references/token-taxonomy.md` by its common
-names. A family found nowhere is `absent` when the project declares nothing
-for it, and `unmeasured` when something blocked the search.
+names. A family found nowhere is `none-used` when the project declares nothing
+for it, and `not-visible` when something blocked the search.
 
 ## What a leak looks like
 
@@ -56,9 +56,9 @@ Unknown, until you find the mechanism. Look for a second declaration block
 under a class, a `data-*` attribute, or a media query; a theme provider in
 JS; or a build step that emits one file per scheme.
 
-Where you find no mechanism, `mode-completeness` is `not_applicable` with a
+Where you find no mechanism, `mode-completeness` is `not-needed` with a
 note saying no mode mechanism was found. Where you find a mechanism but no
-resolved output for every declared scheme, it is `blocked` — see job six of
+resolved output for every declared scheme, it is `not-visible` — see job six of
 `references/discovery.md`.
 
 ## Idiomatic enforcement

@@ -49,7 +49,7 @@
   Rendering tiers are full (under 150 tokens), collapsed (150 to 600), and
   family-only (over 600); see references/report.md. Some elements carry a
   data-tier attribute listing the tiers they render in, for example
-  data-tier="full collapsed" or data-tier="family-only". The skill removes
+  data-tier="full collapsed" or data-tier="summary". The skill removes
   every element whose data-tier list excludes the chosen tier. A data-tier
   attribute can sit on a whole section, such as the family table below
   (data-tier="collapsed family-only"), or on a smaller element nested
@@ -195,7 +195,7 @@
     --na: #6A7067;
     --na-bg: #F2F5EF;
     /* TEXT SITTING ON THE PINK HATCH — its own token, because two rules do it
-       (.split .block and .cm .c[data-s="blocked"]) and a colour chosen twice
+       (.split .block and .cm .c[data-s="not-visible"]) and a colour chosen twice
        diverges the first time either moves.
 
        It is NOT --ink-soft, which is what both used and what neither could
@@ -399,11 +399,11 @@
     border-radius: 4px; overflow: hidden;
   }
   .vital::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; }
-  .vital[data-grade="pass"]::before { background: var(--pass); }
-  .vital[data-grade="fail"]::before { background: var(--fail); }
-  .vital[data-grade="attention"]::before { background: var(--warn); }
-  .vital[data-grade="not_applicable"]::before   { background: var(--line-strong); }
-  .vital[data-grade="blocked"]::before {
+  .vital[data-grade="healthy"]::before { background: var(--pass); }
+  .vital[data-grade="needs-work"]::before { background: var(--fail); }
+  .vital[data-grade="watch"]::before { background: var(--warn); }
+  .vital[data-grade="not-needed"]::before   { background: var(--line-strong); }
+  .vital[data-grade="not-visible"]::before {
     background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 9px);
   }
   .vital h3 { margin: 0 0 7px; font-size: 14.5px; font-weight: 550; letter-spacing: -0.005em; }
@@ -417,16 +417,16 @@
     letter-spacing: 0.07em; text-transform: uppercase;
   }
   .grade::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
-  .grade[data-g="pass"] { color: var(--pass); background: var(--pass-bg); }
-  .grade[data-g="pass"]::before { background: var(--pass); }
-  .grade[data-g="fail"] { color: var(--fail); background: var(--fail-bg); }
-  .grade[data-g="fail"]::before { background: var(--fail); }
-  .grade[data-g="attention"] { color: var(--warn); background: var(--warn-bg); }
-  .grade[data-g="attention"]::before { background: var(--warn); }
-  .grade[data-g="not_applicable"] { color: var(--na); background: var(--na-bg); }
-  .grade[data-g="not_applicable"]::before { background: transparent; border: 1px dashed var(--na); }
-  .grade[data-g="blocked"] { color: var(--block); background: var(--block-bg); }
-  .grade[data-g="blocked"]::before {
+  .grade[data-g="healthy"] { color: var(--pass); background: var(--pass-bg); }
+  .grade[data-g="healthy"]::before { background: var(--pass); }
+  .grade[data-g="needs-work"] { color: var(--fail); background: var(--fail-bg); }
+  .grade[data-g="needs-work"]::before { background: var(--fail); }
+  .grade[data-g="watch"] { color: var(--warn); background: var(--warn-bg); }
+  .grade[data-g="watch"]::before { background: var(--warn); }
+  .grade[data-g="not-needed"] { color: var(--na); background: var(--na-bg); }
+  .grade[data-g="not-needed"]::before { background: transparent; border: 1px dashed var(--na); }
+  .grade[data-g="not-visible"] { color: var(--block); background: var(--block-bg); }
+  .grade[data-g="not-visible"]::before {
     background: repeating-linear-gradient(135deg, var(--block-line) 0 2px, transparent 2px 6px);
   }
 
@@ -478,11 +478,11 @@
     width: 9px; height: 16px; border-radius: 1px; flex: none;
     background: var(--line-strong);
   }
-  .pip[data-s="pass"]   { background: var(--pass); }
-  .pip[data-s="attention"] { background: var(--warn); }
-  .pip[data-s="fail"]  { background: var(--fail); }
-  .pip[data-s="not_applicable"]   { background: transparent; border: 1px dashed var(--line-strong); }
-  .pip[data-s="blocked"] {
+  .pip[data-s="healthy"]   { background: var(--pass); }
+  .pip[data-s="watch"] { background: var(--warn); }
+  .pip[data-s="needs-work"]  { background: var(--fail); }
+  .pip[data-s="not-needed"]   { background: transparent; border: 1px dashed var(--line-strong); }
+  .pip[data-s="not-visible"] {
     background: repeating-linear-gradient(135deg, var(--block-line) 0 2px, transparent 2px 6px);
   }
 
@@ -1160,21 +1160,21 @@
   .dashboard-vital-name { display: block; overflow: hidden; font-size: 12.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
   .dashboard-vital-state { display: flex; align-items: center; gap: 6px; margin-top: 5px; color: var(--ink-mute); font-size: 10.5px; }
   .dashboard-vital-state::before { content: ""; width: 7px; height: 7px; flex: none; border-radius: 50%; }
-  .dashboard-vital[data-grade="pass"] .dashboard-vital-state::before { background: var(--pass); }
-  .dashboard-vital[data-grade="attention"] .dashboard-vital-state::before { background: var(--warn); }
-  .dashboard-vital[data-grade="fail"] .dashboard-vital-state::before { background: var(--fail); }
-  .dashboard-vital[data-grade="blocked"] .dashboard-vital-state::before { background: var(--block-line); }
-  .dashboard-vital[data-grade="not_applicable"] .dashboard-vital-state::before { border: 1px dashed var(--na); }
+  .dashboard-vital[data-grade="healthy"] .dashboard-vital-state::before { background: var(--pass); }
+  .dashboard-vital[data-grade="watch"] .dashboard-vital-state::before { background: var(--warn); }
+  .dashboard-vital[data-grade="needs-work"] .dashboard-vital-state::before { background: var(--fail); }
+  .dashboard-vital[data-grade="not-visible"] .dashboard-vital-state::before { background: var(--block-line); }
+  .dashboard-vital[data-grade="not-needed"] .dashboard-vital-state::before { border: 1px dashed var(--na); }
   .dashboard-official { color: var(--ink-mute); font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; }
 
   .seg { display: flex; height: 12px; border-radius: 3px; overflow: hidden; background: var(--surface-sunk); }
   .seg i { display: block; height: 100%; }
-  .seg i[data-g="pass"], .seg i[data-k="confirmed"], .seg i[data-t="auto"]  { background: var(--pass); }
-  .seg i[data-g="attention"], .seg i[data-t="near-miss"] { background: var(--warn); }
+  .seg i[data-g="healthy"], .seg i[data-k="confirmed"], .seg i[data-t="auto"]  { background: var(--pass); }
+  .seg i[data-g="watch"], .seg i[data-t="near-miss"] { background: var(--warn); }
   .seg i[data-t="candidate"] { background: var(--warn); }
-  .seg i[data-g="fail"], .seg i[data-t="redundant"] { background: var(--fail); }
-  .seg i[data-g="blocked"], .seg i[data-k="blocked"] { background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 9px), var(--surface-sunk); }
-  .seg i[data-g="not_applicable"], .seg i[data-k="unmeasured"], .seg i[data-t="uncovered"] { background: var(--line-strong); }
+  .seg i[data-g="needs-work"], .seg i[data-t="redundant"] { background: var(--fail); }
+  .seg i[data-g="not-visible"], .seg i[data-k="not-visible"] { background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 9px), var(--surface-sunk); }
+  .seg i[data-g="not-needed"], .seg i[data-k="not-visible"], .seg i[data-t="uncovered"] { background: var(--line-strong); }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
   .legend b { font-weight: 600; color: var(--ink-soft); }
 
@@ -1323,11 +1323,11 @@
     display: block; padding: 8px 0;
     font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em;
   }
-  .cm .c[data-s="measured"]       { background: var(--pass-bg); color: var(--pass); }
-  .cm .c[data-s="unmeasured"]     { background: var(--surface-sunk); color: var(--ink-mute); }
-  .cm .c[data-s="blocked"]        { color: var(--hatch-ink);
+  .cm .c[data-s="counted"]       { background: var(--pass-bg); color: var(--pass); }
+  .cm .c[data-s="not-visible"]     { background: var(--surface-sunk); color: var(--ink-mute); }
+  .cm .c[data-s="not-visible"]        { color: var(--hatch-ink);
     background: repeating-linear-gradient(135deg, var(--block-line) 0 3px, transparent 3px 9px); }
-  .cm .c[data-s="not_applicable"] { color: var(--na); }
+  .cm .c[data-s="not-needed"] { color: var(--na); }
   .cm th.fam { text-align: center; font-size: 9.5px; }
   .cm td:first-child { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
 
@@ -1342,14 +1342,14 @@
     font-family: var(--mono); font-size: 11px; letter-spacing: 0.02em;
   }
   .state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; flex: none; }
-  .state[data-m="measured"]   { background: var(--pass-bg); color: var(--pass); }
-  .state[data-m="measured"]::before { background: var(--pass); }
-  .state[data-m="unmeasured"] { background: var(--surface-sunk); color: var(--ink-mute); }
-  .state[data-m="unmeasured"]::before {
+  .state[data-m="counted"]   { background: var(--pass-bg); color: var(--pass); }
+  .state[data-m="counted"]::before { background: var(--pass); }
+  .state[data-m="not-visible"] { background: var(--surface-sunk); color: var(--ink-mute); }
+  .state[data-m="not-visible"]::before {
     background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 4px);
   }
-  .state[data-m="absent"]     { background: transparent; color: var(--na); border: 1px dashed var(--line-strong); }
-  .state[data-m="absent"]::before { background: transparent; border: 1px solid var(--na); }
+  .state[data-m="none-used"]     { background: transparent; color: var(--na); border: 1px dashed var(--line-strong); }
+  .state[data-m="none-used"]::before { background: transparent; border: 1px solid var(--na); }
 
   .fam-cov td:first-child { font-family: var(--mono); font-size: 12.5px; }
   .fam-cov .why { color: var(--ink-mute); font-size: 12px; }
@@ -1528,7 +1528,7 @@
         <div class="dashboard-roadmap-head"><div><h4 id="dashboard-component-roadmap-title">Where component token work has the widest footprint</h4><p>Use confirmed token references to choose what to examine first, then check modes, leakage, and product usage before scheduling a migration.</p></div><a class="dashboard-link" href="#component-usage">Explore all 20 components</a></div>
         <div class="tbl-scroll" role="region" tabindex="0" aria-labelledby="dashboard-component-roadmap-title"><table class="dashboard-roadmap-table" aria-labelledby="dashboard-component-roadmap-title"><thead><tr><th class="num">#</th><th>Component or surface</th><th class="num">Token refs</th><th class="num">Tokens</th><th class="num">Paths</th><th>Share</th><th>Suggested order</th></tr></thead><tbody><tr><td class="num">1</td><td><a class="component-roadmap-link" href="#component-usage"><code>app / button</code></a></td><td class="num">64</td><td class="num">18</td><td class="num">2</td><td><span class="component-share-label">22%</span></td><td><span class="component-roadmap-state">Assess first</span></td></tr></tbody></table></div>
       </div>
-      <div class="dashboard-vitals"><div class="dashboard-section-head"><h4>Your eight system checks</h4><a href="#vitals">See the full evidence</a></div><div class="dashboard-vital-grid"><a class="dashboard-vital" data-grade="pass" href="#vitals"><span class="dashboard-vital-name">Tier integrity</span><span class="dashboard-vital-state">Well supported <span class="dashboard-official">pass</span></span></a><a class="dashboard-vital" data-grade="attention" href="#vitals"><span class="dashboard-vital-name">Leakage</span><span class="dashboard-vital-state">Worth a look <span class="dashboard-official">attention</span></span></a><a class="dashboard-vital" data-grade="attention" href="#vitals"><span class="dashboard-vital-name">Coverage</span><span class="dashboard-vital-state">Worth a look <span class="dashboard-official">attention</span></span></a><a class="dashboard-vital" data-grade="blocked" href="#vitals"><span class="dashboard-vital-name">Mode completeness</span><span class="dashboard-vital-state">Needs evidence <span class="dashboard-official">blocked</span></span></a><a class="dashboard-vital" data-grade="attention" href="#vitals"><span class="dashboard-vital-name">Naming coherence</span><span class="dashboard-vital-state">Worth a look <span class="dashboard-official">attention</span></span></a><a class="dashboard-vital" data-grade="pass" href="#vitals"><span class="dashboard-vital-name">Single source</span><span class="dashboard-vital-state">Well supported <span class="dashboard-official">pass</span></span></a><a class="dashboard-vital" data-grade="blocked" href="#vitals"><span class="dashboard-vital-name">Orphans</span><span class="dashboard-vital-state">Needs evidence <span class="dashboard-official">blocked</span></span></a><a class="dashboard-vital" data-grade="blocked" href="#vitals"><span class="dashboard-vital-name">Enforcement</span><span class="dashboard-vital-state">Needs evidence <span class="dashboard-official">blocked</span></span></a></div></div>
+      <div class="dashboard-vitals"><div class="dashboard-section-head"><h4>Your eight system checks</h4><a href="#vitals">See the full evidence</a></div><div class="dashboard-vital-grid"><a class="dashboard-vital" data-grade="healthy" href="#vitals"><span class="dashboard-vital-name">Tier integrity</span><span class="dashboard-vital-state">Well supported <span class="dashboard-official">pass</span></span></a><a class="dashboard-vital" data-grade="watch" href="#vitals"><span class="dashboard-vital-name">Leakage</span><span class="dashboard-vital-state">Worth a look <span class="dashboard-official">attention</span></span></a><a class="dashboard-vital" data-grade="watch" href="#vitals"><span class="dashboard-vital-name">Coverage</span><span class="dashboard-vital-state">Worth a look <span class="dashboard-official">attention</span></span></a><a class="dashboard-vital" data-grade="not-visible" href="#vitals"><span class="dashboard-vital-name">Mode completeness</span><span class="dashboard-vital-state">Needs evidence <span class="dashboard-official">blocked</span></span></a><a class="dashboard-vital" data-grade="watch" href="#vitals"><span class="dashboard-vital-name">Naming coherence</span><span class="dashboard-vital-state">Worth a look <span class="dashboard-official">attention</span></span></a><a class="dashboard-vital" data-grade="healthy" href="#vitals"><span class="dashboard-vital-name">Single source</span><span class="dashboard-vital-state">Well supported <span class="dashboard-official">pass</span></span></a><a class="dashboard-vital" data-grade="not-visible" href="#vitals"><span class="dashboard-vital-name">Orphans</span><span class="dashboard-vital-state">Needs evidence <span class="dashboard-official">blocked</span></span></a><a class="dashboard-vital" data-grade="not-visible" href="#vitals"><span class="dashboard-vital-name">Enforcement</span><span class="dashboard-vital-state">Needs evidence <span class="dashboard-official">blocked</span></span></a></div></div>
     </div>
     <!-- /SLOT:at-a-glance -->
   </section>
@@ -1646,50 +1646,50 @@
     -->
     <!-- SLOT:vitals-grid -->
     <div class="vitals">
-      <article class="vital" data-grade="pass">
-        <span class="grade" data-g="pass">Pass</span>
+      <article class="vital" data-grade="healthy">
+        <span class="grade" data-g="healthy">Pass</span>
         <h3>Tier integrity</h3>
         <p>All three tiers are intact. Every one of your 148 component tokens resolves through a semantic alias, so nothing reaches straight for a raw palette value.</p>
       </article>
 
-      <article class="vital" data-grade="fail">
-        <span class="grade" data-g="fail">Fail</span>
+      <article class="vital" data-grade="needs-work">
+        <span class="grade" data-g="needs-work">Fail</span>
         <h3>Leakage</h3>
         <p>1,645 hardcoded values where a token already existed. The encouraging part is how concentrated it is: the top 12 account for 61&nbsp;% of every occurrence.</p>
       </article>
 
-      <article class="vital" data-grade="pass">
-        <span class="grade" data-g="pass">Pass</span>
+      <article class="vital" data-grade="healthy">
+        <span class="grade" data-g="healthy">Pass</span>
         <h3>Coverage</h3>
         <p>All 11 categories have tokens, including motion, elevation and z-index. The four categories teams most often skip are all covered here.</p>
       </article>
 
-      <article class="vital" data-grade="fail">
-        <span class="grade" data-g="fail">Fail</span>
+      <article class="vital" data-grade="needs-work">
+        <span class="grade" data-g="needs-work">Fail</span>
         <h3>Mode completeness</h3>
         <p>You declare a high-contrast mode but only 11&nbsp;% of it is filled in. 744 tokens fall back to their light value in a mode that promises something different.</p>
       </article>
 
-      <article class="vital" data-grade="attention">
-        <span class="grade" data-g="attention">Attention</span>
+      <article class="vital" data-grade="watch">
+        <span class="grade" data-g="watch">Attention</span>
         <h3>Naming coherence</h3>
         <p>One naming pattern holds across 638 tokens. The 202 tokens in <code>legacy.*</code> came before it and were never migrated.</p>
       </article>
 
-      <article class="vital" data-grade="fail">
-        <span class="grade" data-g="fail">Fail</span>
+      <article class="vital" data-grade="needs-work">
+        <span class="grade" data-g="needs-work">Fail</span>
         <h3>Single source of truth</h3>
         <p>Style Dictionary is your source of truth, but 9 tokens are declared again in <code>tailwind.config.ts</code> — and two of those nine now disagree with it.</p>
       </article>
 
-      <article class="vital" data-grade="fail">
-        <span class="grade" data-g="fail">Fail</span>
+      <article class="vital" data-grade="needs-work">
+        <span class="grade" data-g="needs-work">Fail</span>
         <h3>Orphans</h3>
         <p>274 tokens are not referenced anywhere on the web surface: 202 legacy and 72 current. That is a third of the system doing nothing.</p>
       </article>
 
-      <article class="vital" data-grade="pass">
-        <span class="grade" data-g="pass">Pass</span>
+      <article class="vital" data-grade="healthy">
+        <span class="grade" data-g="healthy">Pass</span>
         <h3>Enforcement</h3>
         <p>Three rules run in CI: no raw hex, no off-scale spacing, and a check that every new token is defined in all the modes you declare.</p>
       </article>
@@ -1777,9 +1777,9 @@
             <td>color.primitive.*</td>
             <td class="num">120</td><td class="num">4</td><td class="num">0</td><td class="num">—</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="attention"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="watch"></span>
             </div></td>
             <td><span class="path">tokens/color.primitive.json</span></td>
           </tr>
@@ -1787,9 +1787,9 @@
             <td>color.semantic.*</td>
             <td class="num">86</td><td class="num">2</td><td class="num">78</td><td class="num">412</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="fail"></span>
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="fail"></span>
-              <span class="pip" data-s="pass"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="needs-work"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="needs-work"></span>
+              <span class="pip" data-s="healthy"></span>
             </div></td>
             <td><span class="path">components/Banner.tsx:41</span></td>
           </tr>
@@ -1797,9 +1797,9 @@
             <td>color.component.*</td>
             <td class="num">148</td><td class="num">31</td><td class="num">134</td><td class="num">96</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="attention"></span>
-              <span class="pip" data-s="fail"></span><span class="pip" data-s="fail"></span>
-              <span class="pip" data-s="pass"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="watch"></span>
+              <span class="pip" data-s="needs-work"></span><span class="pip" data-s="needs-work"></span>
+              <span class="pip" data-s="healthy"></span>
             </div></td>
             <td><span class="path">components/Button.tsx:18</span></td>
           </tr>
@@ -1807,9 +1807,9 @@
             <td>typography.*</td>
             <td class="num">74</td><td class="num">6</td><td class="num">62</td><td class="num">188</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="attention"></span>
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="fail"></span>
-              <span class="pip" data-s="pass"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="watch"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="needs-work"></span>
+              <span class="pip" data-s="healthy"></span>
             </div></td>
             <td><span class="path">components/Heading.tsx:9</span></td>
           </tr>
@@ -1817,9 +1817,9 @@
             <td>size.*</td>
             <td class="num">52</td><td class="num">9</td><td class="num">0</td><td class="num">241</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="attention"></span>
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="fail"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="watch"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="needs-work"></span>
             </div></td>
             <td><span class="path">components/Avatar.tsx:22</span></td>
           </tr>
@@ -1827,9 +1827,9 @@
             <td>motion.*</td>
             <td class="num">28</td><td class="num">1</td><td class="num">0</td><td class="num">173</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="fail"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="needs-work"></span>
             </div></td>
             <td><span class="path">components/Drawer.tsx:57</span></td>
           </tr>
@@ -1837,9 +1837,9 @@
             <td>elevation.*</td>
             <td class="num">22</td><td class="num">3</td><td class="num">18</td><td class="num">147</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="attention"></span>
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="fail"></span>
-              <span class="pip" data-s="fail"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="watch"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="needs-work"></span>
+              <span class="pip" data-s="needs-work"></span>
             </div></td>
             <td><span class="path">components/Popover.tsx:33</span></td>
           </tr>
@@ -1847,9 +1847,9 @@
             <td>legacy.*</td>
             <td class="num">202</td><td class="num">202</td><td class="num">—</td><td class="num">0</td>
             <td><div class="health">
-              <span class="pip" data-s="not_applicable"></span><span class="pip" data-s="fail"></span>
-              <span class="pip" data-s="not_applicable"></span><span class="pip" data-s="not_applicable"></span>
-              <span class="pip" data-s="blocked"></span>
+              <span class="pip" data-s="not-needed"></span><span class="pip" data-s="needs-work"></span>
+              <span class="pip" data-s="not-needed"></span><span class="pip" data-s="not-needed"></span>
+              <span class="pip" data-s="not-visible"></span>
             </div></td>
             <td><span class="path">tokens/legacy.json:1</span></td>
           </tr>
@@ -1857,9 +1857,9 @@
             <td>radius.*</td>
             <td class="num">22</td><td class="num">2</td><td class="num">0</td><td class="num">9</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="not_applicable"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="attention"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="not-needed"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="watch"></span>
             </div></td>
             <td><span class="path">tokens/radius.json</span></td>
           </tr>
@@ -1867,9 +1867,9 @@
             <td>border.*</td>
             <td class="num">14</td><td class="num">1</td><td class="num">0</td><td class="num">6</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="not_applicable"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="attention"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="not-needed"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="watch"></span>
             </div></td>
             <td><span class="path">components/Card.tsx:9</span></td>
           </tr>
@@ -1877,9 +1877,9 @@
             <td>opacity.*</td>
             <td class="num">10</td><td class="num">1</td><td class="num">0</td><td class="num">3</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="not_applicable"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="attention"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="not-needed"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="watch"></span>
             </div></td>
             <td><span class="path">components/Overlay.tsx:15</span></td>
           </tr>
@@ -1887,9 +1887,9 @@
             <td>breakpoint.*</td>
             <td class="num">8</td><td class="num">2</td><td class="num">0</td><td class="num">0</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="not_applicable"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="fail"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="not-needed"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="needs-work"></span>
             </div></td>
             <td><span class="path">lib/breakpoints.ts:3</span></td>
           </tr>
@@ -1897,9 +1897,9 @@
             <td>zindex.*</td>
             <td class="num">12</td><td class="num">3</td><td class="num">0</td><td class="num">8</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="attention"></span>
-              <span class="pip" data-s="not_applicable"></span><span class="pip" data-s="pass"></span>
-              <span class="pip" data-s="fail"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="watch"></span>
+              <span class="pip" data-s="not-needed"></span><span class="pip" data-s="healthy"></span>
+              <span class="pip" data-s="needs-work"></span>
             </div></td>
             <td><span class="path">components/Tooltip.tsx:5</span></td>
           </tr>
@@ -1907,9 +1907,9 @@
             <td>space.*</td>
             <td class="num">42</td><td class="num">7</td><td class="num">0</td><td class="num">27</td>
             <td><div class="health">
-              <span class="pip" data-s="pass"></span><span class="pip" data-s="attention"></span>
-              <span class="pip" data-s="not_applicable"></span><span class="pip" data-s="attention"></span>
-              <span class="pip" data-s="fail"></span>
+              <span class="pip" data-s="healthy"></span><span class="pip" data-s="watch"></span>
+              <span class="pip" data-s="not-needed"></span><span class="pip" data-s="watch"></span>
+              <span class="pip" data-s="needs-work"></span>
             </div></td>
             <td><span class="path">components/Stack.tsx:4</span></td>
           </tr>
@@ -2133,7 +2133,7 @@
     </div>
 
 
-    <div class="panel" data-tier="collapsed">
+    <div class="panel" data-tier="short">
       <h3>Color</h3>
       <p class="sub">208 tokens · 2 modes · 5 ramps and 8 that belong to none</p>
       <p class="lede below-14">
@@ -2196,7 +2196,7 @@
       </div>
     </div>
 
-    <div data-tier="family-only" class="stack-26">
+    <div data-tier="summary" class="stack-26">
       <p class="lede">
         Your palette has structure: a ramp built from <code>blue-50</code> through <code>blue-900</code> renders as one strip instead of ten separate chips. Ramps make a large palette easy to scan, and problems tend to announce themselves once that structure is visible.
       </p>
@@ -2404,25 +2404,25 @@
             <tr><th>Family</th><th>State</th><th class="num">Tokens</th><th>Detail</th></tr>
           </thead>
           <tbody>
-              <tr><td>color</td><td><span class="state" data-m="measured">measured</span></td><td class="num">41</td><td class="why">primitive 12 · semantic 29</td></tr>
-              <tr><td>typography</td><td><span class="state" data-m="measured">measured</span></td><td class="num">18</td><td class="why">primitive 18 · semantic 0</td></tr>
-              <tr><td>spacing</td><td><span class="state" data-m="measured">measured</span></td><td class="num">12</td><td class="why">primitive 12 · semantic 0</td></tr>
-              <tr><td>sizing</td><td><span class="state" data-m="measured">measured</span></td><td class="num">9</td><td class="why">primitive 9 · semantic 0</td></tr>
-              <tr><td>radius</td><td><span class="state" data-m="measured">measured</span></td><td class="num">5</td><td class="why">primitive 1 · semantic 4</td></tr>
-              <tr><td>border</td><td><span class="state" data-m="measured">measured</span></td><td class="num">3</td><td class="why">primitive 3 · semantic 0</td></tr>
-              <tr><td>elevation</td><td><span class="state" data-m="measured">measured</span></td><td class="num">6</td><td class="why">primitive 6 · semantic 0</td></tr>
-              <tr><td>opacity</td><td><span class="state" data-m="absent">absent</span></td><td class="num">&mdash;</td><td class="why">This project declares no opacity tokens.</td></tr>
-              <tr><td>layer</td><td><span class="state" data-m="absent">absent</span></td><td class="num">&mdash;</td><td class="why">This project declares no z-index tokens.</td></tr>
-              <tr><td>motion</td><td><span class="state" data-m="measured">measured</span></td><td class="num">8</td><td class="why">primitive 8 · semantic 0</td></tr>
-              <tr><td>breakpoint</td><td><span class="state" data-m="measured">measured</span></td><td class="num">5</td><td class="why">primitive 5 · semantic 0</td></tr>
-              <tr><td>grid</td><td><span class="state" data-m="unmeasured">unmeasured</span></td><td class="num">&mdash;</td><td class="why">Container widths and gutters resolve in a build step this run could not execute.</td></tr>
-              <tr><td>focus</td><td><span class="state" data-m="measured">measured</span></td><td class="num">3</td><td class="why">primitive 0 · semantic 3</td></tr>
-              <tr><td>target</td><td><span class="state" data-m="absent">absent</span></td><td class="num">&mdash;</td><td class="why">No minimum target size is declared.</td></tr>
-              <tr><td>state</td><td><span class="state" data-m="measured">measured</span></td><td class="num">4</td><td class="why">primitive 0 · semantic 4</td></tr>
-              <tr><td>icon</td><td><span class="state" data-m="measured">measured</span></td><td class="num">4</td><td class="why">primitive 4 · semantic 0</td></tr>
-              <tr><td>aspect</td><td><span class="state" data-m="absent">absent</span></td><td class="num">&mdash;</td><td class="why">No named aspect ratios are declared.</td></tr>
-              <tr><td>blur</td><td><span class="state" data-m="measured">measured</span></td><td class="num">2</td><td class="why">primitive 2 · semantic 0</td></tr>
-              <tr><td>density</td><td><span class="state" data-m="absent">absent</span></td><td class="num">&mdash;</td><td class="why">No density multiplier is declared.</td></tr>
+              <tr><td>color</td><td><span class="state" data-m="counted">measured</span></td><td class="num">41</td><td class="why">primitive 12 · semantic 29</td></tr>
+              <tr><td>typography</td><td><span class="state" data-m="counted">measured</span></td><td class="num">18</td><td class="why">primitive 18 · semantic 0</td></tr>
+              <tr><td>spacing</td><td><span class="state" data-m="counted">measured</span></td><td class="num">12</td><td class="why">primitive 12 · semantic 0</td></tr>
+              <tr><td>sizing</td><td><span class="state" data-m="counted">measured</span></td><td class="num">9</td><td class="why">primitive 9 · semantic 0</td></tr>
+              <tr><td>radius</td><td><span class="state" data-m="counted">measured</span></td><td class="num">5</td><td class="why">primitive 1 · semantic 4</td></tr>
+              <tr><td>border</td><td><span class="state" data-m="counted">measured</span></td><td class="num">3</td><td class="why">primitive 3 · semantic 0</td></tr>
+              <tr><td>elevation</td><td><span class="state" data-m="counted">measured</span></td><td class="num">6</td><td class="why">primitive 6 · semantic 0</td></tr>
+              <tr><td>opacity</td><td><span class="state" data-m="none-used">absent</span></td><td class="num">&mdash;</td><td class="why">This project declares no opacity tokens.</td></tr>
+              <tr><td>layer</td><td><span class="state" data-m="none-used">absent</span></td><td class="num">&mdash;</td><td class="why">This project declares no z-index tokens.</td></tr>
+              <tr><td>motion</td><td><span class="state" data-m="counted">measured</span></td><td class="num">8</td><td class="why">primitive 8 · semantic 0</td></tr>
+              <tr><td>breakpoint</td><td><span class="state" data-m="counted">measured</span></td><td class="num">5</td><td class="why">primitive 5 · semantic 0</td></tr>
+              <tr><td>grid</td><td><span class="state" data-m="not-visible">unmeasured</span></td><td class="num">&mdash;</td><td class="why">Container widths and gutters resolve in a build step this run could not execute.</td></tr>
+              <tr><td>focus</td><td><span class="state" data-m="counted">measured</span></td><td class="num">3</td><td class="why">primitive 0 · semantic 3</td></tr>
+              <tr><td>target</td><td><span class="state" data-m="none-used">absent</span></td><td class="num">&mdash;</td><td class="why">No minimum target size is declared.</td></tr>
+              <tr><td>state</td><td><span class="state" data-m="counted">measured</span></td><td class="num">4</td><td class="why">primitive 0 · semantic 4</td></tr>
+              <tr><td>icon</td><td><span class="state" data-m="counted">measured</span></td><td class="num">4</td><td class="why">primitive 4 · semantic 0</td></tr>
+              <tr><td>aspect</td><td><span class="state" data-m="none-used">absent</span></td><td class="num">&mdash;</td><td class="why">No named aspect ratios are declared.</td></tr>
+              <tr><td>blur</td><td><span class="state" data-m="counted">measured</span></td><td class="num">2</td><td class="why">primitive 2 · semantic 0</td></tr>
+              <tr><td>density</td><td><span class="state" data-m="none-used">absent</span></td><td class="num">&mdash;</td><td class="why">No density multiplier is declared.</td></tr>
           </tbody>
         </table>
       </div>
@@ -2444,12 +2444,12 @@
           <tr><th>Bundle &middot; mode</th><th class="fam">color</th><th class="fam">typography</th><th class="fam">spacing</th><th class="fam">radius</th><th class="fam">border</th><th class="fam">elevation</th><th class="fam">opacity</th><th class="fam">z-index</th><th class="fam">breakpoint</th><th class="fam">motion</th></tr>
         </thead>
         <tbody>
-              <tr><td>common &middot; light</td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="not_applicable">n/a</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td></tr>
-              <tr><td>common &middot; dark</td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="not_applicable">n/a</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td></tr>
-              <tr><td>desktop &middot; light</td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="unmeasured">?</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="not_applicable">n/a</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td></tr>
-              <tr><td>desktop &middot; dark</td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="unmeasured">?</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="not_applicable">n/a</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td></tr>
-              <tr><td>mobile &middot; light</td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="unmeasured">?</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="not_applicable">n/a</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td><td class="cell"><span class="c" data-s="measured">ok</span></td></tr>
-              <tr><td>mobile &middot; dark</td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td><td class="cell"><span class="c" data-s="blocked">blk</span></td></tr>
+              <tr><td>common &middot; light</td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="not-needed">n/a</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td></tr>
+              <tr><td>common &middot; dark</td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="not-needed">n/a</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td></tr>
+              <tr><td>desktop &middot; light</td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="not-visible">?</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="not-needed">n/a</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td></tr>
+              <tr><td>desktop &middot; dark</td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="not-visible">?</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="not-needed">n/a</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="not-visible">blk</span></td></tr>
+              <tr><td>mobile &middot; light</td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="not-visible">?</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="not-needed">n/a</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td><td class="cell"><span class="c" data-s="counted">ok</span></td></tr>
+              <tr><td>mobile &middot; dark</td><td class="cell"><span class="c" data-s="not-visible">blk</span></td><td class="cell"><span class="c" data-s="not-visible">blk</span></td><td class="cell"><span class="c" data-s="not-visible">blk</span></td><td class="cell"><span class="c" data-s="not-visible">blk</span></td><td class="cell"><span class="c" data-s="not-visible">blk</span></td><td class="cell"><span class="c" data-s="not-visible">blk</span></td><td class="cell"><span class="c" data-s="not-visible">blk</span></td><td class="cell"><span class="c" data-s="not-visible">blk</span></td><td class="cell"><span class="c" data-s="not-visible">blk</span></td><td class="cell"><span class="c" data-s="not-visible">blk</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -2485,7 +2485,7 @@
         <b>The top 12 findings account for 61&nbsp;% of all 1,645 occurrences.</b> At this size the distribution is the real finding: a handful of missing tokens create most of the mess, so fixing twelve things clears roughly two-thirds of it.
       </div>
 
-      <div data-tier="collapsed">
+      <div data-tier="short">
         <p class="prefix">Every location below sits under <b>components/</b></p>
 
       <div class="tbl-scroll">
@@ -2657,7 +2657,7 @@
       </div>
 
 
-      <div data-tier="family-only">
+      <div data-tier="summary">
         <p class="lede below-14">
           At this size a table of rows stops being readable, so each group draws its occurrence count to width instead. The ranking is the same one, and the bar makes the drop-off visible: a handful of groups carry most of the pile.
         </p>

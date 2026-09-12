@@ -126,13 +126,13 @@ class TestRendering(unittest.TestCase):
             {"concept_count": 1, "sources": []},
             {
                 "schema_version": "1",
-                "rendering": {"view": "action", "tier": "collapsed"},
+                "rendering": {"view": "action", "tier": "short"},
                 "provenance": {"adapter_versions": {}},
             },
             "local-test",
             "2026-09-03T00:00:00Z",
         )
-        self.assertIn("action view · collapsed density", rendered)
+        self.assertIn("action view · short list", rendered)
 
     def test_provenance_separates_confirmed_sources_and_actionable_imports(self):
         _root, discovery = fixture()
@@ -226,11 +226,11 @@ class TestRendering(unittest.TestCase):
                 "threshold": "Resolve semantic equivalence.",
             },
             "vitals": {
-                "coverage": {"grade": "attention"},
-                "enforcement": {"grade": "blocked"},
+                "coverage": {"grade": "watch"},
+                "enforcement": {"grade": "not-visible"},
             },
             "executive_summary": {"confidence_split": {
-                "confirmed": 2, "blocked": 1, "unmeasured": 1,
+                "confirmed": 2, "not-visible": 1, "not-visible": 1,
             }},
             "leakage_analysis": {
                 "consumer_files_scanned": 4,
@@ -293,7 +293,7 @@ class TestRendering(unittest.TestCase):
 
         rendered = render_discovery.render_dashboard_component_roadmap({
             "component_usage": {
-                "state": "measured",
+                "state": "counted",
                 "roadmap": roadmap,
                 "top_20": components,
             },
@@ -332,7 +332,7 @@ class TestRendering(unittest.TestCase):
 
         rendered = render_discovery.render_dashboard_component_roadmap({
             "component_usage": {
-                "state": "measured", "fallback_surfaces": 1,
+                "state": "counted", "fallback_surfaces": 1,
                 "roadmap": roadmap, "top_20": components,
             },
         })
@@ -371,7 +371,7 @@ class TestRendering(unittest.TestCase):
 
         rendered = render_discovery.render_dashboard_component_roadmap({
             "component_usage": {
-                "state": "measured", "fallback_surfaces": 1,
+                "state": "counted", "fallback_surfaces": 1,
                 "roadmap": roadmap, "top_20": components,
             },
         })
@@ -389,16 +389,16 @@ class TestRendering(unittest.TestCase):
             "run": {"token_count": 3, "files_scanned": 1},
             "inventory": {
                 "families": {
-                    "color": {"state": "measured"},
-                    "typography": {"state": "unmeasured"},
+                    "color": {"state": "counted"},
+                    "typography": {"state": "not-visible"},
                 },
                 "identity": {
                     "typography": {
-                        "state": "blocked", "family": "DM Sans",
+                        "state": "not-visible", "family": "DM Sans",
                         "candidates": [{"family": "DM Sans"}],
                     },
                     "brand_colors": {
-                        "state": "blocked",
+                        "state": "not-visible",
                         "colors": [{"token": "brand-primary", "value": "#5b4bd6"}],
                     },
                 },
@@ -419,15 +419,15 @@ class TestRendering(unittest.TestCase):
     def test_dashboard_distinguishes_absent_families_from_evidence_gaps(self):
         rendered = render_discovery.render_at_a_glance({
             "stage": {"current": "declared"},
-            "vitals": {"coverage": {"grade": "blocked"}},
+            "vitals": {"coverage": {"grade": "not-visible"}},
             "executive_summary": {"confidence_split": {}},
             "leakage_analysis": {},
             "fix_queue": [],
             "run": {"token_count": 4, "files_scanned": 2},
             "inventory": {"families": {
-                "color": {"state": "measured"},
-                "motion": {"state": "unmeasured"},
-                "elevation": {"state": "absent"},
+                "color": {"state": "counted"},
+                "motion": {"state": "not-visible"},
+                "elevation": {"state": "none-used"},
             }},
             "discovery": {"roots": []},
         })
@@ -522,7 +522,7 @@ class TestRendering(unittest.TestCase):
             "values": ["16px"], "representations": [],
             "sites": ["styles/type.css:1"],
         }], {
-            "state": "blocked", "confidence": "unresolved",
+            "state": "not-visible", "confidence": "unresolved",
             "family": None, "token": None, "evidence": [],
             "note": "No concrete family.",
         })
@@ -532,9 +532,9 @@ class TestRendering(unittest.TestCase):
 
     def test_blocked_typography_surfaces_conflicting_candidates(self):
         rendered = render_discovery.typography_block([], {
-            "state": "blocked", "confidence": "unresolved",
+            "state": "not-visible", "confidence": "unresolved",
             "family": None, "token": None, "evidence": [],
-            "specimen": {"state": "blocked", "asset": None},
+            "specimen": {"state": "not-visible", "asset": None},
             "candidates": [{
                 "family": "DM Sans", "token": "font-family", "priority": 100,
                 "evidence": ["a.css:1"],
@@ -608,7 +608,7 @@ class TestRendering(unittest.TestCase):
 
     def test_brand_conflicts_are_visible_and_not_swatched(self):
         rendered = render_discovery.color_block([], {
-            "state": "blocked", "confidence": "unresolved", "colors": [],
+            "state": "not-visible", "confidence": "unresolved", "colors": [],
             "conflicts": [{
                 "token": "brand-primary", "values": ["#111111", "#abcdef"],
                 "evidence": ["a.scss:1", "b.scss:1"],
@@ -629,8 +629,8 @@ class TestRendering(unittest.TestCase):
             "consumer_files_scanned": 42,
             "exact_value_candidates": [{"id": "a"}],
             "uncovered_candidates": [{"id": "b"}, {"id": "c"}],
-            "semantic_equivalence": "unmeasured",
-            "near_miss": "unmeasured",
+            "semantic_equivalence": "not-visible",
+            "near_miss": "not-visible",
         })
         self.assertEqual(report["run"]["files_scanned"], 42)
         self.assertEqual(report["executive_summary"]["affected"]["owned_files"], 42)
@@ -652,7 +652,7 @@ class TestRendering(unittest.TestCase):
             "uncovered_candidates": [],
         })
         tiers = report["vitals"]["leakage"]["tiers"]
-        self.assertEqual(report["vitals"]["leakage"]["grade"], "blocked")
+        self.assertEqual(report["vitals"]["leakage"]["grade"], "not-visible")
         self.assertTrue(
             all(value is None for value in tiers.values()),
             "a run that scanned nothing reported a tier count: %r" % tiers)

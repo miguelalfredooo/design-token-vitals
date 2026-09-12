@@ -34,4 +34,4 @@ Inspect `dark-light-choose()`, `$light-theme-*`, `$dark-theme-*`,
 `schemeType()`, theme color definitions, and selectors that select schemes.
 Source proves a mechanism, not parity. Grade mode completeness only after
 reading compiled per-site output for every audited bundle × scheme pair;
-otherwise record the missing output and grade `blocked`.
+otherwise record the missing output and grade `not-visible`.

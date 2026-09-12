@@ -16,6 +16,17 @@ finding here is independently checkable.
 - **Rendering tier:** `full` (40 tokens, under the 150-token threshold)
 - **Skill version:** `0.1.0+e6e427e`
 
+> **This artifact is stale, and is left unedited on purpose.** It was
+> produced before the rating words were renamed, so it still says `pass`,
+> `blocked` and `not_applicable` where the current skill says `healthy`,
+> `not-visible` and `not-needed`. Rewriting those words in a finished report
+> would edit a measurement after the fact, which is the one thing this skill
+> exists to prevent — so the file is left exactly as the run produced it.
+> Regenerating it needs a checkout of the subject repository at the commit
+> above; until someone does that, read this example for its **method**, not
+> for its vocabulary. `python3 tools/validate_run.py examples/shadcn-ui/report.json`
+> reports what has moved since.
+
 ## Why this run looks different from the last one
 
 The original example predates `docs/superpowers/specs/2026-09-01-framework-aware-discovery.md`.

@@ -82,8 +82,8 @@ def audit(root, discovery, tokens):
         "consumer_files_scanned": len([p for p in reachable if p not in source_paths and os.path.splitext(p)[1] in (".css", ".scss", ".sass", ".less")]),
         "exact_value_candidates": rank(findings),
         "uncovered_candidates": rank(unmatched),
-        "semantic_equivalence": "unmeasured",
-        "near_miss": "unmeasured",
+        "semantic_equivalence": "not-visible",
+        "near_miss": "not-visible",
     }
 
 

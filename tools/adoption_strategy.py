@@ -99,7 +99,7 @@ def _confirmed_token_definition_sources(report):
 
 def _identity_state(report, name):
     identity = report.get("inventory", {}).get("identity", {}) or {}
-    return (identity.get(name, {}) or {}).get("state") or "unmeasured"
+    return (identity.get(name, {}) or {}).get("state") or "not-visible"
 
 
 def derive(report):
@@ -122,7 +122,7 @@ def derive(report):
     resolved_pairs = list(
         discovery.get("mode_resolution", {}).get("resolved_pairs", []) or []
     )
-    component_state = usage.get("state") or "unmeasured"
+    component_state = usage.get("state") or "not-visible"
     component_count = usage.get("total_components_with_token_usage")
     component_count = component_count if isinstance(component_count, int) else None
     top_components = usage.get("top_20", []) or []
@@ -133,7 +133,7 @@ def derive(report):
         concepts = len(inventory_concepts) if isinstance(inventory_concepts, list) else None
 
     boundary_verified = capabilities.get("production_roots") == "verified"
-    component_measured = component_state == "measured"
+    component_measured = component_state == "counted"
     model = (
         "token-led-hybrid"
         if boundary_verified and component_measured
@@ -295,7 +295,7 @@ def derive(report):
             "evidence": (
                 "Enforcement is graded %s and %s blocked or "
                 "unmeasured."
-                % (enforcement.get("grade") or "unmeasured",
+                % (enforcement.get("grade") or "not-visible",
                    count(len(capability_work), "capability", "capabilities")
                    + (" remains" if len(capability_work) == 1 else " remain"))
             ),
@@ -419,12 +419,12 @@ def derive(report):
             "evidence": (
                 "Enforcement is graded %s; leakage baseline: %s."
                 % (
-                    enforcement.get("grade") or "unmeasured",
+                    enforcement.get("grade") or "not-visible",
                     ", ".join(
                         "%s %s"
-                        % (name, "unmeasured" if value is None else value)
+                        % (name, "not-visible" if value is None else value)
                         for name, value in leakage_tiers.items()
-                    ) or "unmeasured",
+                    ) or "not-visible",
                 )
             ),
             "exit_criteria": (
@@ -468,7 +468,7 @@ def derive(report):
             "id": "verified-leakage",
             "measure": "Semantically verified redundant literals",
             "baseline": (
-                "unmeasured"
+                "not-visible"
                 if leakage_tiers.get("redundant") is None
                 else str(leakage_tiers.get("redundant"))
             ),
@@ -614,13 +614,13 @@ def render(strategy):
             _esc(strategy["model"]),
             _esc(strategy["headline"]),
             _esc(strategy["rationale"]),
-            profiles or '<span class="state" data-m="unmeasured">unmeasured</span>',
-            adapters or '<span class="state" data-m="unmeasured">unmeasured</span>',
+            profiles or '<span class="state" data-m="not-visible">unmeasured</span>',
+            adapters or '<span class="state" data-m="not-visible">unmeasured</span>',
             evidence["production_roots"],
             evidence["owned_roots"],
-            _esc(concept_count if concept_count is not None else "unmeasured"),
+            _esc(concept_count if concept_count is not None else "not-visible"),
             evidence["confirmed_token_definition_sources"],
-            _esc(component_count if component_count is not None else "unmeasured"),
+            _esc(component_count if component_count is not None else "not-visible"),
             _esc(evidence["component_usage_state"]),
             len(evidence["declared_modes"]),
             evidence["resolved_mode_pairs"],

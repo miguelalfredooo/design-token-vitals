@@ -10,7 +10,7 @@ The rule underneath all six: **discover sources from evidence, and prove
 they ship before grading them.** Keep an evidence ledger for every root,
 source, exclusion, and mode: claim, `file:line`, discovery method,
 confidence, reachability path, and any artifact still needed. A useful
-report can say "unmeasured"; it cannot make an unproven claim look precise.
+report can say "not-visible"; it cannot make an unproven claim look precise.
 
 ## Job one — detect the framework and styling system
 
@@ -67,7 +67,7 @@ definitions, `dark-light-choose()`, and `schemeType()`.
 Grading mode parity from source alone is out of reach: the SCSS defines the
 mechanism, and the resolved light and dark values live somewhere this run
 cannot see. Either locate the compiled theme output and grade
-`mode-completeness` against that, or grade it `blocked` with that reason on
+`mode-completeness` against that, or grade it `not-visible` with that reason on
 record. Job six covers this in general.
 
 ## Job two — discover every candidate token source
@@ -191,13 +191,13 @@ output exist for it?** Record every expected pair under
 `resolved_pairs`.
 
 - **Yes for every audited pair** — grade `mode-completeness` normally.
-- **No for any pair** — grade `blocked`, name the missing artifact, and
+- **No for any pair** — grade `not-visible`, name the missing artifact, and
   say what would produce it. Never infer a pass from source declarations
   alone: a mechanism that exists proves a mechanism exists, and says
   nothing about whether every token has a value in every scheme.
 
 `tools/validate_run.py` rule 3 fails an audit that grades
-`mode-completeness` as anything but `blocked` while a declared scheme has
+`mode-completeness` as anything but `not-visible` while a declared scheme has
 no resolved output.
 
 ## Recording the outcome

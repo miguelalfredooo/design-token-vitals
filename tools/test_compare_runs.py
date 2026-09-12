@@ -17,7 +17,7 @@ VITALS = compare_runs.VITALS
 
 
 def run_doc(grades=None, evidence=None, **over):
-    grades = grades or {v: "pass" for v in VITALS}
+    grades = grades or {v: "healthy" for v in VITALS}
     evidence = evidence or {}
     doc = {
         "discovery": {"environment": "monorepo", "owned_paths": ["apps/v4"], "excluded_paths": []},
@@ -63,8 +63,8 @@ class TestCompare(unittest.TestCase):
         self.assertEqual(compare(run_doc(), run_doc()), 0)
 
     def test_one_differing_grade_fails(self):
-        g = {v: "pass" for v in VITALS}
-        g["leakage"] = "attention"
+        g = {v: "healthy" for v in VITALS}
+        g["leakage"] = "watch"
         self.assertEqual(compare(run_doc(), run_doc(grades=g)), 1)
 
     def test_differing_token_count_alone_passes(self):

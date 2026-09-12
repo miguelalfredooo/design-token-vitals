@@ -64,7 +64,7 @@ from taxonomy import FAMILIES  # noqa: E402
 from version import describe  # noqa: E402
 
 ACTIVE_CLASSES = {"canonical", "alias"}
-MEASURE_STATES = {"measured", "unmeasured", "absent"}
+MEASURE_STATES = {"counted", "not-visible", "none-used"}
 
 
 class Failure(object):
@@ -172,7 +172,7 @@ def rule_2_reachability(doc):
 def rule_3_mode_resolution(doc):
     """Complete mode coverage claimed without resolved output per bundle and scheme."""
     grade = get(doc, "vitals", "mode-completeness", "grade")
-    if grade not in ("pass", "attention", "fail"):
+    if grade not in ("healthy", "watch", "needs-work"):
         return None
     resolution = get(doc, "discovery", "mode_resolution", default=None)
     if resolution is not None:
@@ -206,9 +206,9 @@ def rule_3_mode_resolution(doc):
 
 DISCOVERY_CONFIDENCE = {
     "framework-registered", "import-graph verified", "static candidate",
-    "runtime verified", "blocked",
+    "runtime verified", "not-visible",
 }
-CAPABILITY_STATES = {"verified", "unmeasured", "blocked"}
+CAPABILITY_STATES = {"verified", "not-visible"}
 UNRESOLVED_REASONS = {
     "entry point does not exist", "framework built-in", "remote dependency",
     "external package or unsupported resolver", "external package",
@@ -329,9 +329,9 @@ def rule_13_component_usage(doc, html=None):
     if not isinstance(usage, dict):
         return Failure("13-component-usage", "component_usage is not an object")
     state = usage.get("state")
-    if state not in {"measured", "unmeasured", "blocked"}:
+    if state not in {"counted", "not-visible", "none-used"}:
         return Failure("13-component-usage", "component_usage has invalid state %r" % state)
-    if state != "measured":
+    if state != "counted":
         if not usage.get("note"):
             return Failure("13-component-usage", "%s component usage has no explanation" % state)
         return None
@@ -750,10 +750,10 @@ def rule_14_profile_engine(doc, html=None, current_skill=False):
             )
     selection = composition.get("application_selection", {}) or {}
     if selection.get("state") not in {
-            "root-application", "selected", "auto-selected", "blocked"}:
+            "root-application", "selected", "auto-selected", "not-visible"}:
         bad.append("application selection has an invalid state")
-    if selection.get("state") == "blocked":
-        if get(doc, "discovery", "capabilities", "production_roots") != "blocked":
+    if selection.get("state") == "not-visible":
+        if get(doc, "discovery", "capabilities", "production_roots") != "not-visible":
             bad.append("ambiguous application selection did not block production roots")
         if discovery.get("roots"):
             bad.append("ambiguous application selection still published product roots")
@@ -946,7 +946,7 @@ def rule_14_profile_engine(doc, html=None, current_skill=False):
         if len(names) != len(set(names)):
             bad.append("canonical concept inventory contains duplicate names")
         for family, entry in (inventory.get("families", {}) or {}).items():
-            if not isinstance(entry, dict) or entry.get("state") != "measured":
+            if not isinstance(entry, dict) or entry.get("state") != "counted":
                 continue
             actual = len([item for item in concepts
                           if isinstance(item, dict) and item.get("family") == family])
@@ -1071,15 +1071,15 @@ def rule_4_no_zero_for_unmeasured(doc):
         state = entry.get("state")
         if state not in MEASURE_STATES:
             bad.append("%s: state %r is not one of %s" % (name, state, sorted(MEASURE_STATES)))
-        elif state == "unmeasured" and entry.get("count") == 0:
+        elif state == "not-visible" and entry.get("count") == 0:
             bad.append("%s: unmeasured and reported as 0" % name)
-        elif state == "unmeasured" and not entry.get("note"):
+        elif state == "not-visible" and not entry.get("note"):
             bad.append("%s: unmeasured with no note saying what is missing" % name)
     leakage = get(doc, "vitals", "leakage", default=None)
     if isinstance(leakage, dict):
         grade = leakage.get("grade")
         tiers = leakage.get("tiers") or {}
-        if grade not in {"blocked", "not_applicable"} and tiers.get("redundant") is None:
+        if grade not in {"not-visible", "not-needed"} and tiers.get("redundant") is None:
             bad.append(
                 "leakage: graded %r while semantic-equivalence/redundant tier is unmeasured"
                 % grade)
@@ -1245,7 +1245,7 @@ def rule_6_html_matches_json(doc, html):
         component_usage = doc.get("component_usage", {}) or {}
         component_roadmap = component_usage.get("roadmap", {}) or {}
         if ("at-a-glance" in regions and
-                component_usage.get("state") == "measured" and
+                component_usage.get("state") == "counted" and
                 component_usage.get("top_20") and
                 json_html_attribute(
                     "data-dashboard-component-roadmap-json",
@@ -1253,7 +1253,7 @@ def rule_6_html_matches_json(doc, html):
                 ) not in regions["at-a-glance"]):
             bad.append("at-a-glance component roadmap disagrees with JSON")
         if ("at-a-glance" in regions and
-                component_usage.get("state") == "measured" and
+                component_usage.get("state") == "counted" and
                 component_usage.get("top_20")):
             dashboard_region = regions["at-a-glance"]
             dashboard_rows = component_usage.get("top_20", [])[:5]
@@ -1631,7 +1631,7 @@ def rule_16_identity_integrity(doc, html=None):
         return Failure("16-identity-integrity", "identity inventory is missing")
 
     typography = identity.get("typography", {}) or {}
-    if typography.get("state") not in {"verified", "blocked"}:
+    if typography.get("state") not in {"verified", "not-visible"}:
         bad.append("typography identity must be verified or blocked")
     if typography.get("state") == "verified":
         for field in ("family", "token", "confidence", "evidence"):
@@ -1647,23 +1647,23 @@ def rule_16_identity_integrity(doc, html=None):
         bad.append("blocked typography must use unresolved confidence")
 
     specimen = typography.get("specimen", {}) or {}
-    if specimen.get("state") not in {"verified", "blocked"}:
+    if specimen.get("state") not in {"verified", "not-visible"}:
         bad.append("typography specimen must be verified or blocked")
-    if typography.get("state") == "blocked" and specimen.get("state") == "verified":
+    if typography.get("state") == "not-visible" and specimen.get("state") == "verified":
         bad.append("blocked typography cannot verify a specimen")
 
     brand = identity.get("brand_colors", {}) or {}
     colors = brand.get("colors", []) or []
-    if brand.get("state") not in {"verified", "blocked"}:
+    if brand.get("state") not in {"verified", "not-visible"}:
         bad.append("brand color identity must be verified or blocked")
     if brand.get("state") == "verified" and not colors:
         bad.append("verified brand color identity has no colors")
-    if brand.get("state") == "blocked" and colors:
+    if brand.get("state") == "not-visible" and colors:
         bad.append("blocked brand color identity still publishes colors")
     if (brand.get("state") == "verified" and
             brand.get("confidence") != "explicit-brand-semantics"):
         bad.append("verified brand colors have an unsupported confidence")
-    if brand.get("state") == "blocked" and brand.get("confidence") != "unresolved":
+    if brand.get("state") == "not-visible" and brand.get("confidence") != "unresolved":
         bad.append("blocked brand colors must use unresolved confidence")
     allowed_color_confidence = {
         "explicit-brand-token-name", "explicit-brand-source-section",
@@ -1880,11 +1880,11 @@ def rule_16_identity_integrity(doc, html=None):
                 json_html_attribute("data-typography-evidence-json",
                                     typography.get("evidence", [])),
                 html_attribute("data-typography-specimen-state",
-                               specimen.get("state", "blocked")),
+                               specimen.get("state", "not-visible")),
             ]
             if type_tag is None or any(value not in type_tag for value in expected):
                 bad.append("typography identity HTML disagrees with JSON")
-            if specimen.get("state") == "blocked":
+            if specimen.get("state") == "not-visible":
                 if ('class="typescale"' in type_section or
                         "data:font/" in type_section):
                     bad.append("blocked typography renders or embeds a specimen")
@@ -1959,7 +1959,7 @@ def rule_16_identity_integrity(doc, html=None):
                 json_html_attribute("data-brand-subject-namespaces-json",
                                     brand.get("subject_namespaces", [])) not in brand_tag):
             bad.append("brand product-namespace evidence disagrees with HTML")
-        if (brand.get("state") == "blocked" and
+        if (brand.get("state") == "not-visible" and
                 ('data-brand-color="' in color_section or
                  "data-brand-swatches" in color_section or
                  re.search(r'class="[^"]*\bsw\b', color_section))):

@@ -195,7 +195,7 @@ class TestTokenAccounting(unittest.TestCase):
         red = EXPECTED["leaks"]["redundant"]
         self.assertEqual(len(red), EXPECTED["leaks"]["redundant_findings"])
         self.assertEqual(sum(len(r["files"]) for r in red), EXPECTED["leaks"]["redundant_occurrences"])
-        self.assertEqual(EXPECTED["vitals"]["leakage"], "attention")
+        self.assertEqual(EXPECTED["vitals"]["leakage"], "watch")
 
     def test_the_unreachable_source_holds_real_declarations(self):
         """An empty decoy would prove nothing about reachability."""
@@ -205,13 +205,13 @@ class TestTokenAccounting(unittest.TestCase):
 class TestFamilies(unittest.TestCase):
     def test_measured_and_absent_together_cover_the_taxonomy(self):
         fams = EXPECTED["inventory_families"]
-        listed = set(fams["measured"]) | set(fams["absent"]) | set(fams["unmeasured"])
+        listed = set(fams["counted"]) | set(fams["none-used"]) | set(fams["not-visible"])
         self.assertEqual(listed, set(FAMILIES),
                          "fixtures/expected.json and the taxonomy in validate_run.py disagree")
 
     def test_no_family_is_listed_in_two_states(self):
         fams = EXPECTED["inventory_families"]
-        total = len(fams["measured"]) + len(fams["absent"]) + len(fams["unmeasured"])
+        total = len(fams["counted"]) + len(fams["none-used"]) + len(fams["not-visible"])
         self.assertEqual(total, len(FAMILIES))
 
 
@@ -221,7 +221,7 @@ class TestModes(unittest.TestCase):
         declared = set(json.loads(read("theme.config.json"))["modes"])
         resolved = set(EXPECTED["discovery"]["resolved_modes"])
         self.assertTrue(declared - resolved)
-        self.assertEqual(EXPECTED["vitals"]["mode-completeness"], "blocked")
+        self.assertEqual(EXPECTED["vitals"]["mode-completeness"], "not-visible")
 
     def test_the_resolving_modes_have_real_blocks(self):
         globals_css = read("app/globals.css")
