@@ -20,11 +20,13 @@ see tools/cli.py.
 """
 import argparse
 import json
+import os
 import sys
 
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
 from cli import EXIT_FINDING, EXIT_OK, EXIT_REFUSED, add_json_flag, emit_json  # noqa: E402
 from findings import collect_ids  # noqa: E402
+from unlock_path import VITALS, build as build_confidence  # noqa: E402
 
 
 def get(doc, *path, **kw):
@@ -53,6 +55,10 @@ def compatibility(base, cur):
          sorted(norm_set(get(cur, "discovery", "owned_paths", default=[])))),
         ("scan scope", sorted(norm_set(get(base, "run", "scope", default=[]))),
          sorted(norm_set(get(cur, "run", "scope", default=[])))),
+        # A run scoped to `adoption` is not evidence about a `themes` run.
+        # Same refusal as the scope gate, applied to the reason the run
+        # happened. An older report carrying no intent is not a divergence.
+        ("intent", get(base, "run", "intent"), get(cur, "run", "intent")),
     ]
     for label, a, b in checks:
         if a != b:
@@ -102,6 +108,19 @@ def index_findings(doc):
     return out
 
 
+def confidence_split(doc):
+    """The run's own split if it recorded one, else derived from its grades.
+
+    A run that recorded the split knew which capability was missing for each
+    blocked vital; re-deriving from grades alone cannot. Prefer what the run
+    said, and fall back rather than refusing to compare.
+    """
+    stored = get(doc, "confidence", "split")
+    if isinstance(stored, dict):
+        return stored
+    return build_confidence(doc, {})["split"]
+
+
 def diff(base, cur):
     b = index_findings(base)
     c = index_findings(cur)
@@ -131,6 +150,22 @@ def diff(base, cur):
                         [dict(g, why="count grew") for g in grew]),
         "baseline_total": len(base_ids),
         "current_total": len(cur_ids),
+        "confidence": confidence_delta(base, cur),
+    }
+
+
+def confidence_delta(base, cur):
+    before, after = confidence_split(base), confidence_split(cur)
+    return {
+        "baseline": before,
+        "current": after,
+        # Reported apart, always. Closing an audit gap and fixing a real
+        # problem are different work by different people, and a single
+        # "gaps" number tells a reader neither which they did nor which is
+        # left.
+        "healthy_delta": after["healthy"] - before["healthy"],
+        "not_visible_delta": after["not_visible"] - before["not_visible"],
+        "your_code_delta": after["your_code"] - before["your_code"],
     }
 
 
@@ -140,8 +175,20 @@ def main(argv):
     ap.add_argument("current")
     ap.add_argument("--force", action="store_true",
                     help="diff incompatible runs anyway, clearly labeled")
+    ap.add_argument("--ci", action="store_true",
+                    help="one line, and a non-zero exit ONLY on a regression; "
+                         "a missing baseline is a first run, not a failure")
     add_json_flag(ap)
     args = ap.parse_args(argv)
+
+    if args.ci and not os.path.exists(args.baseline):
+        # A gate that fails an absolute threshold gets deleted; a gate that
+        # fails only on movement backwards is one a team keeps. A first run
+        # has nothing to move away from.
+        print("First run — no baseline at %s, so nothing can have regressed. "
+              "Commit the report to make this one the baseline."
+              % args.baseline)
+        return EXIT_OK
 
     with open(args.baseline, encoding="utf-8") as fh:
         base = json.load(fh)
@@ -166,9 +213,40 @@ def main(argv):
 
     emit_json(args.json_out, result)
 
+    if args.ci:
+        confidence = result["confidence"]
+        print("%s · healthy checks %d -> %d · %d new finding(s), %d fixed"
+              % ("GOT WORSE: %d" % len(result["regressions"])
+                 if result["regressions"] else "nothing got worse",
+                 confidence["baseline"]["healthy"],
+                 confidence["current"]["healthy"],
+                 len(result["new"]), len(result["resolved"])))
+        for item in result["regressions"][:10]:
+            print("  %s  %s — %s" % (item["id"], item["title"], item["why"]))
+        return EXIT_FINDING if result["regressions"] else EXIT_OK
+
     if problems:
         print("WARNING: forced across an incompatible baseline — %d input(s) diverged\n"
               % len(problems))
+    # Lead with ground gained. A finding count is the detail under it.
+    confidence = result["confidence"]
+    verified_before = confidence["baseline"]["healthy"]
+    verified_now = confidence["current"]["healthy"]
+    headline = ("%d regression(s)" % len(result["regressions"])
+                if result["regressions"] else "Nothing got worse")
+    if verified_now != verified_before:
+        print("%s. Healthy checks went %s %d to %d."
+              % (headline,
+                 "up from" if verified_now > verified_before else "down from",
+                 verified_before, verified_now))
+    else:
+        print("%s. Still %d healthy check(s)." % (headline, verified_now))
+    print("  the audit cannot see yet: %+d (now %d)"
+          % (confidence["not_visible_delta"],
+             confidence["current"]["not_visible"]))
+    print("  to fix in your code:      %+d (now %d)"
+          % (confidence["your_code_delta"],
+             confidence["current"]["your_code"]))
     print("baseline %d finding(s) -> current %d" % (result["baseline_total"], result["current_total"]))
     print("  new:         %d" % len(result["new"]))
     print("  resolved:    %d" % len(result["resolved"]))

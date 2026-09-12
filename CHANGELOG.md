@@ -6,6 +6,108 @@ that produced it.
 
 ## Unreleased
 
+### The audit says whose problem it is
+
+A repository whose token layer is in good shape read as mostly blocked. It
+was not failing anything — the audit could not see far enough yet. Now that
+the ratings say which is which, three things follow from it.
+
+**`tools/unlock_path.py` splits and orders the gaps.** The two kinds are
+counted as **two numbers that are never summed** — closing an audit gap and
+fixing a real problem are different work by different people, and one figure
+tells a reader neither which they did nor which is left. Capability gaps are
+a path rather than a list: each step names the action, the checks it unlocks,
+and the command that shows whether it worked, ordered by how many it moves.
+A `next_15_minutes` card leads with one of them. On the audited repository
+the line reads `5 healthy · 1 to fix in your code · 2 the audit cannot see
+yet`, where it had read as six blocked vitals. `framework_versions` — an
+input the operator did not supply rather than a capability the engine lacks
+— is named alongside the rest, because a blocked `coverage` with every
+capability verified was the one line in the whole report that gave a reader
+nothing to do.
+
+**`tools/lineage_map.py` draws what the system IS.** A rating says how a
+system is doing; the map joins the three files nobody read together — the
+tier and alias on each concept, the site that defines it, the components
+that spend it — into one chain. 768 tokens trace to a primitive, 303 stop
+before one, 204 have a named consumer, the longest chain is four hops, and
+twelve families are traceable end to end. A family counts only when **every**
+token in it does. Walked the other way it answers the question a designer
+actually arrives with: changing `color-surface` touches three components
+through twenty dependent tokens.
+
+**`tools/freshness.py` dates the evidence** — fresh against the commit
+discovery recorded, or so many commits and a dirty tree behind it. A dirty
+tree is never fresh: the edit in it is exactly the change the audit did not
+see.
+
+And the report opens on a sentence rather than a grid: "5 of 8 checks look
+healthy; 2 the audit cannot see yet — that is a limit of this run, not of
+your code."
+
+### Every line is an observation, or it is not shipped
+
+An audit pass over what this tool says to a reader found four sentences that
+asserted more than the run had established.
+
+- **A win carries the measurement behind it, or is not emitted.** They were
+  generic sentences fired by a capability flag: "Framework detected — the
+  adapters that ran are the right ones" is an interpretation that detection
+  cannot support. Each renders its claim beside a real number or path —
+  "Import graph verified · 291 file(s) reached; 147 import(s) classified, 0
+  unresolved as a missing local file" — and a capability with no measurement
+  produces no win at all. A congratulation nobody can check is worse than
+  silence.
+- **The first version of that rule suppressed a true win.**
+  `token_source_discovery` records its evidence on its capability ladder step
+  rather than under a key of its own, so looking in one place turned a fully
+  established result into nothing. It falls back to whatever the run itself
+  recorded — a false zero being exactly what this tool exists to stop.
+- **Three sentences restated a grade as a measurement.** "Checked against
+  evidence, nothing to fix" claimed evidence a clean check is allowed not to
+  have; "the codebase has a real finding here" editorialized about somebody
+  else's judgment; "a boundary, not a hole" characterized a decision instead
+  of quoting the reason recorded for it.
+- **A verify command with `<root>` in it is not a command.** The card told a
+  reader to run something and check the result, and handed them a template.
+
+### One answer to "what do I do next"
+
+The report had grown five differently-shaped answers to the most obvious
+question a reader has. One card leads — `next_15_minutes` — and the others
+are named as the rest of *that* queue rather than as parallel
+recommendations. A reader who cannot tell a fifteen-minute task from a
+quarter-long programme will do neither.
+
+Two presentation axes stopped being authoring decisions: `tools/rendering_choices.py`
+derives the list size from the token count and each section's form from that
+section's own count, both from rules that were already deterministic and
+already written down. The only axis still chosen is `rendering.view`,
+because it encodes what the run is for rather than how much data came back.
+A new Stage 0 asks that once, up front: `baseline`, `adoption`, `themes` or
+`release` — and two runs with different intents now refuse to diff, the same
+refusal the scope gate already made.
+
+### Rule 19, and a count that had already drifted
+
+The confidence evidence lived only in JSON, which by this skill's own
+standard means it did not exist. `render_discovery.py` gained `--unlock` and
+`--lineage` and four report regions; **rule 19** fails a report that holds
+that evidence in the JSON and not in the HTML, that renders a merged `total`
+where the two gap counts belong, that disagrees with its own JSON about
+either count, or that switches a check off with `not-needed` and no rationale
+on record. An unexplained N/A is how a check gets switched off quietly.
+
+`trend.py` opens on the movement rather than a finding count — "Nothing got
+worse. Healthy checks went up from 0 to 5." — with the two deltas reported
+separately underneath. `--ci` prints one line and exits non-zero **only** on
+a regression: a gate that fails an absolute threshold fails the build every
+day until somebody deletes it, and a missing baseline is a first run, not a
+failure.
+
+The rule count in the summary line was a literal and had already drifted —
+it said 17 while eighteen rules ran. It is counted from the list now.
+
 ### The audit stops reporting absences it never measured
 
 A run against a 75-component design system was audited finding by finding.

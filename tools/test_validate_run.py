@@ -42,6 +42,15 @@ def good_doc():
             f: {"state": "counted", "count": 3, "note": None} for f in FAMILIES
         }},
         "rendering": {"truncated": []},
+        "confidence": {
+            "headline": "8 of 8 vitals verified against evidence.",
+            "split": {"healthy": 8, "your_code": 0, "not_visible": 0,
+                      "not_needed": 0},
+            "unlock_path": [],
+            "wins": [{"claim": "Import graph verified",
+                      "evidence": ["2 file(s) reached"]}],
+            "decisions_owed": [],
+        },
     }
 
 
@@ -1590,6 +1599,7 @@ class TestStampOnlyMarksAPassingRun(unittest.TestCase):
             "at-a-glance", "exec-summary", "decisions", "fix-queue",
             "groups", "lineage", "coverage-matrix", "next-steps",
             "modes-coverage", "modes-gaps", "orphans", "enforcement",
+            "headline", "unlock-path", "wins", "blast-radius",
         )
         shell = self.inventory_tabs_shell() + "".join(
             "<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name) for name in slots
@@ -1604,6 +1614,8 @@ class TestStampOnlyMarksAPassingRun(unittest.TestCase):
             shell, doc, None,
             {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
         )
+        rendered = render_discovery.render_confidence_slots(
+            rendered, doc.get("confidence"), None, None)
         return doc, banner + rendered
 
     def test_stamp_writes_passed_true_into_the_json(self):
@@ -1671,3 +1683,74 @@ class TestStampOnlyMarksAPassingRun(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRule19ConfidenceSplit(unittest.TestCase):
+    """The split is the whole point, so a report may not ship without it.
+
+    A rule nobody enforces is documentation. Rule 19 fails a report that
+    drops the confidence evidence, that merges the two gap counts into one,
+    or that switches a vital off with `not-needed` and no reason.
+    """
+
+    def doc(self, **over):
+        base = {
+            "confidence": {
+                "headline": "5 of 8 vitals verified against evidence.",
+                "split": {"healthy": 5, "your_code": 1, "not_visible": 2,
+                          "not_needed": 0},
+                "unlock_path": [],
+            "wins": [{"claim": "Import graph verified",
+                      "evidence": ["2 file(s) reached"]}],
+                "decisions_owed": [],
+            },
+            "vitals": {"leakage": {"grade": "needs-work"}},
+        }
+        base.update(over)
+        return base
+
+    HTML = ('<p data-report-region="headline">x</p>'
+            '<div data-report-region="unlock-path">'
+            '<div data-gap-kind="healthy" data-gap-count="5"></div>'
+            '<div data-gap-kind="your-code" data-gap-count="1"></div>'
+            '<div data-gap-kind="not-visible" data-gap-count="2"></div>'
+            '<div data-gap-kind="not-needed" data-gap-count="0"></div></div>'
+            '<div data-report-region="wins"></div>')
+
+    def test_a_complete_split_passes(self):
+        self.assertIsNone(
+            validate_run.rule_19_confidence_split(self.doc(), self.HTML))
+
+    def test_a_report_with_no_confidence_evidence_fails(self):
+        failure = validate_run.rule_19_confidence_split({"vitals": {}}, self.HTML)
+        self.assertIsNotNone(failure)
+
+    def test_a_merged_total_in_the_html_fails(self):
+        failure = validate_run.rule_19_confidence_split(
+            self.doc(), self.HTML + '<div data-gap-kind="total"></div>')
+        self.assertIsNotNone(failure)
+        self.assertTrue(any("total" in str(d) for d in failure.detail))
+
+    def test_a_gap_count_that_disagrees_with_the_json_fails(self):
+        html = self.HTML.replace('data-gap-kind="not-visible" data-gap-count="2"',
+                                 'data-gap-kind="not-visible" data-gap-count="0"')
+        self.assertIsNotNone(
+            validate_run.rule_19_confidence_split(self.doc(), html))
+
+    def test_an_unexplained_not_applicable_fails(self):
+        doc = self.doc()
+        doc["confidence"]["decisions_owed"] = ["mode-completeness"]
+        failure = validate_run.rule_19_confidence_split(doc, self.HTML)
+        self.assertIsNotNone(failure)
+        self.assertTrue(any("mode-completeness" in str(d)
+                            for d in failure.detail))
+
+    def test_a_missing_region_in_the_html_fails(self):
+        html = self.HTML.replace('data-report-region="wins"', 'data-x="y"')
+        self.assertIsNotNone(
+            validate_run.rule_19_confidence_split(self.doc(), html))
+
+    def test_without_html_the_json_alone_is_still_checked(self):
+        doc = self.doc()
+        doc["confidence"]["decisions_owed"] = ["coverage"]
+        self.assertIsNotNone(validate_run.rule_19_confidence_split(doc, None))

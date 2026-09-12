@@ -2083,8 +2083,19 @@ def rule_17_adoption_strategy(doc, html=None):
     return None
 
 
-def validate(doc, html=None, current_skill=False, artifacts=None):
-    checks = [
+def rule_count():
+    """How many rules `validate` runs.
+
+    This was a literal in the summary line and had already drifted — the
+    message said 17 while eighteen rules ran. A count of a list is not a
+    fact anyone can check by reading it, so it is no longer written down
+    twice.
+    """
+    return len(_checks({}, None, False, None))
+
+
+def _checks(doc, html, current_skill, artifacts):
+    return [
         rule_1_discovery_evidence(doc),
         rule_2_reachability(doc),
         rule_3_mode_resolution(doc),
@@ -2103,8 +2114,69 @@ def validate(doc, html=None, current_skill=False, artifacts=None):
         rule_16_identity_integrity(doc, html),
         rule_17_adoption_strategy(doc, html),
         rule_18_no_template_sample_content(html),
+        rule_19_confidence_split(doc, html),
     ]
-    return [c for c in checks if c is not None]
+
+
+def validate(doc, html=None, current_skill=False, artifacts=None):
+    return [check for check in _checks(doc, html, current_skill, artifacts)
+            if check is not None]
+
+
+GAP_KINDS = ("healthy", "your-code", "not-visible", "not-needed")
+
+
+def rule_19_confidence_split(doc, html=None):
+    """The two kinds of gap, kept apart, and every boundary explained.
+
+    `not-visible` says two unrelated things — your system has a problem, and
+    this audit cannot see far enough yet — and a report that merges them
+    teaches a reader the wrong thing about their own codebase. So: the
+    evidence has to be present, the counts have to be rendered as separate
+    marks that agree with the JSON, and no vital may be switched off with
+    `not-needed` and no reason on record.
+    """
+    bad = []
+    confidence = get(doc, "confidence", default=None)
+    if not isinstance(confidence, dict):
+        return Failure("19-confidence-split",
+                       "the report carries no confidence evidence",
+                       ["no `confidence` block: the two kinds of gap cannot "
+                        "be told apart"])
+    split = confidence.get("split")
+    if not isinstance(split, dict):
+        bad.append("`confidence.split` is missing, so nothing states how "
+                   "many gaps are audit gaps and how many are system gaps")
+        split = {}
+    if not confidence.get("headline"):
+        bad.append("no headline: the report opens on a grid rather than on "
+                   "a sentence")
+    for name in confidence.get("decisions_owed") or []:
+        bad.append("%s: not_applicable with no rationale on record — an "
+                   "unexplained N/A is how a check gets switched off "
+                   "quietly" % name)
+
+    if html:
+        for region in ("headline", "unlock-path", "wins"):
+            if 'data-report-region="%s"' % region not in html:
+                bad.append("the %s region is in the JSON and not in the HTML"
+                           % region)
+        if 'data-gap-kind="total"' in html:
+            bad.append("the HTML renders a merged `total` gap count; the two "
+                       "kinds are different work and are never summed")
+        for kind, key in zip(GAP_KINDS, ("healthy", "your_code",
+                                         "not_visible", "not_needed")):
+            match = re.search(
+                r'data-gap-kind="%s"\s+data-gap-count="(\d+)"' % kind, html)
+            if match is None:
+                bad.append("the HTML does not render the %s count" % kind)
+            elif int(match.group(1)) != split.get(key, 0):
+                bad.append("%s renders as %s and the JSON says %s"
+                           % (kind, match.group(1), split.get(key, 0)))
+    if bad:
+        return Failure("19-confidence-split",
+                       "%d confidence-evidence problem(s)" % len(bad), bad[:8])
+    return None
 
 
 def rule_18_no_template_sample_content(html):
@@ -2179,7 +2251,7 @@ def main(argv):
         "failures": [{"rule": f.rule, "message": f.message, "detail": f.detail} for f in failures],
     })
     if not failures:
-        print("validate: pass — all eighteen rules hold")
+        print("validate: pass — all nineteen rules hold")
         if args.stamp:
             checked_at = stamp_pass(
                 args.report_json, doc,
@@ -2191,7 +2263,8 @@ def main(argv):
         print("FAIL  %-22s %s" % (f.rule, f.message))
         for line in f.detail:
             print("%26s%s" % ("", line))
-    print("\n%d of 17 rules failed. The report claims more than the run established." % len(failures))
+    print("\n%d of %d rules failed. The report claims more than the run "
+          "established." % (len(failures), rule_count()))
     return EXIT_FINDING
 
 
