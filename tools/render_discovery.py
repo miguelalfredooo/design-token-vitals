@@ -989,15 +989,32 @@ def color_block(concepts, identity):
     )
 
 
+def family_states(tokens):
+    """The state of every family, from discovery when it reports one.
+
+    Older token artifacts carry only `family_counts`, where a family the
+    run never resolved and one it proved empty are both 0. Fall back to the
+    conservative reading of that: without a state, zero means not-visible.
+    """
+    states = tokens.get("family_states")
+    if states:
+        return states
+    return {family: ({"state": "counted", "count": count} if count
+                     else {"state": "not-visible"})
+            for family, count in tokens.get("family_counts", {}).items()}
+
+
 def family_block(tokens, report):
-    counts = tokens.get("family_counts", {})
+    states = family_states(tokens)
     concepts = normalized_concepts(tokens)
     existing = report.get("inventory", {}).get("families", {}) or {}
     rows = []
-    for family in sorted(counts):
-        count = counts[family]
-        state = "counted" if count else existing.get(family, {}).get(
-            "state", "not-visible")
+    for family in sorted(states):
+        state = states[family]["state"]
+        count = states[family].get("count")
+        # `none-used` is the one state that has earned the number 0. A
+        # `not-visible` family shows the word, never a figure it cannot back.
+        shown = "0" if state == "none-used" else (count if count else state)
         sources = sorted({site.rsplit(":", 1)[0]
                           for concept in concepts if concept.get("family") == family
                           for site in concept.get("sites", [])})
@@ -1023,9 +1040,10 @@ def family_block(tokens, report):
             '<tr data-family="%s" data-family-state="%s" data-family-count="%s" '
             'data-family-sources-json="%s">'
             '<td>%s</td><td>%s</td><td class="num">%s</td><td>%s</td></tr>' % (
-                esc(family), esc(state), esc(count if count else ""),
+                esc(family), esc(state),
+                esc("" if count is None else count),
                 json_attr(sources),
-                esc(family), esc(state), esc(count if count else "not-visible"),
+                esc(family), esc(state), esc(shown),
                 note,
             )
         )
@@ -1066,7 +1084,7 @@ def sync_token_inventory(report, tokens):
         },
     })
     families = inventory.setdefault("families", {})
-    for family, count in tokens.get("family_counts", {}).items():
+    for family, state in family_states(tokens).items():
         entry = families.setdefault(family, {})
         family_concepts = [item for item in concepts
                            if item.get("family") == family]
@@ -1074,22 +1092,31 @@ def sync_token_inventory(report, tokens):
             site.rsplit(":", 1)[0]
             for item in family_concepts for site in item.get("sites", [])
         })
+        tiers = {"primitive": 0, "semantic": 0, "component": 0, "untraced": 0}
+        for item in family_concepts:
+            if item.get("tier") in tiers:
+                tiers[item["tier"]] += 1
         entry.clear()
-        if count:
+        if state["state"] == "counted":
             entry.update({
-                "state": "counted", "count": count, "sources": sources,
-                "tiers": {"primitive": None, "semantic": None},
-                "note": None,
+                "state": "counted", "count": state["count"],
+                "sources": sources, "tiers": tiers, "note": None,
+            })
+        elif state["state"] == "none-used":
+            entry.update({
+                "state": "none-used", "count": 0, "sources": [],
+                "tiers": tiers,
+                "note": "No token of this family was found in any source the run read, held-out sources included.",
             })
         else:
             entry.update({
                 "state": "not-visible", "sources": [],
-                "tiers": {"primitive": None, "semantic": None},
+                "tiers": tiers,
                 "note": "No canonical concept was confirmed; held-out candidates may still contain local decisions.",
             })
     run = report.setdefault("run", {})
     run["token_count"] = tokens.get("concept_count", len(concepts))
-    run["family_count"] = len(tokens.get("family_counts", {}))
+    run["family_count"] = len(family_states(tokens))
     valid_names = {item.get("name") for item in concepts}
     if isinstance(report.get("lineage"), list):
         report["lineage"] = [item for item in report["lineage"]

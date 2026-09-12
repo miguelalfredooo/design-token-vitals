@@ -8,6 +8,18 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import discover_tokens  # noqa: E402
+import discover_environment  # noqa: E402
+
+
+def make_repo(files):
+    """Write {relpath: content} into a temp dir and return the root."""
+    root = tempfile.mkdtemp()
+    for rel, content in files.items():
+        full = os.path.join(root, rel)
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        with open(full, "w", encoding="utf-8") as handle:
+            handle.write(content)
+    return root
 
 
 class TestTokenDiscovery(unittest.TestCase):
@@ -627,3 +639,417 @@ class TestFontFamilyFromAJsTokenArray(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCamelCaseFontFamily(unittest.TestCase):
+    """A JS token layer spells the concept `fontFamily`, and it must count.
+
+    The selector tested `"font-family" in name` against `normalize()`, which
+    lowercases but does not split camelCase — so `typography.fontFamily.sans`
+    normalizes to `typography.fontfamily.sans` and never matched. A real
+    audit therefore reported a product's typeface as the one in a legacy
+    JSON export, while the family the application actually loads sat in a
+    reachable, already-inventoried token module, extracted and ignored.
+    """
+
+    def concept(self, token_id, value, site):
+        """Shaped exactly as discover() stores one, or this cannot bite.
+
+        The id is normalize()d — lowercased, so `fontFamily` arrives as
+        `fontfamily` with the word boundary already gone. A fixture that
+        passes the raw spelling as the id tests a shape the pipeline never
+        produces, and stays green against the bug.
+        """
+        return {
+            "id": discover_tokens.normalize(token_id), "names": [token_id],
+            "family": "typography", "values": [value],
+            "sites": [site], "identity_contexts": [],
+            "definitions": [{
+                "value": value, "site": site,
+                "representation": "js-theme-object",
+            }],
+        }
+
+    def test_a_camelcase_font_family_token_is_seen(self):
+        identity = discover_tokens.identity_summary([self.concept(
+            "typography.fontFamily.sans",
+            "['\"Plus Jakarta Sans\"', 'ui-sans-serif']",
+            "src/tokens/typography.js:70")])["typography"]
+        self.assertEqual(identity["state"], "verified")
+        self.assertEqual(identity["family"], "Plus Jakarta Sans")
+
+    def test_two_equally_strong_families_block_rather_than_pick(self):
+        """Both are shown; neither is chosen, and no substitute is rendered."""
+        identity = discover_tokens.identity_summary([
+            self.concept("typography.fontFamily.sans",
+                         "['\"Plus Jakarta Sans\"', 'ui-sans-serif']",
+                         "src/tokens/typography.js:70"),
+            self.concept("semantic.typography.font-family.brand", "DM Sans",
+                         "src/tokens/production.tokens.json:1570"),
+        ])["typography"]
+        self.assertEqual(identity["state"], "not-visible")
+        self.assertIsNone(identity["family"])
+        self.assertEqual(identity["specimen"]["state"], "not-visible")
+        self.assertEqual(
+            sorted(item["family"] for item in identity["candidates"]),
+            ["DM Sans", "Plus Jakarta Sans"])
+
+    def test_the_named_priorities_still_win_through_the_camel_spelling(self):
+        identity = discover_tokens.identity_summary([
+            self.concept("baseFontFamily", "Iosevka", "src/theme.js:3"),
+            self.concept("heading-font-family", "Georgia", "src/theme.js:4"),
+        ])["typography"]
+        self.assertEqual(identity["family"], "Iosevka")
+
+
+class TestTokenSourceSiblings(unittest.TestCase):
+    """A token module beside a confirmed one is admitted on that evidence.
+
+    Admission was decided by filename. In a real `src/tokens/` directory
+    that admitted colors.js, spacing.js and typography.js and rejected
+    interaction.js, effects.js, componentGeometry.js, composition.js and
+    visualSystemProfiles.js — six reachable modules, imported by the same
+    application, holding the opacity, radius, aspect-ratio, z-index and
+    blur values the run then reported as zero of. A directory that already
+    holds a confirmed canonical source is evidence; a filename is a guess.
+    """
+
+    def repo(self):
+        return make_repo({
+            "package.json": '{"name":"app","devDependencies":{"vite":"^5"}}',
+            "vite.config.js": "export default {}",
+            "index.html": '<script type="module" src="/src/main.js"></script>',
+            "src/main.js": 'import "./globals.css";\nimport "./tokens/index.js";',
+            "src/globals.css": ":root{--color-brand:#6b5bf0}",
+            "src/tokens/index.js": (
+                'export { colors } from "./colors.js";\n'
+                'export { opacity } from "./interaction.js";\n'
+                'export { geometry } from "./geometry.js";\n'
+            ),
+            "src/tokens/colors.js": (
+                "export const colors = {\n"
+                "  brand: '#6b5bf0',\n"
+                "}\n"
+            ),
+            "src/tokens/interaction.js": (
+                "export const opacity = {\n"
+                "  disabled: '0.42',\n"
+                "}\n"
+            ),
+            "src/tokens/geometry.js": (
+                "export const geometry = {\n"
+                "  card: '3 / 2',\n"
+                "  scrim: '12px',\n"
+                "}\n"
+            ),
+            "src/components/Card/Card.jsx": "export const Card = () => null\n",
+        })
+
+    def result(self):
+        root = self.repo()
+        discovery = discover_environment.discover(root, ["src/**"])
+        return discover_tokens.discover(root, discovery)
+
+    def test_a_sibling_of_a_confirmed_source_is_itself_a_source(self):
+        paths = {item["path"] for item in self.result()["sources"]
+                 if item["role"] in ("canonical", "alias")}
+        self.assertIn("src/tokens/interaction.js", paths)
+        self.assertIn("src/tokens/geometry.js", paths)
+
+    def test_the_admission_says_what_evidence_admitted_it(self):
+        source = next(item for item in self.result()["sources"]
+                      if item["path"] == "src/tokens/interaction.js")
+        self.assertEqual(source["admitted_by"],
+                         "sibling of a confirmed canonical source")
+
+    def test_a_component_module_is_not_admitted_by_a_distant_source(self):
+        paths = {item["path"] for item in self.result()["sources"]}
+        self.assertNotIn("src/components/Card/Card.jsx", paths)
+
+    def test_the_concepts_those_modules_hold_are_counted(self):
+        counts = self.result()["family_counts"]
+        self.assertGreaterEqual(counts["opacity"], 1)
+
+
+class TestFamilyStates(unittest.TestCase):
+    """Zero is a claim. A family with no source behind it has not earned it.
+
+    SKILL.md's own rule: a family the run could not resolve is never
+    reported as 0, because 0 states that the project has none — and "a
+    family found only in an unverified source is `not-visible`, because
+    reachability decides here the same as everywhere else." The counts map
+    emitted 0 for every family alike, so `opacity: 0` read identically
+    whether the run had proved there were none or had never looked.
+    """
+
+    TOKENS = (":root{--color-brand:#6b5bf0;--color-text:#111;--spacing-2:8px;"
+              "--spacing-4:16px;--radius-md:6px;--border-width:1px}")
+
+    def states(self, files, entry='import "./globals.css";'):
+        root = make_repo({
+            "package.json": '{"name":"app","devDependencies":{"vite":"^5"}}',
+            "vite.config.js": "export default {}",
+            "index.html": '<script type="module" src="/src/main.js"></script>',
+            "src/main.js": entry,
+            **files,
+        })
+        discovery = discover_environment.discover(root, ["src/**"])
+        return discover_tokens.discover(root, discovery)["family_states"]
+
+    def test_a_measured_family_carries_its_count(self):
+        states = self.states({
+            "src/globals.css": self.TOKENS[:-1] + ";--motion-fast:120ms}",
+        })
+        self.assertEqual(states["motion"], {"state": "counted", "count": 1})
+
+    def held_out(self):
+        """globals.css is canonical; the component sheet is held out."""
+        return self.states(
+            {
+                "src/globals.css": self.TOKENS,
+                "src/components/Card/card.css": ".c{--motion-fast:120ms}",
+            },
+            entry='import "./globals.css";\nimport "./components/Card/card.css";')
+
+    def test_a_family_found_only_in_a_held_out_source_is_unmeasured(self):
+        """Held out for reachability, so its count is not this run's to give."""
+        states = self.held_out()
+        self.assertEqual(states["motion"]["state"], "not-visible")
+        self.assertNotIn("count", states["motion"])
+
+    def test_a_family_found_nowhere_at_all_is_absent(self):
+        states = self.states({"src/globals.css": self.TOKENS})
+        self.assertEqual(states["motion"], {"state": "none-used", "count": 0})
+
+    def test_no_family_is_ever_a_bare_zero_without_a_state(self):
+        for family, state in self.held_out().items():
+            if state["state"] == "not-visible":
+                self.assertNotIn("count", state, family)
+
+    def test_every_taxonomy_family_has_a_state(self):
+        states = self.states({"src/globals.css": self.TOKENS})
+        self.assertEqual(set(states), set(discover_tokens.FAMILIES))
+        for family, state in states.items():
+            self.assertIn(state["state"], ("counted", "not-visible", "none-used"),
+                          family)
+
+
+class TestUnreadableValues(unittest.TestCase):
+    """A declaration whose value the reader cannot resolve is not an absence.
+
+    `backdropBlur: spacing[2]` is a real blur token. The conservative JS
+    reader takes literals only, so the line is skipped and the family lands
+    at zero — and zero says the project has none, which is the one claim
+    this run has not earned. A name the run SAW but could not resolve makes
+    its family unmeasured, never absent.
+    """
+
+    def states(self, module):
+        root = make_repo({
+            "package.json": '{"name":"app","devDependencies":{"vite":"^5"}}',
+            "vite.config.js": "export default {}",
+            "index.html": '<script type="module" src="/src/main.js"></script>',
+            "src/main.js": 'import "./globals.css";\nimport "./tokens/theme.js";',
+            "src/globals.css": (
+                ":root{--color-brand:#6b5bf0;--color-text:#111;--spacing-2:8px;"
+                "--spacing-4:16px;--radius-md:6px;--border-width:1px}"),
+            "src/tokens/theme.js": module,
+        })
+        discovery = discover_environment.discover(root, ["src/**"])
+        return discover_tokens.discover(root, discovery)["family_states"]
+
+    def test_a_referenced_value_leaves_its_family_unmeasured(self):
+        states = self.states(
+            "export const theme = {\n"
+            "  brand: '#6b5bf0',\n"
+            "  backdropBlur: spacing[2],\n"
+            "}\n")
+        self.assertEqual(states["blur"]["state"], "not-visible")
+        self.assertNotIn("count", states["blur"])
+
+    def test_a_resolvable_value_still_counts_normally(self):
+        states = self.states(
+            "export const theme = {\n"
+            "  brand: '#6b5bf0',\n"
+            "  backdropBlur: '12px',\n"
+            "}\n")
+        self.assertEqual(states["blur"], {"state": "counted", "count": 1})
+
+    def test_a_family_named_nowhere_is_still_absent(self):
+        states = self.states(
+            "export const theme = {\n"
+            "  brand: '#6b5bf0',\n"
+            "  backdropBlur: spacing[2],\n"
+            "}\n")
+        self.assertEqual(states["density"], {"state": "none-used", "count": 0})
+
+
+class TestTier(unittest.TestCase):
+    """Tier-integrity cannot be graded off a field nothing sets.
+
+    A real run produced 749 concepts and every one of them carried no tier
+    at all, so the vital that asks whether primitives, semantic aliases and
+    projections stay in their layers had nothing to read. Each concept now
+    carries the tier its own evidence supports, and says which evidence —
+    and a link the run could not trace stays `untraced` rather than being
+    guessed into a layer.
+    """
+
+    def tiers(self, files):
+        root = make_repo({
+            "package.json": '{"name":"app","devDependencies":{"vite":"^5"}}',
+            "vite.config.js": "export default {}",
+            "index.html": '<script type="module" src="/src/main.js"></script>',
+            "src/main.js": 'import "./globals.css";',
+            **files,
+        })
+        discovery = discover_environment.discover(root, ["src/**"])
+        result = discover_tokens.discover(root, discovery)
+        return ({item["id"]: item for item in result["concepts"]},
+                result["lineage"])
+
+    def test_a_concrete_value_with_no_reference_is_primitive(self):
+        concepts, _ = self.tiers({"src/globals.css": (
+            ":root{--blue-500:#6b5bf0;--color-text:#111;--spacing-2:8px;"
+            "--spacing-4:16px;--radius-md:6px;--border-width:1px}")})
+        self.assertEqual(concepts["blue-500"]["tier"], "primitive")
+        self.assertIn("concrete value", concepts["blue-500"]["tier_evidence"])
+
+    def test_a_reference_to_a_known_token_is_a_traced_semantic_alias(self):
+        concepts, lineage = self.tiers({"src/globals.css": (
+            ":root{--blue-500:#6b5bf0;--color-action:var(--blue-500);"
+            "--color-text:#111;--spacing-2:8px;--spacing-4:16px;"
+            "--radius-md:6px}")})
+        self.assertEqual(concepts["color-action"]["tier"], "semantic")
+        self.assertEqual(concepts["color-action"]["alias_of"], "blue-500")
+        self.assertTrue(concepts["color-action"]["alias_resolved"])
+        self.assertEqual(lineage["resolved_alias_edges"], 1)
+        self.assertEqual(lineage["untraced_alias_edges"], 0)
+
+    def test_a_reference_to_nothing_this_run_found_stays_untraced(self):
+        concepts, lineage = self.tiers({"src/globals.css": (
+            ":root{--color-action:var(--from-elsewhere);--color-text:#111;"
+            "--spacing-2:8px;--spacing-4:16px;--radius-md:6px;"
+            "--border-width:1px}")})
+        self.assertFalse(concepts["color-action"]["alias_resolved"])
+        self.assertEqual(lineage["untraced_alias_edges"], 1)
+
+    def test_an_explicit_namespace_outranks_the_value_shape(self):
+        """`semantic.*` holding a concrete value is a declaration, not a leak."""
+        concepts, _ = self.tiers({"src/globals.css": (
+            ":root{--semantic-color-action:#6b5bf0;--color-text:#111;"
+            "--spacing-2:8px;--spacing-4:16px;--radius-md:6px;"
+            "--border-width:1px}")})
+        self.assertEqual(concepts["semantic-color-action"]["tier"], "semantic")
+        self.assertIn("token name",
+                      concepts["semantic-color-action"]["tier_evidence"])
+
+    def test_every_concept_carries_a_tier(self):
+        concepts, lineage = self.tiers({"src/globals.css": (
+            ":root{--blue-500:#6b5bf0;--color-action:var(--blue-500);"
+            "--color-text:#111;--spacing-2:8px;--spacing-4:16px;"
+            "--radius-md:6px}")})
+        for key, item in concepts.items():
+            self.assertIn(item["tier"],
+                          ("primitive", "semantic", "component", "untraced"), key)
+            self.assertTrue(item["tier_evidence"], key)
+        self.assertEqual(sum(lineage["tiers"].values()), len(concepts))
+
+
+class TestConflictingDefinitions(unittest.TestCase):
+    """A token defined twice does not get a tier picked from one of them.
+
+    87 concepts in one real repository carried more than one value —
+    `--button-outline-border` is `var(--color-border)` in a stylesheet and
+    two different values in two visual-system profiles. The tier walk read
+    whichever definition it reached last, so 56 concepts were filed into a
+    layer on the strength of a third of their own evidence.
+    """
+
+    def concept(self, definitions, alias_of=None):
+        return {
+            "id": "x", "family": "color", "names": ["x"],
+            "values": [d["value"] for d in definitions],
+            "sites": [d["site"] for d in definitions],
+            "alias_of": alias_of, "definitions": definitions,
+        }
+
+    def tier(self, definitions, alias_of=None, known=()):
+        return discover_tokens.tier_for(
+            self.concept(definitions, alias_of), set(known))
+
+    def test_definitions_that_disagree_on_shape_leave_the_tier_untraced(self):
+        tier, why = self.tier([
+            {"value": "#e9e9ea", "site": "a.js:1"},
+            {"value": "var(--color-text)", "site": "a.js:2"},
+        ], alias_of="color-text", known=["color-text"])
+        self.assertEqual(tier, "untraced")
+        self.assertIn("2 definitions", why)
+        self.assertIn("a.js:1", why)
+
+    def test_definitions_that_agree_on_shape_still_get_their_tier(self):
+        tier, _ = self.tier([
+            {"value": "#fff", "site": "a.css:1"},
+            {"value": "#eee", "site": "b.css:1"},
+        ])
+        self.assertEqual(tier, "primitive")
+
+    def test_one_definition_is_unchanged(self):
+        tier, why = self.tier([{"value": "#fff", "site": "a.css:1"}])
+        self.assertEqual(tier, "primitive")
+        self.assertIn("concrete value", why)
+
+    def test_a_declared_namespace_still_outranks_a_disagreement(self):
+        """An explicit `semantic.*` name is a decision, not an accident."""
+        concept = self.concept([
+            {"value": "#e9e9ea", "site": "a.js:1"},
+            {"value": "var(--x)", "site": "a.js:2"},
+        ])
+        concept["names"] = ["semantic.color.action"]
+        tier, why = discover_tokens.tier_for(concept, set())
+        self.assertEqual(tier, "semantic")
+        self.assertIn("token name", why)
+
+
+class TestConflictReport(unittest.TestCase):
+    """Defined twice is a finding, and the run already had the evidence."""
+
+    def conflicts(self, globals_css, profiles_js):
+        root = make_repo({
+            "package.json": '{"name":"app","devDependencies":{"vite":"^5"}}',
+            "vite.config.js": "export default {}",
+            "index.html": '<script type="module" src="/src/main.js"></script>',
+            "src/main.js": 'import "./globals.css";\nimport "./tokens.js";',
+            "src/globals.css": globals_css,
+            "src/tokens.js": profiles_js,
+        })
+        discovery = discover_environment.discover(root, ["src/**"])
+        return discover_tokens.discover(root, discovery)["conflicts"]
+
+    BASE = (":root{--color-brand:#6b5bf0;--color-text:#111;--spacing-2:8px;"
+            "--spacing-4:16px;--radius-md:6px;--border-width:1px;")
+
+    def test_a_token_defined_twice_with_different_values_is_reported(self):
+        conflicts = self.conflicts(
+            self.BASE + "--button-border:var(--color-border)}",
+            "export const tokens = Object.freeze({\n"
+            "  '--button-border': '#e9e9ea',\n})\n")
+        entry = next(item for item in conflicts
+                     if item["token"] == "button-border")
+        self.assertEqual(len(entry["definitions"]), 2)
+        self.assertEqual(entry["kind"], "literal beside alias")
+
+    def test_a_token_defined_once_is_not_a_conflict(self):
+        conflicts = self.conflicts(self.BASE + "}",
+                                   "export const tokens = Object.freeze({})\n")
+        self.assertEqual([item["token"] for item in conflicts], [])
+
+    def test_the_kind_says_which_of_the_three_it_is(self):
+        conflicts = self.conflicts(
+            self.BASE + "--a:var(--color-text);--b:#111}",
+            "export const tokens = Object.freeze({\n"
+            "  '--a': 'var(--color-brand)',\n"
+            "  '--b': '#222',\n})\n")
+        kinds = {item["token"]: item["kind"] for item in conflicts}
+        self.assertEqual(kinds["a"], "two aliases")
+        self.assertEqual(kinds["b"], "two literals")

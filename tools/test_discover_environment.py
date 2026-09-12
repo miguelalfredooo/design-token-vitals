@@ -656,3 +656,58 @@ class TestDiscovery(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestOrphanScope(unittest.TestCase):
+    """`--owned` has to constrain what an orphan IS, not only who owns one.
+
+    The owned graph already honoured the scope; the full graph computed
+    orphans over every stylesheet in the tree, and that full list is what a
+    report cited. Passing `--owned src/**` therefore changed nothing about
+    the orphan finding, which is how an audit came to list 114 of them from
+    directories the run had been told not to grade.
+    """
+
+    def repo(self):
+        return make_repo({
+            "package.json": '{"name":"app","devDependencies":{"vite":"^5"}}',
+            "vite.config.js": "export default {}",
+            "index.html": '<script type="module" src="/src/main.js"></script>',
+            "src/main.js": 'import "./globals.css";',
+            "src/globals.css": ":root{--color-brand:#6b5bf0}",
+            "src/loose.css": ".a{color:red}",
+            "demo/legacy.css": ".b{color:red}",
+        })
+
+    def test_an_orphan_outside_the_owned_scope_is_separated_not_counted(self):
+        result = discover_environment.discover(self.repo(), ["src/**"])
+        orphans = result["orphans"]
+        self.assertEqual(orphans["owned"], ["src/loose.css"])
+        self.assertEqual(orphans["outside_owned_scope"], ["demo/legacy.css"])
+        self.assertEqual(orphans["basis"], "user-supplied scope")
+
+    def test_a_scope_inferred_from_the_framework_also_narrows_it(self):
+        """The scope can be evidence rather than an argument, and says so."""
+        result = discover_environment.discover(self.repo())
+        orphans = result["orphans"]
+        self.assertEqual(orphans["basis"], "framework profile")
+        self.assertEqual(orphans["owned"], ["src/loose.css"])
+        self.assertEqual(orphans["outside_owned_scope"], ["demo/legacy.css"])
+
+    def test_with_no_scope_at_all_nothing_is_claimed_to_be_outside_one(self):
+        """No roots, no profile: every orphan is reported and none excused."""
+        root = make_repo({
+            "a/one.css": ".a{color:red}",
+            "b/two.css": ".b{color:red}",
+        })
+        orphans = discover_environment.discover(root)["orphans"]
+        self.assertEqual(orphans["basis"], "not-visible")
+        self.assertEqual(orphans["outside_owned_scope"], [])
+        self.assertEqual(sorted(orphans["owned"]), ["a/one.css", "b/two.css"])
+
+    def test_the_full_list_is_kept_so_nothing_is_silently_dropped(self):
+        result = discover_environment.discover(self.repo(), ["src/**"])
+        self.assertEqual(
+            sorted(result["orphans"]["owned"] +
+                   result["orphans"]["outside_owned_scope"]),
+            sorted(result["import_graph"]["orphans"]))

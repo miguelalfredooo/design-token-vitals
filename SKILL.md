@@ -51,7 +51,12 @@ python3 tools/audit_literal_colors.py <root> --discovery .token-vitals/discovery
 
 Its exact-value
 matches remain manual-review candidates until semantic equivalence is
-proven; value equality alone never authorizes a replacement.
+proven; value equality alone never authorizes a replacement. `near_miss` and
+`semantic_equivalence` come back as states, not as a bare string: with no
+literal in any consumer style nothing can be a near-miss, and with no
+exact-value candidate no replacement's semantic role is in question, so both
+read `counted` with none found and leakage becomes gradeable. Where literals
+do exist both stay `not-visible` and say how many remain to compare.
 
 Typography and brand color are identity-critical outputs, not decorative
 examples. Token discovery must produce `identity.typography` and
@@ -86,7 +91,9 @@ find evidence. Profile-declared extractor hooks read config arrays, build
 JSON, and registration calls, so framework registration is executable rather
 than prose guidance. Static roots that cannot be reached stay visible as
 `root_candidates`; component locations outside owned scope stay visible as
-`component_root_candidates`. Adapters explain how to investigate what each
+`component_root_candidates`. Orphan stylesheets arrive split by the scope
+the run was given, in the `orphans` block: report the `owned` half, and keep
+`outside_owned_scope` visible as evidence that is not this run's finding. Adapters explain how to investigate what each
 profile finds.
 Use `references/environment-adapters.md` for the profile contract and read
 only the adapters listed in the discovery output. When a monorepo has
@@ -159,6 +166,15 @@ missing where unmeasured. **A family the run could not resolve is never
 reported as `0`** — zero states that the project has none, which is a claim
 this run did not establish. A family found only in an unverified source is
 `not-visible`, because reachability decides here the same as everywhere else.
+
+`discover_tokens.py` decides this for you and publishes it as
+`family_states`: `counted` carries a count, `not-visible` carries **no
+number at all**, and `none-used` is the one state that has earned the number
+0. Read that block rather than `family_counts`, which cannot tell a family
+the run proved empty from one it never reached — and note that a family is
+also `not-visible` when a confirmed source declared it with a value the
+reader would not invent, as `backdropBlur: spacing[2]` does.
+`render_discovery.py` fills `inventory.families` from it.
 
 Five status values only: `healthy`, `watch`, `needs-work`, `not-visible`,
 `not-needed`. Attach at least one real `file:line` to every grade that

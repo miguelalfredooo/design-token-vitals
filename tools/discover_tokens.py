@@ -60,6 +60,16 @@ JS_LITERAL = re.compile(
     r"-?[0-9.]+(?:px|rem|em|ms|s|%|vh|vw|deg)?|"
     r"\[[^\]\n]+\])\s*,?\s*$"
 )
+# A property whose value the literal reader cannot resolve — an identifier,
+# a subscript, a call. `backdropBlur: spacing[2]` is a real blur token and
+# the reader is right not to invent a value for it, but it is wrong to let
+# the family then read as absent. These names are collected so the family
+# can say `not-visible` instead of 0.
+JS_REFERENCE = re.compile(
+    r"^\s*['\"]?([a-zA-Z0-9_-]+)['\"]?\s*:\s*"
+    r"([A-Za-z_$][\w$]*(?:\.[\w$]+|\[[^\]\n]*\]|\([^)\n]*\))*)\s*,?\s*$",
+    re.M,
+)
 JS_DESIGN_VALUE = re.compile(
     r"(?:#[0-9a-f]{3,8}\b|(?:rgb|hsl|oklch|lab|color|var|calc|min|max|clamp|"
     r"cubic-bezier)\(|-?(?:\d*\.)?\d+(?:px|rem|em|ms|s|%|vh|vw|vmin|vmax|"
@@ -502,9 +512,20 @@ def identity_summary(concepts, font_faces=None, subject_namespaces=None):
         "heading-font-family": 80,
     }
     for concept in concepts:
-        name = concept.get("id", "")
-        if "font-family" not in name:
+        # `family_key` splits camelCase; the concept id cannot, because
+        # normalize() lowercased it first. A JS token layer writes the
+        # concept as `fontFamily`, so reading the id made a product's own
+        # typeface invisible and handed identity to whichever legacy export
+        # happened to spell it with a hyphen.
+        spellings = concept.get("names") or [concept.get("id", "")]
+        keys = [family_key(spelling) for spelling in spellings]
+        matching = [(spelling, key) for spelling, key in zip(spellings, keys)
+                    if "font-family" in key]
+        if not matching:
             continue
+        name = concept.get("id", "")
+        key = max((key for _, key in matching),
+                  key=lambda item: font_priority.get(item, 60))
         definitions = concept.get("definitions") or []
         for definition in definitions:
             if not all(definition.get(field) for field in (
@@ -516,7 +537,7 @@ def identity_summary(concepts, font_faces=None, subject_namespaces=None):
                 font_candidates.append({
                     "family": family,
                     "token": name,
-                    "priority": font_priority.get(name, 60),
+                    "priority": font_priority.get(key, 60),
                     "evidence": [definition.get("site")],
                 })
     merged_candidates = {}
@@ -819,6 +840,13 @@ def json_declarations(text):
     return found
 
 
+def js_referenced_names(text):
+    """Property names in a JS object whose value is not a readable literal."""
+    return [match.group(1)
+            for match in JS_REFERENCE.finditer(
+                strip_comments_preserving_lines(text))]
+
+
 def js_declarations(text, source_name=False):
     clean = strip_comments_preserving_lines(text)
     if not source_name and not re.search(r"\b(?:createTheme|defineTheme|tokens|designTokens)\b", clean):
@@ -856,12 +884,14 @@ def js_declarations(text, source_name=False):
     ]
 
 
-def declarations(text, path=""):
+def declarations(text, path="", admitted=False):
     extension = os.path.splitext(path)[1].lower()
     if extension in JSON_EXTENSIONS:
         return json_declarations(text)
     if extension in JS_SOURCE_EXTENSIONS:
-        return js_declarations(text, bool(SOURCE_NAME.search(os.path.basename(path))))
+        return js_declarations(
+            text,
+            admitted or bool(SOURCE_NAME.search(os.path.basename(path))))
     if extension in EMBEDDED_STYLE_EXTENSIONS or extension in (".css", ".scss", ".sass", ".less"):
         return style_declarations(text)
     return []
@@ -901,7 +931,83 @@ def root_css_declaration_count(text):
     return total
 
 
-def source_role(path, decls, text, forced=False):
+# A namespace segment that states its own layer. Kept deliberately short:
+# `base`, `global` and `theme` all appear in ordinary token names — a
+# `--base-font-family` is not a primitive tier declaration — and a marker
+# that fires on those would put most of a design system in the wrong layer
+# while looking like evidence.
+TIER_MARKERS = (
+    ("primitive", ("primitive", "primitives", "ref", "palette", "raw")),
+    ("semantic", ("semantic", "alias")),
+    ("component", ("component",)),
+)
+
+
+def declared_tier(names):
+    """The tier a token's own name states, if any of its spellings do."""
+    for name in names:
+        key = family_key(name)
+        for tier, markers in TIER_MARKERS:
+            for marker in markers:
+                if has_signal(key, marker):
+                    return tier, "declared by the %r segment of the token name" % marker
+    return None, None
+
+
+def value_shape(value):
+    """`alias` if the value points at another token, else `literal`."""
+    value = str(value or "")
+    return "alias" if ("var(" in value or re.match(r"^\$[\w-]+", value)) \
+        else "literal"
+
+
+def conflict_kind(values):
+    shapes = {value_shape(value) for value in values}
+    if shapes == {"alias"}:
+        return "two aliases"
+    if shapes == {"literal"}:
+        return "two literals"
+    return "literal beside alias"
+
+
+def tier_for(item, known):
+    """The layer this concept's evidence supports, and what supported it.
+
+    Order matters, and it is an order of evidence rather than convenience:
+    a name that states its layer is a declaration, a reference to another
+    token is structural proof of an alias, and a concrete value with
+    neither is a primitive. Anything else stays untraced — the skill's own
+    rule is to mark an untraced link rather than guess at it.
+    """
+    declared, why = declared_tier(item.get("names") or [item["id"]])
+    if declared:
+        return declared, why
+    # Definitions that disagree about SHAPE disagree about the layer, and
+    # the walk used to read whichever one it reached last. A token defined
+    # once as a literal and once as an alias has no single tier; saying so
+    # is the only honest answer, and it is also the finding.
+    definitions = item.get("definitions") or []
+    shapes = {value_shape(definition.get("value"))
+              for definition in definitions if definition.get("value")}
+    if len(shapes) > 1:
+        sites = ", ".join(definition.get("site", "?")
+                          for definition in definitions[:4])
+        return "untraced", ("%d definitions disagree about the layer (%s): %s"
+                            % (len(definitions), conflict_kind(
+                                [d.get("value") for d in definitions]), sites))
+    alias = item.get("alias_of")
+    if alias:
+        if alias in known:
+            return "semantic", "aliases %s, resolved in this run" % alias
+        return "semantic", "references %s, which this run did not find" % alias
+    concrete = [value for value in item.get("values", [])
+                if value and "var(" not in value and not re.match(r"^\$", value)]
+    if concrete:
+        return "primitive", "concrete value %r with no reference" % concrete[0]
+    return "untraced", "no concrete value and no traceable reference"
+
+
+def source_role(path, decls, text, forced=False, admitted=False):
     if forced:
         return "canonical"
     if not decls:
@@ -914,7 +1020,9 @@ def source_role(path, decls, text, forced=False):
                     if representation == "css-custom-property")
     root_css_count = root_css_declaration_count(text)
     if representations & {"dtcg-json", "style-dictionary-json", "js-theme-object"}:
-        return "canonical" if SOURCE_NAME.search(os.path.basename(path)) else "candidate"
+        return ("canonical"
+                if admitted or SOURCE_NAME.search(os.path.basename(path))
+                else "candidate")
     source_shaped_styles = (
         len(decls) >= 2 and
         bool(representations & {"scss-variable", "scss-map-entry"})
@@ -938,6 +1046,13 @@ def discover(root, discovery, forced_sources=None):
     sources = []
     local_overrides = []
     font_faces = []
+    held_out_families = set()
+    unresolved_families = set()
+
+    # Read every candidate once. Admission cannot be decided file by file on
+    # the way past, because part of the evidence for one module is what the
+    # rest of the tree turned out to be.
+    readable = []
     for path, reach in sorted(reachable.items()):
         if os.path.splitext(path)[1].lower() not in (
                 {".css", ".scss", ".sass", ".less"} |
@@ -952,28 +1067,88 @@ def discover(root, discovery, forced_sources=None):
         if os.path.splitext(path)[1].lower() in (
                 {".css", ".scss", ".sass", ".less"} | EMBEDDED_STYLE_EXTENSIONS):
             font_faces.extend(font_face_evidence(root, path, text))
+        readable.append((path, reach, text))
+
+    # Pass 1 — admission by filename, and by an explicit --source.
+    graded = {}
+    for path, _reach, text in readable:
         decls = declarations(text, path)
-        role = source_role(path, decls, text, path in forced_sources)
+        graded[path] = (decls,
+                        source_role(path, decls, text, path in forced_sources),
+                        None)
+
+    # Pass 2 — a directory that already holds a confirmed canonical source is
+    # evidence about the modules beside it. A filename is a guess, and it was
+    # rejecting five reachable modules of one real `src/tokens/` directory —
+    # every one of them imported by the same application, and between them
+    # holding the opacity, aspect-ratio, z-index and blur values the run then
+    # reported as zero of. Admission is NOT transitive: only a directory a
+    # filename already confirmed can vouch for its siblings, so one loose
+    # module can never pull a whole tree in behind it.
+    confirmed_directories = {
+        os.path.dirname(path)
+        for path, (decls, role, _) in graded.items()
+        if decls and role in ("canonical", "alias")
+    }
+    for path, _reach, text in readable:
+        decls, role, _ = graded[path]
+        if (role in ("canonical", "alias") or
+                os.path.splitext(path)[1].lower() not in JS_SOURCE_EXTENSIONS or
+                os.path.dirname(path) not in confirmed_directories):
+            continue
+        sibling_decls = declarations(text, path, admitted=True)
+        if not sibling_decls:
+            continue
+        sibling_role = source_role(path, sibling_decls, text,
+                                   path in forced_sources, admitted=True)
+        if sibling_role in ("canonical", "alias"):
+            graded[path] = (sibling_decls, sibling_role,
+                            "sibling of a confirmed canonical source")
+
+    for path, reach, text in readable:
+        decls, role, admitted_by = graded[path]
         if not decls:
             continue
+        if (role in ("canonical", "alias") and
+                os.path.splitext(path)[1].lower() in JS_SOURCE_EXTENSIONS):
+            # Seen in a confirmed source, but its value is a reference the
+            # reader will not invent a number for. Remembering the name is
+            # what stops its family reading as an absence.
+            unresolved_families.update(
+                family_for(name, "") for name in js_referenced_names(text))
         source = {
             "path": path, "role": role, "declarations": len(decls),
             "reachable_from": reach.get("via") or [path],
             "confidence": "import-graph verified",
+            "admitted_by": admitted_by or "source filename",
         }
         sources.append(source)
         if role in ("consumer-override", "candidate"):
             local_overrides.append(source)
+            # What a held-out source holds is not this run's count to give,
+            # but it is the difference between "there are none" and "we did
+            # not look here" — so the families it names are remembered.
+            held_out_families.update(
+                family_for(name, value) for name, value, _, _ in decls)
             continue
         for name, value, representation, offset in decls:
             key = normalize(name)
             detected_family = family_for(name, value)
             item = concepts.setdefault(key, {
                 "id": key, "family": detected_family, "sites": [],
+                # `id` is normalize()d, which lowercases before anything can
+                # split camelCase — so `fontFamily` and `font-family` both
+                # arrive as `fontfamily` and a selector matching on the id
+                # cannot tell a JS token layer's spelling from noise. The
+                # declared names are kept beside it for the checks that need
+                # the word boundary.
+                "names": [],
                 "representations": [], "values": [], "alias_of": None,
                 "identity_contexts": [],
                 "definitions": [],
             })
+            if name not in item["names"]:
+                item["names"].append(name)
             if item["family"] == "unclassified" and detected_family != "unclassified":
                 item["family"] = detected_family
             item["sites"].append("%s:%d" % (path, line_for(text, offset)))
@@ -999,6 +1174,53 @@ def discover(root, discovery, forced_sources=None):
             ref = re.search(r"var\(\s*--([\w-]+)\s*\)|\$([\w-]+)", value)
             if ref:
                 item["alias_of"] = normalize(ref.group(1) or ref.group(2))
+    # Lineage: every concept gets the tier its own evidence supports, and
+    # says which evidence. Without it `tier-integrity` and `single-source`
+    # have no field to read, which is how a run produced 749 concepts and
+    # graded neither.
+    known = set(concepts)
+    tier_counts = {"primitive": 0, "semantic": 0, "component": 0, "untraced": 0}
+    resolved_edges = untraced_edges = 0
+    for item in concepts.values():
+        tier, why = tier_for(item, known)
+        item["tier"] = tier
+        item["tier_evidence"] = why
+        if item.get("alias_of"):
+            item["alias_resolved"] = item["alias_of"] in known
+            if item["alias_resolved"]:
+                resolved_edges += 1
+            else:
+                untraced_edges += 1
+        else:
+            item["alias_resolved"] = None
+        tier_counts[tier] += 1
+
+    # A token defined more than once is what `single-source` exists to find,
+    # and the evidence was already here — recorded per definition and never
+    # turned into a finding. Three different things live in this list and
+    # only a person can tell them apart: a legitimate per-profile variant, a
+    # literal sitting beside an alias for the same role, and a real clash.
+    # The run names which shape it is and leaves the judgment.
+    conflicts = []
+    for item in sorted(concepts.values(), key=lambda entry: entry["id"]):
+        values = [value for value in (item.get("values") or []) if value]
+        if len(set(values)) < 2:
+            continue
+        conflicts.append({
+            "token": item["id"],
+            "family": item.get("family"),
+            "kind": conflict_kind(values),
+            "definitions": [
+                {"value": definition.get("value"),
+                 "site": definition.get("site")}
+                for definition in (item.get("definitions") or [])
+            ],
+            "note": ("Defined %d times with %d different values. A per-profile "
+                     "variant, a redundant literal, and a real clash all look "
+                     "like this — the sites say which."
+                     % (len(item.get("definitions") or []), len(set(values)))),
+        })
+
     family_counts = {family: 0 for family in FAMILIES}
     unclassified = 0
     for item in concepts.values():
@@ -1006,13 +1228,40 @@ def discover(root, discovery, forced_sources=None):
             family_counts[item["family"]] += 1
         else:
             unclassified += 1
+    # A count of 0 is a claim — it says the project has none of this family —
+    # and SKILL.md forbids making it on a family the run could not resolve.
+    # The same rule that decides everything else decides here: a family found
+    # only in a source that failed reachability is `not-visible` and carries NO
+    # number, because the number is not this run's to give. A family found
+    # nowhere the run looked, including in those held-out sources, is
+    # `none-used`, and 0 is then the finding rather than the gap.
+    family_states = {}
+    for family in FAMILIES:
+        count = family_counts[family]
+        if count:
+            family_states[family] = {"state": "counted", "count": count}
+        elif family in held_out_families or family in unresolved_families:
+            family_states[family] = {"state": "not-visible"}
+        else:
+            family_states[family] = {"state": "none-used", "count": 0}
     sorted_concepts = sorted(concepts.values(), key=lambda item: item["id"])
     subject_namespaces = subject_namespace_evidence(root, discovery)
     return {
         "sources": sources,
         "concepts": sorted_concepts,
         "concept_count": len(concepts),
+        "conflicts": conflicts,
         "family_counts": family_counts,
+        "family_states": family_states,
+        "lineage": {
+            "tiers": tier_counts,
+            "resolved_alias_edges": resolved_edges,
+            "untraced_alias_edges": untraced_edges,
+            "note": ("%d alias edge(s) resolve to a concept this run found; "
+                     "%d reference a token it did not, and are reported as "
+                     "untraced rather than assumed."
+                     % (resolved_edges, untraced_edges)),
+        },
         "unclassified": unclassified,
         "candidate_or_local_override_sources": local_overrides,
         "forced_sources": sorted(forced_sources),
