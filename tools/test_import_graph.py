@@ -434,3 +434,128 @@ class TestWorkspaceLinks(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestStaticAssets(unittest.TestCase):
+    """An image that is on disk is resolved, never reported as missing.
+
+    A run against a real application found 186 unresolved imports and every
+    one of them was an existing .png, .svg, .webp, .mp4 or .jpg: the probe
+    only ever appended source extensions, so `./logo.svg` was looked for at
+    `logo.svg.ts` and `logo.svg/index.tsx`. That is 56% of an unresolved
+    list reading as a broken import graph when nothing was broken.
+    """
+
+    def test_an_asset_spec_probes_its_own_literal_path(self):
+        got = import_graph.candidate_paths("../assets/hero.png", "src/ui/Card.tsx")
+        self.assertIn("src/assets/hero.png", got)
+
+    def test_an_asset_spec_is_not_probed_as_source(self):
+        got = import_graph.candidate_paths("./logo.svg", "src/App.tsx")
+        self.assertEqual(got, ["src/logo.svg"])
+
+    def test_an_existing_asset_resolves_instead_of_going_unresolved(self):
+        root = make_repo({
+            "src/main.tsx": 'import logo from "./logo.svg";\nimport clip from "../assets/a.mp4";',
+            "src/logo.svg": "<svg/>",
+            "assets/a.mp4": "\x00\x00",
+        })
+        g = import_graph.build(root, ["src/main.tsx"])
+        self.assertEqual(g["unresolved"], [])
+        self.assertIn("src/logo.svg", g["reachable"])
+        self.assertIn("assets/a.mp4", g["reachable"])
+
+    def test_a_resolved_asset_is_terminal_and_is_never_parsed(self):
+        """Binary bytes must not be scanned for imports, or read at all."""
+        root = make_repo({
+            "src/main.tsx": 'import logo from "./logo.svg";',
+            "src/logo.svg": '<svg><!-- @import "./nope.css"; --></svg>',
+        })
+        g = import_graph.build(root, ["src/main.tsx"])
+        self.assertTrue(g["reachable"]["src/logo.svg"]["terminal"])
+        self.assertEqual(g["unresolved"], [])
+
+    def test_a_bundler_query_suffix_and_a_capital_extension_still_resolve(self):
+        """`?url` and `?raw` are how a Vite app imports half its assets."""
+        root = make_repo({
+            "src/main.tsx": ('import a from "./logo.svg?url";\n'
+                             'import b from "./notes.MD?raw";\n'
+                             'import c from "./hero.PNG";'),
+            "src/logo.svg": "<svg/>",
+            "src/notes.MD": "# x",
+            "src/hero.PNG": "\x89PNG",
+        })
+        g = import_graph.build(root, ["src/main.tsx"])
+        self.assertEqual(g["unresolved"], [])
+
+    def test_an_asset_that_is_absent_is_still_reported(self):
+        root = make_repo({"src/main.tsx": 'import logo from "./gone.svg";'})
+        g = import_graph.build(root, ["src/main.tsx"])
+        self.assertEqual(
+            [(x["spec"], x["reason"]) for x in g["unresolved"]],
+            [("./gone.svg", "missing local source")])
+
+    def test_a_font_imported_by_a_module_resolves(self):
+        """CSS url() is deliberately still not walked — see the note below.
+
+        A @font-face url is resolved by discover_tokens.resolve_font_asset,
+        which is what proves a specimen; the graph is not in that path. Every
+        one of the 186 misses this class was written for came from a module
+        import, so the fix stops there rather than widening reachability on
+        a claim no measurement supports.
+        """
+        root = make_repo({
+            "src/type.ts": 'import face from "./fonts/x.woff2";',
+            "src/fonts/x.woff2": "wOF2",
+        })
+        g = import_graph.build(root, ["src/type.ts"])
+        self.assertIn("src/fonts/x.woff2", g["reachable"])
+
+
+class TestGeneratedTreesAreNotScanned(unittest.TestCase):
+    """A working copy holds trees that are copies, not code.
+
+    A run reported 114 orphan stylesheets and every one of them lived in
+    `.worktrees/`, `test-results/` or an export folder — the same files the
+    run was already grading, counted a second time from a checkout of them.
+    An orphan list that is mostly duplicates cannot be acted on.
+    """
+
+    def test_a_git_worktree_checkout_is_ignored(self):
+        root = make_repo({
+            "app/globals.css": ":root{--a:1px}",
+            ".worktrees/feature/app/globals.css": ":root{--a:1px}",
+            "test-results/run-1/trace.css": ":root{--a:1px}",
+            "playwright-report/data/report.css": ":root{--a:1px}",
+            "storybook-static/iframe.css": ":root{--a:1px}",
+        })
+        g = import_graph.build(root, ["app/globals.css"])
+        self.assertEqual(g["orphans"], [])
+        self.assertEqual(g["style_files"], 1)
+
+    def test_a_root_only_ignore_does_not_reach_down_the_tree(self):
+        """`target/` is Rust build output. `src/target/` is somebody's code.
+
+        Written after a mutation moved `worktrees` and `target` out of the
+        root-only set — ignoring them at every depth — and every test stayed
+        green. The comment claimed the distinction; nothing checked it.
+        """
+        root = make_repo({
+            "app/globals.css": ":root{--a:1px}",
+            "target/build.css": ":root{--a:1px}",
+            "worktrees/copy.css": ":root{--a:1px}",
+            "src/target/panel.css": ".p{color:red}",
+            "src/worktrees/panel.css": ".p{color:red}",
+        })
+        g = import_graph.build(root, ["app/globals.css"])
+        self.assertEqual(sorted(g["orphans"]),
+                         ["src/target/panel.css", "src/worktrees/panel.css"])
+
+    def test_a_directory_that_merely_reads_generated_is_still_scanned(self):
+        """The ignore list names trees, not words. `src/output/` is source."""
+        root = make_repo({
+            "app/globals.css": ":root{--a:1px}",
+            "src/output/panel.css": ".p{color:red}",
+        })
+        g = import_graph.build(root, ["app/globals.css"])
+        self.assertEqual(g["orphans"], ["src/output/panel.css"])

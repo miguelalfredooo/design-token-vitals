@@ -123,9 +123,18 @@ conditional or lazy styles, never product inclusion by themselves.
 Classify unresolved specs as framework built-in, remote, external package,
 dynamic runtime import, unsupported resolver, or missing local source. Do
 not report a built-in Sass module or remote font as a missing local file.
+An image, clip or typeface resolves to its own literal path and terminates
+the walk — reachable, never opened, never scanned for imports it cannot
+have. Probing one as source is how a real run reported 186 missing local
+sources that were all on disk, 56% of its unresolved list.
 
 Record the graph roots, the reachable set, the unresolved specs and the
-orphans in `discovery.import_graph`. Preserve unpromoted static roots under
+orphans in `discovery.import_graph`. Report orphans from `discovery.orphans`,
+which splits that list on the scope the run was given: the `owned` half is
+the finding, and `outside_owned_scope` stays visible as evidence that is not
+this run's to report. A checkout of the repository inside itself, and what a
+test or build run leaves behind, are not scanned at all — every file in them
+is a second copy of one the run is already grading. Preserve unpromoted static roots under
 `discovery.root_candidates` and component locations outside owned scope
 under `discovery.component_root_candidates`; put the same evidence in the
 report rather than dropping rejected hypotheses.

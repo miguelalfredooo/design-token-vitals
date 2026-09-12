@@ -73,6 +73,22 @@ still get reported, with at least one real `file:line` per tier, but they
 call for judgment rather than a mechanical fix, so they do not drive the
 pass/attention/fail line.
 
+## Nothing left to compare is a measurement
+
+A run that finds no hardcoded literal in any consumer style has finished
+both of the checks that depend on one: no literal can be a near-miss, and
+no exact-value candidate exists whose semantic role could be in question.
+`audit_literal_colors.py` reports both as `counted` with none found in
+that case, and `redundant` is then honestly `0` rather than absent — which
+is what lets `leakage` grade `healthy` at all. Reported as `not-visible`, a
+clean repository was indistinguishable from an unfinished run, and no input
+would ever have changed the answer.
+
+Where literals do exist, both stay `not-visible` and say how many groups
+remain to compare. That is the honest reading of a comparison this tool
+does not yet make; the one above is the honest reading of a comparison with
+no operands.
+
 A `redundant` finding means the value already had a name for the same
 decision in the token system. An `exact-value candidate` means only that
 the numbers match. For example, white text, a white canvas, and a third-party

@@ -258,6 +258,41 @@ def capability_ladder(capabilities, active_ids, roots, graph, ownership,
     }
 
 
+def orphan_scope(orphans, ownership):
+    """Split the full orphan list on the scope the run was actually given.
+
+    An orphan is a stylesheet holding token declarations that no production
+    entry reaches, and it is only a finding inside the scope being graded.
+    Outside it the same file is somebody else's, or a copy — real, worth
+    seeing, and not this run's to report. Keeping both halves means the
+    scope narrows the finding without ever deleting evidence.
+    """
+    patterns = (ownership.get("owned_patterns") or
+                ownership.get("inferred_owned_patterns") or [])
+    basis = ownership.get("basis", "not-visible")
+    if not patterns:
+        return {
+            "owned": list(orphans),
+            "outside_owned_scope": [],
+            "basis": basis,
+            "note": ("No owned scope was established, so every orphan is "
+                     "reported and none is claimed to be out of scope."),
+        }
+    owned, outside = [], []
+    for path in orphans:
+        target = owned if any(pattern_matches(path, pattern)
+                              for pattern in patterns) else outside
+        target.append(path)
+    return {
+        "owned": owned,
+        "outside_owned_scope": outside,
+        "basis": basis,
+        "note": ("%d of %d orphan stylesheet(s) fall inside the owned scope; "
+                 "the rest are kept visible and are not a finding of this run."
+                 % (len(owned), len(orphans))),
+    }
+
+
 def discover(root, owned_patterns=None, profile_ids=None, app_root=None,
              profile_files=None):
     root = os.path.abspath(root)
@@ -681,6 +716,7 @@ def discover(root, owned_patterns=None, profile_ids=None, app_root=None,
         "import_graph": graph,
         "owned_import_graph": owned_graph,
         "ownership": ownership,
+        "orphans": orphan_scope(graph["orphans"], ownership),
         "missing_registered_roots": missing_registered_roots,
         "mode_resolution": mode_resolution,
     }

@@ -78,12 +78,37 @@ def audit(root, discovery, tokens):
         }
         payload["priority"] = priority(payload["occurrences"], payload["files"], breadth, "manual review")
         (findings if candidates else unmatched).append(payload)
+    # "Unmeasured" is the right answer to a comparison this tool does not
+    # make, and the wrong answer to one that has nothing left to compare.
+    # A repository whose every color already lives in its token source has
+    # no literal to be a near-miss and no candidate whose semantic role
+    # could be in question — so both checks are finished, with none found.
+    # Reported as unmeasured, they left leakage permanently ungradeable and
+    # a clean result indistinguishable from an unfinished run.
+    near_miss = (
+        {"state": "counted", "findings": 0,
+         "note": "No hardcoded color literal was found in a consumer style, "
+                 "so none can be a near-miss."}
+        if not groups else
+        {"state": "not-visible", "findings": None,
+         "note": "Perceptual distance between a literal and a token value is "
+                 "not computed; %d literal group(s) remain to compare."
+                 % len(groups)})
+    semantic_equivalence = (
+        {"state": "counted", "findings": 0,
+         "note": "No exact-value candidate was found, so no replacement "
+                 "needs its semantic role proven."}
+        if not findings else
+        {"state": "not-visible", "findings": None,
+         "note": "%d exact-value candidate group(s) await semantic-role "
+                 "review; value equality alone never authorizes a "
+                 "replacement." % len(findings)})
     return {
         "consumer_files_scanned": len([p for p in reachable if p not in source_paths and os.path.splitext(p)[1] in (".css", ".scss", ".sass", ".less")]),
         "exact_value_candidates": rank(findings),
         "uncovered_candidates": rank(unmatched),
-        "semantic_equivalence": "not-visible",
-        "near_miss": "not-visible",
+        "semantic_equivalence": semantic_equivalence,
+        "near_miss": near_miss,
     }
 
 

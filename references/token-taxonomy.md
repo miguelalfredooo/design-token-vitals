@@ -81,7 +81,16 @@ Three different states, and the report keeps them apart:
 
 Rendering an unmeasured family as `0` states that the project has none,
 which is a claim the run never established. Validation rule 4 fails an
-audit that does it.
+audit that does it. `discover_tokens.py` decides all three and publishes
+them as `family_states`, where an `not-visible` family carries no `count`
+key at all — there is no number to render by accident. Read that rather
+than `family_counts`, which cannot tell the three apart.
+
+One case is easy to read as absence and is not: a confirmed source can
+declare a family with a value the reader will not resolve.
+`backdropBlur: spacing[2]` is a real blur token, and refusing to invent a
+number for it is correct — but the family was *named*, so it is
+`not-visible`, never `none-used`.
 
 ## Applying this in discovery
 
@@ -92,7 +101,8 @@ objects, and JSON token files. Record per family:
 
 - `state`: `counted`, `not-visible`, or `none-used`
 - `count`: tokens found, where measured
-- `tiers`: how many sit at primitive and how many at semantic
+- `tiers`: how many sit at primitive, semantic, component and untraced —
+  taken from each concept's own `tier`, which discovery derives
 - `sources`: the source ids that define it
 - `note`: what is missing, where unmeasured
 

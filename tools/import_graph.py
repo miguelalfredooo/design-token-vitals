@@ -100,11 +100,33 @@ ENTRY_CONVENTIONS = [
 DEFAULT_IGNORES = [
     "node_modules", ".git", "dist", "build", ".next", "out", "coverage",
     "vendor", "third_party", "tmp", ".turbo", ".cache",
+    # A checkout of the same repository inside itself, and the artefacts a
+    # test or build run leaves behind. Every file in them is a copy of a
+    # file the run is already grading, so scanning them counts the same
+    # stylesheet twice and reports the duplicate as an orphan.
+    ".worktrees", "worktrees", "test-results", "playwright-report",
+    "storybook-static", ".svelte-kit", ".nuxt", ".output", ".astro",
+    ".vercel", ".netlify", ".parcel-cache", ".yarn", "__pycache__",
+    ".venv", "venv", "target",
 ]
-ROOT_ONLY_IGNORES = {"vendor", "third_party"}
+# Ignored at the repository root only: each is a plausible name for a real
+# source directory one level down. `src/target/` is code; `target/` is Rust
+# build output.
+ROOT_ONLY_IGNORES = {"vendor", "third_party", "worktrees", "target"}
 ORPHAN_EXCLUDED_PARTS = {
     "test", "tests", "spec", "specs", "fixtures", "snapshots",
     "__fixtures__", "generated",
+}
+
+# A repository imports files it never parses: an icon, a screenshot, a clip,
+# a typeface. They terminate the graph rather than extending it, and they are
+# resolved by their own literal path — a spec ending in .svg means that file,
+# never `logo.svg.ts`. Probing them as source is how a run against a real
+# application reported 186 unresolved imports, every one of which was on disk.
+ASSET_EXT = {
+    ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".bmp",
+    ".mp4", ".webm", ".mov", ".m4v", ".ogv", ".mp3", ".wav", ".ogg", ".m4a",
+    ".woff", ".woff2", ".ttf", ".otf", ".eot", ".pdf", ".txt", ".md", ".wasm",
 }
 
 SOURCE_EXTENSION_ORDER = (
@@ -515,7 +537,12 @@ def candidate_paths(spec, from_path, packages=None, aliases=None, rewrites=None,
         if importer_is_style and not tail.startswith("_"):
             stems.append("_" + tail)
         for stem in stems:
-            if os.path.splitext(stem)[1] in SOURCE_EXT:
+            if os.path.splitext(stem)[1].lower() in ASSET_EXT:
+                # Terminal: the spec names the file. Appending an extension
+                # here invents paths that cannot exist and buries the real
+                # unresolved imports under them.
+                out.append(os.path.join(head, stem))
+            elif os.path.splitext(stem)[1] in SOURCE_EXT:
                 out.append(os.path.join(head, stem))
             else:
                 extensions = ((".scss", ".css", ".sass", ".less")
@@ -725,8 +752,15 @@ def build(root, entries=None, ignores=None, aliases=None, orphan_patterns=None,
                 })
                 continue
             if hit not in reachable:
-                reachable[hit] = {"depth": depth + 1, "via": chain}
-                queue.append((hit, depth + 1, chain + [hit]))
+                # An asset terminates the walk. It is reachable — that is what
+                # proves a repository-owned typeface can be embedded in a
+                # specimen — but it is never opened, decoded as text, or
+                # scanned for imports it cannot have.
+                terminal = os.path.splitext(hit)[1].lower() in ASSET_EXT
+                reachable[hit] = {"depth": depth + 1, "via": chain,
+                                  "terminal": terminal}
+                if not terminal:
+                    queue.append((hit, depth + 1, chain + [hit]))
 
     orphan_pool = {
         path for path in style_files

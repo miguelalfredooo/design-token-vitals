@@ -34,7 +34,10 @@
         "app/components.css",
         "app/theme.css",
         "styles/_primitives.scss",
-        "packages/ui/src/theme.css"
+        "packages/ui/src/theme.css",
+        "app/tokens/typography.ts",
+        "app/assets/logo.svg",
+        "app/assets/hero.png"
       ],
       "orphans": [
         "app/orphan-tokens.css"
