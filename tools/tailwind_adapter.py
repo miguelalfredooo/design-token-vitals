@@ -186,3 +186,30 @@ def resolve(class_name, theme):
             return Resolution("resolved", derived[0], (), True)
         return UNRESOLVED
     return UNRESOLVED
+
+
+Leak = namedtuple("Leak", "kind value prefix")
+
+ARBITRARY = re.compile(r"^(?P<prefix>[a-z-]+)-\[(?P<value>[^\]]*)\]$")
+PAREN_SHORTHAND = re.compile(r"^(?P<prefix>[a-z-]+)-\((?P<value>[^)]*)\)$")
+
+
+def classify(class_name):
+    """A bracket-arbitrary value: a raw literal, a dropped reference, or fine.
+
+    bg-[--brand] compiles to invalid CSS and is dropped with no error. The
+    element ships unstyled and nothing in the build warns you, which is why
+    it is reported ahead of an ordinary literal.
+    """
+    base, _negative = peel(class_name)
+    if PAREN_SHORTHAND.match(base):
+        return None
+    match = ARBITRARY.match(base)
+    if not match:
+        return None
+    value = match.group("value").strip()
+    if value.startswith("var("):
+        return None
+    if value.startswith("--"):
+        return Leak("redundant", value, match.group("prefix"))
+    return Leak("literal", value, match.group("prefix"))

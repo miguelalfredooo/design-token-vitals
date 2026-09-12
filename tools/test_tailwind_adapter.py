@@ -161,3 +161,32 @@ class TestResolve(unittest.TestCase):
         self.assertTrue(negative.derived)
         self.assertEqual(tailwind_adapter.peel("-mt-4"), ("mt-4", True))
         self.assertEqual(tailwind_adapter.peel("mt-4"), ("mt-4", False))
+
+
+class TestClassify(unittest.TestCase):
+    def test_the_bracket_spellings_produce_different_verdicts(self):
+        # Variety, not presence. A classifier that returned "literal" for
+        # everything would pass a presence test on each spelling separately.
+        verdicts = {
+            "bg-[#0F8A83]": tailwind_adapter.classify("bg-[#0F8A83]"),
+            "bg-[--brand]": tailwind_adapter.classify("bg-[--brand]"),
+            "bg-[var(--brand)]": tailwind_adapter.classify("bg-[var(--brand)]"),
+        }
+        self.assertEqual(verdicts["bg-[#0F8A83]"].kind, "literal")
+        self.assertEqual(verdicts["bg-[--brand]"].kind, "redundant")
+        self.assertIsNone(verdicts["bg-[var(--brand)]"])
+        kinds = {v.kind if v else None for v in verdicts.values()}
+        self.assertEqual(len(kinds), 3)
+
+    def test_the_v4_parenthesis_shorthand_is_a_reference_not_a_leak(self):
+        self.assertIsNone(tailwind_adapter.classify("bg-(--brand)"))
+
+    def test_a_measurement_literal_is_a_leak_in_any_family(self):
+        self.assertEqual(tailwind_adapter.classify("p-[15px]").kind, "literal")
+        self.assertEqual(tailwind_adapter.classify("duration-[240ms]").kind, "literal")
+
+    def test_a_variant_does_not_hide_a_leak(self):
+        self.assertEqual(tailwind_adapter.classify("dark:hover:bg-[#0F8A83]").kind, "literal")
+
+    def test_an_ordinary_class_is_not_a_leak(self):
+        self.assertIsNone(tailwind_adapter.classify("bg-muted"))
