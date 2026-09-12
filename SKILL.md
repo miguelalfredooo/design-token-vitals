@@ -227,10 +227,13 @@ its target, and show every section when printing.
 **The list size and the per-section form are derived, not chosen.** Run:
 
 ```
-python3 tools/rendering_choices.py
+python3 tools/rendering_choices.py --tokens .token-vitals/tokens.json --leakage .token-vitals/literal-colors.json --discovery .token-vitals/discovery.json
 ```
 
-`rendering_choices.apply()` writes both into `rendering`: the list size from
+The command reads the run's own artifacts — `--tokens`, `--leakage`,
+`--discovery` — and prints the list size, every section's form, and the
+count each form was chosen from. `rendering_choices.apply()` writes both
+into `rendering`: the list size from
 the token count (`full` under 150, `short` through 600 inclusive, `summary`
 above), and one form per section from **that section's own** count, using
 the table in `references/report.md`. A small repository can still have a

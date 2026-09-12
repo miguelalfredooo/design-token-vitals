@@ -2,12 +2,12 @@
   "schema_version": 2,
   "provenance": {
     "report_schema_version": 2,
-    "skill_version": "0.1.0+d45f91b",
+    "skill_version": "0.1.0+11dad8f",
     "adapter_versions": {
-      "css-vars": "0.1.0+d45f91b",
-      "references/adapters/monorepo.md": "0.1.0+d45f91b",
-      "references/adapters/nextjs.md": "0.1.0+d45f91b",
-      "tailwind": "0.1.0+d45f91b"
+      "css-vars": "0.1.0+11dad8f",
+      "references/adapters/monorepo.md": "0.1.0+11dad8f",
+      "references/adapters/nextjs.md": "0.1.0+11dad8f",
+      "tailwind": "0.1.0+11dad8f"
     },
     "profile_registry_sources": [
       {
@@ -15,12 +15,12 @@
         "sha256": "e2ec80008cc676e3317677282befe72ac9745b55b029e5a18bf1e63850050056"
       }
     ],
-    "generated_at": "2026-09-12T01:35:08.184350Z",
+    "generated_at": "2026-09-12T02:02:02.903069Z",
     "repo_ref": "63c1308d112b",
     "validation_gate": {
       "passed": true,
       "exit_code": 0,
-      "checked_at": "2026-09-12T01:35:18Z"
+      "checked_at": "2026-09-12T02:02:12Z"
     }
   },
   "discovery": {
@@ -124552,7 +124552,7 @@
           "apps/v4/app/(app)/(typeset)/typeset/page.tsx"
         ],
         "confidence": "import-graph verified",
-        "declarations": 2
+        "declarations": 4
       },
       {
         "path": "apps/v4/app/(view)/preview/typeset/layout.tsx",
@@ -124663,6 +124663,15 @@
         ],
         "confidence": "import-graph verified",
         "declarations": 41
+      },
+      {
+        "path": "apps/v4/lib/fonts.ts",
+        "classification": "canonical",
+        "reachable_from": [
+          "apps/v4/app/layout.tsx"
+        ],
+        "confidence": "import-graph verified",
+        "declarations": 11
       },
       {
         "path": "apps/v4/registry/_legacy-base-colors.ts",
@@ -124780,9 +124789,9 @@
   },
   "run": {
     "intent": "baseline",
-    "generated_at": "2026-09-12T01:35:08.184350Z",
+    "generated_at": "2026-09-12T02:02:02.903069Z",
     "repo_ref": "63c1308d112b",
-    "token_count": 1185,
+    "token_count": 1197,
     "family_count": 19,
     "files_scanned": 13,
     "scope": [
@@ -124852,33 +124861,37 @@
       },
       "typography": {
         "state": "counted",
-        "count": 10,
+        "count": 19,
         "sources": [
           "apps/v4/app/(app)/(create)/lib/fonts.ts",
           "apps/v4/app/(view)/preview/typeset/layout.tsx",
           "apps/v4/app/globals.css",
           "apps/v4/lib/font-definitions.ts",
+          "apps/v4/lib/fonts.ts",
           "apps/v4/registry/fonts.ts",
           "apps/v4/registry/themes.ts"
         ],
         "tiers": {
-          "primitive": 2,
+          "primitive": 13,
           "semantic": 3,
           "component": 0,
-          "untraced": 5
+          "untraced": 3
         },
         "note": null
       },
       "spacing": {
-        "state": "not-visible",
-        "sources": [],
+        "state": "counted",
+        "count": 2,
+        "sources": [
+          "apps/v4/app/(view)/preview/fonts.ts"
+        ],
         "tiers": {
-          "primitive": 0,
+          "primitive": 2,
           "semantic": 0,
           "component": 0,
           "untraced": 0
         },
-        "note": "No canonical concept was confirmed; held-out candidates may still contain local decisions."
+        "note": null
       },
       "sizing": {
         "state": "counted",
@@ -177522,6 +177535,13 @@
         "definitions": [
           {
             "identity_context": null,
+            "offset": 1568,
+            "representation": "js-theme-object",
+            "site": "apps/v4/app/(view)/preview/typeset/layout.tsx:49",
+            "value": "var(--preview-font-heading, ${DEFAULT_FONT})"
+          },
+          {
+            "identity_context": null,
             "offset": 1747,
             "representation": "css-custom-property",
             "site": "apps/v4/app/globals.css:48",
@@ -177534,14 +177554,17 @@
           "--font-heading"
         ],
         "representations": [
+          "js-theme-object",
           "css-custom-property"
         ],
         "sites": [
+          "apps/v4/app/(view)/preview/typeset/layout.tsx:49",
           "apps/v4/app/globals.css:48"
         ],
         "tier": "semantic",
         "tier_evidence": "aliases font-heading, resolved in this run",
         "values": [
+          "var(--preview-font-heading, ${DEFAULT_FONT})",
           "var(--font-heading)"
         ],
         "name": "font-heading"
@@ -177550,6 +177573,13 @@
         "alias_of": "font-mono",
         "alias_resolved": true,
         "definitions": [
+          {
+            "identity_context": null,
+            "offset": 1650,
+            "representation": "js-theme-object",
+            "site": "apps/v4/app/(view)/preview/typeset/layout.tsx:50",
+            "value": "var(--preview-font-mono, ${DEFAULT_MONO})"
+          },
           {
             "identity_context": null,
             "offset": 1786,
@@ -177564,14 +177594,17 @@
           "--font-mono"
         ],
         "representations": [
+          "js-theme-object",
           "css-custom-property"
         ],
         "sites": [
+          "apps/v4/app/(view)/preview/typeset/layout.tsx:50",
           "apps/v4/app/globals.css:49"
         ],
         "tier": "semantic",
         "tier_evidence": "aliases font-mono, resolved in this run",
         "values": [
+          "var(--preview-font-mono, ${DEFAULT_MONO})",
           "var(--font-mono)"
         ],
         "name": "font-mono"
@@ -177665,6 +177698,336 @@
           "[...definition.subsets]"
         ],
         "name": "font.subsets"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 313,
+            "representation": "js-theme-object",
+            "site": "apps/v4/lib/fonts.ts:16",
+            "value": "[\"latin\"]"
+          }
+        ],
+        "family": "typography",
+        "identity_contexts": [],
+        "names": [
+          "fontHeading.subsets"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/lib/fonts.ts:16"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '[\"latin\"]' with no reference",
+        "values": [
+          "[\"latin\"]"
+        ],
+        "name": "fontheading.subsets"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 335,
+            "representation": "js-theme-object",
+            "site": "apps/v4/lib/fonts.ts:17",
+            "value": "--font-heading"
+          }
+        ],
+        "family": "typography",
+        "identity_contexts": [],
+        "names": [
+          "fontHeading.variable"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/lib/fonts.ts:17"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '--font-heading' with no reference",
+        "values": [
+          "--font-heading"
+        ],
+        "name": "fontheading.variable"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 397,
+            "representation": "js-theme-object",
+            "site": "apps/v4/lib/fonts.ts:21",
+            "value": "[\"latin\"]"
+          }
+        ],
+        "family": "typography",
+        "identity_contexts": [],
+        "names": [
+          "fontMono.subsets"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/lib/fonts.ts:21"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '[\"latin\"]' with no reference",
+        "values": [
+          "[\"latin\"]"
+        ],
+        "name": "fontmono.subsets"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 419,
+            "representation": "js-theme-object",
+            "site": "apps/v4/lib/fonts.ts:22",
+            "value": "--font-mono"
+          }
+        ],
+        "family": "typography",
+        "identity_contexts": [],
+        "names": [
+          "fontMono.variable"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/lib/fonts.ts:22"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '--font-mono' with no reference",
+        "values": [
+          "--font-mono"
+        ],
+        "name": "fontmono.variable"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 446,
+            "representation": "js-theme-object",
+            "site": "apps/v4/lib/fonts.ts:23",
+            "value": "[\"400\"]"
+          }
+        ],
+        "family": "typography",
+        "identity_contexts": [],
+        "names": [
+          "fontMono.weight"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/lib/fonts.ts:23"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '[\"400\"]' with no reference",
+        "values": [
+          "[\"400\"]"
+        ],
+        "name": "fontmono.weight"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 517,
+            "representation": "js-theme-object",
+            "site": "apps/v4/lib/fonts.ts:27",
+            "value": "[\"latin\"]"
+          }
+        ],
+        "family": "typography",
+        "identity_contexts": [],
+        "names": [
+          "fontNotoSansArabic.subsets"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/lib/fonts.ts:27"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '[\"latin\"]' with no reference",
+        "values": [
+          "[\"latin\"]"
+        ],
+        "name": "fontnotosansarabic.subsets"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 539,
+            "representation": "js-theme-object",
+            "site": "apps/v4/lib/fonts.ts:28",
+            "value": "--font-ar"
+          }
+        ],
+        "family": "typography",
+        "identity_contexts": [],
+        "names": [
+          "fontNotoSansArabic.variable"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/lib/fonts.ts:28"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '--font-ar' with no reference",
+        "values": [
+          "--font-ar"
+        ],
+        "name": "fontnotosansarabic.variable"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 616,
+            "representation": "js-theme-object",
+            "site": "apps/v4/lib/fonts.ts:32",
+            "value": "[\"latin\"]"
+          }
+        ],
+        "family": "typography",
+        "identity_contexts": [],
+        "names": [
+          "fontNotoSansHebrew.subsets"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/lib/fonts.ts:32"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '[\"latin\"]' with no reference",
+        "values": [
+          "[\"latin\"]"
+        ],
+        "name": "fontnotosanshebrew.subsets"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 638,
+            "representation": "js-theme-object",
+            "site": "apps/v4/lib/fonts.ts:33",
+            "value": "--font-he"
+          }
+        ],
+        "family": "typography",
+        "identity_contexts": [],
+        "names": [
+          "fontNotoSansHebrew.variable"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/lib/fonts.ts:33"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '--font-he' with no reference",
+        "values": [
+          "--font-he"
+        ],
+        "name": "fontnotosanshebrew.variable"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 229,
+            "representation": "js-theme-object",
+            "site": "apps/v4/lib/fonts.ts:11",
+            "value": "[\"latin\"]"
+          }
+        ],
+        "family": "typography",
+        "identity_contexts": [],
+        "names": [
+          "fontSans.subsets"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/lib/fonts.ts:11"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '[\"latin\"]' with no reference",
+        "values": [
+          "[\"latin\"]"
+        ],
+        "name": "fontsans.subsets"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 251,
+            "representation": "js-theme-object",
+            "site": "apps/v4/lib/fonts.ts:12",
+            "value": "--font-sans"
+          }
+        ],
+        "family": "typography",
+        "identity_contexts": [],
+        "names": [
+          "fontSans.variable"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/lib/fonts.ts:12"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '--font-sans' with no reference",
+        "values": [
+          "--font-sans"
+        ],
+        "name": "fontsans.variable"
       },
       {
         "alias_of": null,
@@ -177773,6 +178136,36 @@
           "oklch(1 0 0 / 15%)"
         ],
         "name": "input"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 2750,
+            "representation": "js-theme-object",
+            "site": "apps/v4/app/(view)/preview/fonts.ts:160",
+            "value": "--font-instrument-serif"
+          }
+        ],
+        "family": "unclassified",
+        "identity_contexts": [],
+        "names": [
+          "instrumentSerif.variable"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/app/(view)/preview/fonts.ts:160"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '--font-instrument-serif' with no reference",
+        "values": [
+          "--font-instrument-serif"
+        ],
+        "name": "instrumentserif.variable"
       },
       {
         "alias_of": null,
@@ -178071,6 +178464,36 @@
           "instrument-serif"
         ],
         "name": "name"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 2167,
+            "representation": "js-theme-object",
+            "site": "apps/v4/app/(view)/preview/fonts.ts:129",
+            "value": "--font-noto-serif"
+          }
+        ],
+        "family": "unclassified",
+        "identity_contexts": [],
+        "names": [
+          "notoSerif.variable"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/app/(view)/preview/fonts.ts:129"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '--font-noto-serif' with no reference",
+        "values": [
+          "--font-noto-serif"
+        ],
+        "name": "notoserif.variable"
       },
       {
         "alias_of": null,
@@ -179152,66 +179575,6 @@
         "name": "sidebar-ring"
       },
       {
-        "alias_of": null,
-        "alias_resolved": null,
-        "definitions": [
-          {
-            "identity_context": null,
-            "offset": 1568,
-            "representation": "js-theme-object",
-            "site": "apps/v4/app/(view)/preview/typeset/layout.tsx:49",
-            "value": "var(--preview-font-heading, ${DEFAULT_FONT})"
-          }
-        ],
-        "family": "typography",
-        "identity_contexts": [],
-        "names": [
-          "style.--font-heading"
-        ],
-        "representations": [
-          "js-theme-object"
-        ],
-        "sites": [
-          "apps/v4/app/(view)/preview/typeset/layout.tsx:49"
-        ],
-        "tier": "untraced",
-        "tier_evidence": "no concrete value and no traceable reference",
-        "values": [
-          "var(--preview-font-heading, ${DEFAULT_FONT})"
-        ],
-        "name": "style.--font-heading"
-      },
-      {
-        "alias_of": null,
-        "alias_resolved": null,
-        "definitions": [
-          {
-            "identity_context": null,
-            "offset": 1650,
-            "representation": "js-theme-object",
-            "site": "apps/v4/app/(view)/preview/typeset/layout.tsx:50",
-            "value": "var(--preview-font-mono, ${DEFAULT_MONO})"
-          }
-        ],
-        "family": "typography",
-        "identity_contexts": [],
-        "names": [
-          "style.--font-mono"
-        ],
-        "representations": [
-          "js-theme-object"
-        ],
-        "sites": [
-          "apps/v4/app/(view)/preview/typeset/layout.tsx:50"
-        ],
-        "tier": "untraced",
-        "tier_evidence": "no concrete value and no traceable reference",
-        "values": [
-          "var(--preview-font-mono, ${DEFAULT_MONO})"
-        ],
-        "name": "style.--font-mono"
-      },
-      {
         "alias_of": "spacing",
         "alias_resolved": false,
         "definitions": [
@@ -179226,7 +179589,7 @@
         "family": "sizing",
         "identity_contexts": [],
         "names": [
-          "style.--sidebar-width"
+          "--sidebar-width"
         ],
         "representations": [
           "js-theme-object"
@@ -179239,7 +179602,67 @@
         "values": [
           "calc(var(--spacing) * 72)"
         ],
-        "name": "style.--sidebar-width"
+        "name": "sidebar-width"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 1468,
+            "representation": "js-theme-object",
+            "site": "apps/v4/app/(view)/preview/fonts.ts:93",
+            "value": "[\"latin\"]"
+          }
+        ],
+        "family": "spacing",
+        "identity_contexts": [],
+        "names": [
+          "spaceGrotesk.subsets"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/app/(view)/preview/fonts.ts:93"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '[\"latin\"]' with no reference",
+        "values": [
+          "[\"latin\"]"
+        ],
+        "name": "spacegrotesk.subsets"
+      },
+      {
+        "alias_of": null,
+        "alias_resolved": null,
+        "definitions": [
+          {
+            "identity_context": null,
+            "offset": 1490,
+            "representation": "js-theme-object",
+            "site": "apps/v4/app/(view)/preview/fonts.ts:94",
+            "value": "--font-space-grotesk"
+          }
+        ],
+        "family": "spacing",
+        "identity_contexts": [],
+        "names": [
+          "spaceGrotesk.variable"
+        ],
+        "representations": [
+          "js-theme-object"
+        ],
+        "sites": [
+          "apps/v4/app/(view)/preview/fonts.ts:94"
+        ],
+        "tier": "primitive",
+        "tier_evidence": "concrete value '--font-space-grotesk' with no reference",
+        "values": [
+          "--font-space-grotesk"
+        ],
+        "name": "spacegrotesk.variable"
       },
       {
         "alias_of": null,
@@ -179920,48 +180343,9 @@
           "var(${definition.previewVariable}), ${definition.family}"
         ],
         "name": "value"
-      },
-      {
-        "alias_of": null,
-        "alias_resolved": null,
-        "definitions": [
-          {
-            "identity_context": null,
-            "offset": 2167,
-            "representation": "js-theme-object",
-            "site": "apps/v4/app/(view)/preview/fonts.ts:129",
-            "value": "--font-noto-serif"
-          },
-          {
-            "identity_context": null,
-            "offset": 2750,
-            "representation": "js-theme-object",
-            "site": "apps/v4/app/(view)/preview/fonts.ts:160",
-            "value": "--font-instrument-serif"
-          }
-        ],
-        "family": "unclassified",
-        "identity_contexts": [],
-        "names": [
-          "variable"
-        ],
-        "representations": [
-          "js-theme-object"
-        ],
-        "sites": [
-          "apps/v4/app/(view)/preview/fonts.ts:129",
-          "apps/v4/app/(view)/preview/fonts.ts:160"
-        ],
-        "tier": "primitive",
-        "tier_evidence": "concrete value '--font-noto-serif' with no reference",
-        "values": [
-          "--font-noto-serif",
-          "--font-instrument-serif"
-        ],
-        "name": "variable"
       }
     ],
-    "unclassified_count": 15,
+    "unclassified_count": 16,
     "candidate_or_local_override_sources": [
       {
         "admitted_by": "source filename",
@@ -180194,10 +180578,10 @@
     "by_route": []
   },
   "component_usage": {
-    "additional_style_surfaces": 144,
+    "additional_style_surfaces": 147,
     "component_definition": "A framework-neutral UI ownership unit inferred from component paths; otherwise a stylesheet or template surface. Device variants with the same owner and name are grouped.",
     "fallback_surfaces": 15,
-    "files_scanned": 3281,
+    "files_scanned": 3280,
     "measurement": [
       {
         "evidence": "var(--token)",
@@ -182025,7 +182409,7 @@
       }
     ],
     "total_components_with_token_usage": 5,
-    "total_usage_units": 149
+    "total_usage_units": 152
   },
   "lineage": [
     {
@@ -182301,7 +182685,7 @@
       "evidence": [
         "apps/v4/app/globals.css:107"
       ],
-      "note": "102 concepts carry more than one value, and this run cannot tell a variant from a duplicate. 32 are one `:root` value and one `.dark` value in globals.css \u2014 a mode pair, not a duplication. 44 more are in registry/themes.ts, which declares roughly ten selectable themes, and 6 in the legacy base-colour registries do the same. Grading duplication here would report a design intent as a defect."
+      "note": "103 concepts carry more than one value, and this run cannot tell a variant from a duplicate. 32 are one `:root` value and one `.dark` value in globals.css \u2014 a mode pair, not a duplication. 58 more are in registry/themes.ts, which declares roughly ten selectable themes, and the legacy base-colour registries do the same. Grading duplication here would report a design intent as a defect."
     },
     "orphans": {
       "grade": "healthy",
@@ -182326,7 +182710,7 @@
       "spacing": "rows",
       "leaks": "rows",
       "orphans": "rows",
-      "modes": "coverage-bar",
+      "modes": "matrix",
       "families": "rows"
     },
     "truncated": [],
@@ -191930,9 +192314,105 @@
         "component_count": 0,
         "components": [],
         "dependent_tokens": [],
+        "family": "typography",
+        "tier": "primitive",
+        "token": "fontheading.subsets"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "typography",
+        "tier": "primitive",
+        "token": "fontheading.variable"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "typography",
+        "tier": "primitive",
+        "token": "fontmono.subsets"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "typography",
+        "tier": "primitive",
+        "token": "fontmono.variable"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "typography",
+        "tier": "primitive",
+        "token": "fontmono.weight"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "typography",
+        "tier": "primitive",
+        "token": "fontnotosansarabic.subsets"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "typography",
+        "tier": "primitive",
+        "token": "fontnotosansarabic.variable"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "typography",
+        "tier": "primitive",
+        "token": "fontnotosanshebrew.subsets"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "typography",
+        "tier": "primitive",
+        "token": "fontnotosanshebrew.variable"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "typography",
+        "tier": "primitive",
+        "token": "fontsans.subsets"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "typography",
+        "tier": "primitive",
+        "token": "fontsans.variable"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
         "family": "icon",
         "tier": "primitive",
         "token": "icons.icon"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "unclassified",
+        "tier": "primitive",
+        "token": "instrumentserif.variable"
       },
       {
         "component_count": 0,
@@ -191965,6 +192445,14 @@
         "family": "unclassified",
         "tier": "primitive",
         "token": "name"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "unclassified",
+        "tier": "primitive",
+        "token": "notoserif.variable"
       },
       {
         "component_count": 0,
@@ -192058,25 +192546,25 @@
         "component_count": 0,
         "components": [],
         "dependent_tokens": [],
-        "family": "typography",
-        "tier": "untraced",
-        "token": "style.--font-heading"
-      },
-      {
-        "component_count": 0,
-        "components": [],
-        "dependent_tokens": [],
-        "family": "typography",
-        "tier": "untraced",
-        "token": "style.--font-mono"
-      },
-      {
-        "component_count": 0,
-        "components": [],
-        "dependent_tokens": [],
         "family": "sizing",
         "tier": "semantic",
-        "token": "style.--sidebar-width"
+        "token": "sidebar-width"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "spacing",
+        "tier": "primitive",
+        "token": "spacegrotesk.subsets"
+      },
+      {
+        "component_count": 0,
+        "components": [],
+        "dependent_tokens": [],
+        "family": "spacing",
+        "tier": "primitive",
+        "token": "spacegrotesk.variable"
       },
       {
         "component_count": 0,
@@ -192125,14 +192613,6 @@
         "family": "unclassified",
         "tier": "untraced",
         "token": "value"
-      },
-      {
-        "component_count": 0,
-        "components": [],
-        "dependent_tokens": [],
-        "family": "unclassified",
-        "tier": "primitive",
-        "token": "variable"
       }
     ],
     "chains": [
@@ -193492,10 +193972,10 @@
         "hops": [
           {
             "family": "typography",
-            "site": "apps/v4/app/globals.css:48",
+            "site": "apps/v4/app/(view)/preview/typeset/layout.tsx:49",
             "tier": "semantic",
             "token": "font-heading",
-            "value": "var(--font-heading)"
+            "value": "var(--preview-font-heading, ${DEFAULT_FONT})"
           }
         ],
         "note": "The alias chain forms a cycle and was not followed past it.",
@@ -193519,10 +193999,10 @@
         "hops": [
           {
             "family": "typography",
-            "site": "apps/v4/app/globals.css:49",
+            "site": "apps/v4/app/(view)/preview/typeset/layout.tsx:50",
             "tier": "semantic",
             "token": "font-mono",
-            "value": "var(--font-mono)"
+            "value": "var(--preview-font-mono, ${DEFAULT_MONO})"
           }
         ],
         "note": "The alias chain forms a cycle and was not followed past it.",
@@ -221954,6 +222434,281 @@
       {
         "complete": true,
         "consumers": [],
+        "family": "typography",
+        "hops": [
+          {
+            "family": "typography",
+            "site": "apps/v4/lib/fonts.ts:16",
+            "tier": "primitive",
+            "token": "fontheading.subsets",
+            "value": "[\"latin\"]"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "typography",
+          "site": "apps/v4/lib/fonts.ts:16",
+          "tier": "primitive",
+          "token": "fontheading.subsets",
+          "value": "[\"latin\"]"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "fontheading.subsets"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "typography",
+        "hops": [
+          {
+            "family": "typography",
+            "site": "apps/v4/lib/fonts.ts:17",
+            "tier": "primitive",
+            "token": "fontheading.variable",
+            "value": "--font-heading"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "typography",
+          "site": "apps/v4/lib/fonts.ts:17",
+          "tier": "primitive",
+          "token": "fontheading.variable",
+          "value": "--font-heading"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "fontheading.variable"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "typography",
+        "hops": [
+          {
+            "family": "typography",
+            "site": "apps/v4/lib/fonts.ts:21",
+            "tier": "primitive",
+            "token": "fontmono.subsets",
+            "value": "[\"latin\"]"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "typography",
+          "site": "apps/v4/lib/fonts.ts:21",
+          "tier": "primitive",
+          "token": "fontmono.subsets",
+          "value": "[\"latin\"]"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "fontmono.subsets"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "typography",
+        "hops": [
+          {
+            "family": "typography",
+            "site": "apps/v4/lib/fonts.ts:22",
+            "tier": "primitive",
+            "token": "fontmono.variable",
+            "value": "--font-mono"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "typography",
+          "site": "apps/v4/lib/fonts.ts:22",
+          "tier": "primitive",
+          "token": "fontmono.variable",
+          "value": "--font-mono"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "fontmono.variable"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "typography",
+        "hops": [
+          {
+            "family": "typography",
+            "site": "apps/v4/lib/fonts.ts:23",
+            "tier": "primitive",
+            "token": "fontmono.weight",
+            "value": "[\"400\"]"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "typography",
+          "site": "apps/v4/lib/fonts.ts:23",
+          "tier": "primitive",
+          "token": "fontmono.weight",
+          "value": "[\"400\"]"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "fontmono.weight"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "typography",
+        "hops": [
+          {
+            "family": "typography",
+            "site": "apps/v4/lib/fonts.ts:27",
+            "tier": "primitive",
+            "token": "fontnotosansarabic.subsets",
+            "value": "[\"latin\"]"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "typography",
+          "site": "apps/v4/lib/fonts.ts:27",
+          "tier": "primitive",
+          "token": "fontnotosansarabic.subsets",
+          "value": "[\"latin\"]"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "fontnotosansarabic.subsets"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "typography",
+        "hops": [
+          {
+            "family": "typography",
+            "site": "apps/v4/lib/fonts.ts:28",
+            "tier": "primitive",
+            "token": "fontnotosansarabic.variable",
+            "value": "--font-ar"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "typography",
+          "site": "apps/v4/lib/fonts.ts:28",
+          "tier": "primitive",
+          "token": "fontnotosansarabic.variable",
+          "value": "--font-ar"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "fontnotosansarabic.variable"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "typography",
+        "hops": [
+          {
+            "family": "typography",
+            "site": "apps/v4/lib/fonts.ts:32",
+            "tier": "primitive",
+            "token": "fontnotosanshebrew.subsets",
+            "value": "[\"latin\"]"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "typography",
+          "site": "apps/v4/lib/fonts.ts:32",
+          "tier": "primitive",
+          "token": "fontnotosanshebrew.subsets",
+          "value": "[\"latin\"]"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "fontnotosanshebrew.subsets"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "typography",
+        "hops": [
+          {
+            "family": "typography",
+            "site": "apps/v4/lib/fonts.ts:33",
+            "tier": "primitive",
+            "token": "fontnotosanshebrew.variable",
+            "value": "--font-he"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "typography",
+          "site": "apps/v4/lib/fonts.ts:33",
+          "tier": "primitive",
+          "token": "fontnotosanshebrew.variable",
+          "value": "--font-he"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "fontnotosanshebrew.variable"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "typography",
+        "hops": [
+          {
+            "family": "typography",
+            "site": "apps/v4/lib/fonts.ts:11",
+            "tier": "primitive",
+            "token": "fontsans.subsets",
+            "value": "[\"latin\"]"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "typography",
+          "site": "apps/v4/lib/fonts.ts:11",
+          "tier": "primitive",
+          "token": "fontsans.subsets",
+          "value": "[\"latin\"]"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "fontsans.subsets"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "typography",
+        "hops": [
+          {
+            "family": "typography",
+            "site": "apps/v4/lib/fonts.ts:12",
+            "tier": "primitive",
+            "token": "fontsans.variable",
+            "value": "--font-sans"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "typography",
+          "site": "apps/v4/lib/fonts.ts:12",
+          "tier": "primitive",
+          "token": "fontsans.variable",
+          "value": "--font-sans"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "fontsans.variable"
+      },
+      {
+        "complete": true,
+        "consumers": [],
         "family": "icon",
         "hops": [
           {
@@ -222000,6 +222755,31 @@
         "stops_at": null,
         "tier": "primitive",
         "token": "input"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "unclassified",
+        "hops": [
+          {
+            "family": "unclassified",
+            "site": "apps/v4/app/(view)/preview/fonts.ts:160",
+            "tier": "primitive",
+            "token": "instrumentserif.variable",
+            "value": "--font-instrument-serif"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "unclassified",
+          "site": "apps/v4/app/(view)/preview/fonts.ts:160",
+          "tier": "primitive",
+          "token": "instrumentserif.variable",
+          "value": "--font-instrument-serif"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "instrumentserif.variable"
       },
       {
         "complete": true,
@@ -222125,6 +222905,31 @@
         "stops_at": null,
         "tier": "primitive",
         "token": "name"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "unclassified",
+        "hops": [
+          {
+            "family": "unclassified",
+            "site": "apps/v4/app/(view)/preview/fonts.ts:129",
+            "tier": "primitive",
+            "token": "notoserif.variable",
+            "value": "--font-noto-serif"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "unclassified",
+          "site": "apps/v4/app/(view)/preview/fonts.ts:129",
+          "tier": "primitive",
+          "token": "notoserif.variable",
+          "value": "--font-noto-serif"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "notoserif.variable"
       },
       {
         "complete": true,
@@ -222618,51 +223423,13 @@
       {
         "complete": false,
         "consumers": [],
-        "family": "typography",
-        "hops": [
-          {
-            "family": "typography",
-            "site": "apps/v4/app/(view)/preview/typeset/layout.tsx:49",
-            "tier": "untraced",
-            "token": "style.--font-heading",
-            "value": "var(--preview-font-heading, ${DEFAULT_FONT})"
-          }
-        ],
-        "note": null,
-        "root": null,
-        "stops_at": null,
-        "tier": "untraced",
-        "token": "style.--font-heading"
-      },
-      {
-        "complete": false,
-        "consumers": [],
-        "family": "typography",
-        "hops": [
-          {
-            "family": "typography",
-            "site": "apps/v4/app/(view)/preview/typeset/layout.tsx:50",
-            "tier": "untraced",
-            "token": "style.--font-mono",
-            "value": "var(--preview-font-mono, ${DEFAULT_MONO})"
-          }
-        ],
-        "note": null,
-        "root": null,
-        "stops_at": null,
-        "tier": "untraced",
-        "token": "style.--font-mono"
-      },
-      {
-        "complete": false,
-        "consumers": [],
         "family": "sizing",
         "hops": [
           {
             "family": "sizing",
             "site": "apps/v4/app/(app)/docs/layout.tsx:16",
             "tier": "semantic",
-            "token": "style.--sidebar-width",
+            "token": "sidebar-width",
             "value": "calc(var(--spacing) * 72)"
           }
         ],
@@ -222670,7 +223437,57 @@
         "root": null,
         "stops_at": "spacing",
         "tier": "semantic",
-        "token": "style.--sidebar-width"
+        "token": "sidebar-width"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "spacing",
+        "hops": [
+          {
+            "family": "spacing",
+            "site": "apps/v4/app/(view)/preview/fonts.ts:93",
+            "tier": "primitive",
+            "token": "spacegrotesk.subsets",
+            "value": "[\"latin\"]"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "spacing",
+          "site": "apps/v4/app/(view)/preview/fonts.ts:93",
+          "tier": "primitive",
+          "token": "spacegrotesk.subsets",
+          "value": "[\"latin\"]"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "spacegrotesk.subsets"
+      },
+      {
+        "complete": true,
+        "consumers": [],
+        "family": "spacing",
+        "hops": [
+          {
+            "family": "spacing",
+            "site": "apps/v4/app/(view)/preview/fonts.ts:94",
+            "tier": "primitive",
+            "token": "spacegrotesk.variable",
+            "value": "--font-space-grotesk"
+          }
+        ],
+        "note": null,
+        "root": {
+          "family": "spacing",
+          "site": "apps/v4/app/(view)/preview/fonts.ts:94",
+          "tier": "primitive",
+          "token": "spacegrotesk.variable",
+          "value": "--font-space-grotesk"
+        },
+        "stops_at": null,
+        "tier": "primitive",
+        "token": "spacegrotesk.variable"
       },
       {
         "complete": false,
@@ -222854,43 +223671,19 @@
         "stops_at": null,
         "tier": "untraced",
         "token": "value"
-      },
-      {
-        "complete": true,
-        "consumers": [],
-        "family": "unclassified",
-        "hops": [
-          {
-            "family": "unclassified",
-            "site": "apps/v4/app/(view)/preview/fonts.ts:129",
-            "tier": "primitive",
-            "token": "variable",
-            "value": "--font-noto-serif"
-          }
-        ],
-        "note": null,
-        "root": {
-          "family": "unclassified",
-          "site": "apps/v4/app/(view)/preview/fonts.ts:129",
-          "tier": "primitive",
-          "token": "variable",
-          "value": "--font-noto-serif"
-        },
-        "stops_at": null,
-        "tier": "primitive",
-        "token": "variable"
       }
     ],
     "fully_traceable_families": [
       "border",
       "breakpoint",
       "icon",
-      "radius"
+      "radius",
+      "spacing"
     ],
     "summary": {
       "longest_chain": 4,
-      "stops_before_a_primitive": 29,
-      "traced_to_a_primitive": 1156,
+      "stops_before_a_primitive": 27,
+      "traced_to_a_primitive": 1170,
       "with_a_named_consumer": 24
     }
   },
@@ -222906,7 +223699,7 @@
     "model": "token-led-hybrid",
     "confidence": "evidence-derived",
     "headline": "Unify decisions everywhere; unify components where ownership is proven.",
-    "rationale": "This run found 1185 canonical concepts across 18 confirmed token-definition sources, 5 components with confirmed token usage, 2 active framework profiles, and 2 styling or framework adapters. A repository-wide component replacement would cross framework behavior and upgrade boundaries that this token audit does not measure. Use one semantic token contract across them, preserve framework-specific delivery adapters, and reserve shared component implementation for owned surfaces.",
+    "rationale": "This run found 1197 canonical concepts across 19 confirmed token-definition sources, 5 components with confirmed token usage, 2 active framework profiles, and 2 styling or framework adapters. A repository-wide component replacement would cross framework behavior and upgrade boundaries that this token audit does not measure. Use one semantic token contract across them, preserve framework-specific delivery adapters, and reserve shared component implementation for owned surfaces.",
     "evidence": {
       "profiles": [
         "nextjs",
@@ -222918,8 +223711,8 @@
       ],
       "production_roots": 31,
       "owned_roots": 31,
-      "confirmed_token_definition_sources": 18,
-      "canonical_concepts": 1185,
+      "confirmed_token_definition_sources": 19,
+      "canonical_concepts": 1197,
       "component_usage_state": "counted",
       "components_with_token_usage": 5,
       "declared_modes": [
@@ -222942,7 +223735,7 @@
       {
         "id": "canonical-contract",
         "title": "One canonical contract",
-        "description": "Author one typed token graph for 1185 concepts; generate every other representation instead of maintaining parallel sources."
+        "description": "Author one typed token graph for 1197 concepts; generate every other representation instead of maintaining parallel sources."
       },
       {
         "id": "semantic-layer",
@@ -222975,7 +223768,7 @@
       {
         "id": "delivery-topology",
         "title": "Multiple delivery mechanisms",
-        "evidence": "18 confirmed token-definition sources feed 2 styling or framework adapters.",
+        "evidence": "19 confirmed token-definition sources feed 2 styling or framework adapters.",
         "implication": "Unify the decisions in one typed graph, then generate compatible projections. Requiring every framework to share one runtime format would couple design governance to implementation history."
       },
       {
@@ -223045,7 +223838,7 @@
         "phase": 2,
         "title": "Choose one source and generate adapters",
         "objective": "Make one token graph authoritative and generate runtime, legacy, and framework-specific projections.",
-        "evidence": "1185 concepts currently span 18 token-bearing sources and 2 adapters.",
+        "evidence": "1197 concepts currently span 19 token-bearing sources and 2 adapters.",
         "exit_criteria": "No projection is independently authored, aliases resolve without cycles, and primitive-to-consumer lineage is traceable."
       },
       {
@@ -223085,7 +223878,7 @@
       {
         "id": "source-consolidation",
         "measure": "Confirmed token-definition source files",
-        "baseline": "18",
+        "baseline": "19",
         "target": "one canonical authoring graph; every remaining source generated or mapped"
       },
       {

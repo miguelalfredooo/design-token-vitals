@@ -394,5 +394,41 @@
   "tests": [
    "test_render_discovery.TestLeakageSyncRespectsTheMeasurement"
   ]
+ },
+ {
+  "name": "a frozen object stops opening a nesting level",
+  "file": "tools/discover_tokens.py",
+  "old": "    r\"\\s*(?::|=)\\s*(?:[A-Za-z_$][\\w$.]*\\s*\\(\\s*)?\\{\\s*,?\\s*$\"",
+  "new": "    r\"\\s*(?::|=)\\s*\\{\\s*,?\\s*$\"",
+  "tests": [
+   "test_discover_tokens.TestWrappedObjectsKeepTheirPath"
+  ]
+ },
+ {
+  "name": "a custom-property key gets prefixed by its JS container",
+  "file": "tools/discover_tokens.py",
+  "old": "            name = (leaf if leaf.startswith(\"--\") else",
+  "new": "            name = (None if False else",
+  "tests": [
+   "test_discover_tokens.TestWrappedObjectsKeepTheirPath"
+  ]
+ },
+ {
+  "name": "the stamped banner goes back to a literal count",
+  "file": "tools/validate_run.py",
+  "old": "            'all %d rules passed %s</div>'\n            % (rule_count(), html_tools.escape(checked_at))",
+  "new": "            'all 18 rules passed %s</div>'\n            % (html_tools.escape(checked_at))",
+  "tests": [
+   "test_validate_run.TestNoRuleCountIsWrittenDownTwice"
+  ]
+ },
+ {
+  "name": "section forms taken from nothing instead of the artifacts",
+  "file": "tools/rendering_choices.py",
+  "old": "    counts = section_counts(tokens, load(args.leakage), load(args.discovery))",
+  "new": "    counts = section_counts({}, {}, {})",
+  "tests": [
+   "test_rendering_choices.TestTheCliProducesTheWholeBlock"
+  ]
  }
 ]

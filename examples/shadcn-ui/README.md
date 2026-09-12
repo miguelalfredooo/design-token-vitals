@@ -8,12 +8,12 @@ finding here is independently checkable.
 - **Adapters:** `tailwind` + `css-vars` — Tailwind v4's `@theme inline`
   block (`apps/v4/app/globals.css:44`) sits on top of a `:root` block
   (line 99), so both ran and their findings merged.
-- **List size:** `summary` (1,185 concepts, over the 600 threshold)
-- **Skill version:** `0.1.0+d45f91b`
+- **List size:** `summary` (1,197 concepts, over the 600 threshold)
+- **Skill version:** `0.1.0+11dad8f`
 
 > **This run is unaided.** Nothing in `report.json` was hand-scoped,
 > hand-collapsed or hand-corrected. Earlier versions of this example were
-> curated — projections collapsed by hand, a token count narrowed from 1,185
+> curated — projections collapsed by hand, a token count narrowed from 1,197
 > to 40 by judgment — which made them a better argument and an unreproducible
 > artifact. Everything below comes from the commands in the next section, and
 > anybody can run them and get this file.
@@ -54,7 +54,7 @@ and one unfollowed dynamic import is most of the reason.
 | Orphans | **healthy** | 1 of 69 stylesheets (1.45%) holds declarations no owned entry reaches — `apps/v4/public/r/themes.css`, a generated registry artifact that is served rather than imported. |
 | Coverage | watch | 9 of 11 categories resolve to a real token, verified against `tailwindcss@4.3.0` as pinned in `pnpm-lock.yaml`. z-index and opacity do not: Tailwind v4 ships no theme namespace for either. |
 | Tier integrity | not-visible | See below — this repository has no distinct primitive layer to skip. |
-| Single source | not-visible | See below — 102 multi-valued concepts, and this run cannot tell a variant from a duplicate. |
+| Single source | not-visible | See below — 103 multi-valued concepts, and this run cannot tell a variant from a duplicate. |
 | Mode completeness | not-visible | Two modes declared with real mechanisms (`@custom-variant dark` at globals.css:41, `.dark` at :143), but no resolved output was inspected for either. |
 | Enforcement | not-visible | No rule reads the token layer. `pnpm lint` is ESLint; there is no stylelint config and no token-aware rule. |
 
@@ -77,16 +77,16 @@ measures the *absence of a separate primitive layer*, not components
 bypassing a semantic one. Grading it would report a finding the evidence
 does not support.
 
-**2. Single source cannot separate a variant from a duplicate.** 102
+**2. Single source cannot separate a variant from a duplicate.** 103
 concepts carry more than one value. 32 are one `:root` value and one `.dark`
-value in `globals.css` — a mode pair. 44 more are in `registry/themes.ts`,
+value in `globals.css` — a mode pair. 58 more are in `registry/themes.ts`,
 which declares roughly ten selectable themes, and 6 in the legacy
 base-color registries do the same. Grading duplication here would report a
 design intent as a defect. The `conflicts` array in `report.json` lists all
-102 with their definition sites, which is what a person needs to tell them
+103 with their definition sites, which is what a person needs to tell them
 apart.
 
-## Why the token count is 1,185 and not 40
+## Why the token count is 1,197 and not 40
 
 `discover_tokens.py` is deliberately maximal: it inventories everything
 reachable from an owned production entry point and leaves the "is this
@@ -96,8 +96,7 @@ theme presets), and the legacy color registries feeding the `/colors`
 documentation page. They are real, reachable, and they are content the docs
 site *displays about* design systems rather than the system it uses.
 
-Earlier versions of this example made that call by hand and reported 40. This
-one reports what the run measured and names every source in
+Earlier versions of this example made that call by hand and reported 40. This one reports what the run measured and names every source in
 `report.json`'s `sources` array, so the reader can make the same call with
 the evidence in front of them instead of taking it on trust.
 
