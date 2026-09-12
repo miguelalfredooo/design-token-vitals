@@ -18,6 +18,12 @@ NON_UTILITY_NAMESPACES = {
     "breakpoint": "generates variants, not utility classes",
 }
 
+# Namespaces the prefix table deliberately does not cover yet. Empty today.
+# An entry here is a recorded decision; a namespace missing from BOTH this
+# set and UTILITY_PREFIXES fails the table guard, which is how a new
+# Tailwind version's namespace gets noticed instead of silently uncounted.
+TABLE_GAPS = frozenset()
+
 # Longest match wins, so multi-word namespaces are listed and a bare
 # partition on the first dash is never used.
 KNOWN_NAMESPACES = (

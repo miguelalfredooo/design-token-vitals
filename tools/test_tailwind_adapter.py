@@ -58,17 +58,19 @@ class TestThemeMap(unittest.TestCase):
         self.assertNotIn("breakpoint", coverage["uncovered"])
         self.assertIn("wibble", coverage["uncovered"])
 
-    def test_every_namespace_in_the_table_exists_in_a_real_default_theme(self):
-        # The prefix-to-namespace mapping is authored, because it lives only
-        # inside Tailwind's minified distribution. This is what keeps it
-        # falsifiable: a namespace invented or misspelled fails here.
+    def test_the_table_accounts_for_every_namespace_in_a_real_default_theme(self):
+        # Two directions on purpose. Containment alone catches an invented
+        # namespace but not a deleted one, and a deleted one is the bug that
+        # already shipped here once.
         with open(EXCERPT, encoding="utf-8") as handle:
             real = tailwind_adapter.parse_theme(handle.read())
         named = set()
         for namespaces in tailwind_adapter.UTILITY_PREFIXES.values():
             named.update(namespaces)
-        self.assertTrue(named)
-        self.assertEqual(sorted(named - set(real)), [])
+        expected = (set(real)
+                    - set(tailwind_adapter.NON_UTILITY_NAMESPACES)
+                    - tailwind_adapter.TABLE_GAPS)
+        self.assertEqual(named, expected)
 
     def test_no_two_prefixes_resolve_the_same_key_to_the_same_concept(self):
         # Variety, not presence: a table whose entries all collapsed onto one
