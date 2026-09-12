@@ -882,3 +882,117 @@ class TestRendering(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestConfidenceAndLineageRegions(unittest.TestCase):
+    """The new evidence has to reach the HTML, or it does not exist.
+
+    Every finding the run produces is rendered in the page; a reader who
+    never opens the JSON still sees everything. These regions were the last
+    four that lived only in JSON.
+    """
+
+    UNLOCK = {
+        "headline": "5 of 8 vitals verified against evidence; 2 waiting on "
+                    "audit capability rather than on your codebase.",
+        "split": {"healthy": 5, "your_code": 1, "not_visible": 2,
+                  "not_needed": 0},
+        "confidence": {
+            "leakage": {"state": "needs-work", "grade": "needs-work",
+                        "reason": "Checked, and the codebase has a real finding here.",
+                        "blocked_by": []},
+            "mode-completeness": {"state": "not-visible",
+                                  "grade": "not-visible",
+                                  "reason": "Waiting on mode_resolution.",
+                                  "blocked_by": ["mode_resolution"]},
+        },
+        "unlock_path": [{
+            "capability": "mode_resolution",
+            "action": "Give the run a resolved output per mode",
+            "verify": "python3 tools/discover_environment.py <root>",
+            "unlocks": ["mode-completeness"], "unlocks_count": 1,
+        }],
+        "wins": [{"claim": "Import graph verified",
+                  "evidence": ["291 file(s) reached; 147 classified"]}],
+        "next_15_minutes": {
+            "action": "Give the run a resolved output per mode",
+            "payoff": "Unlocks 1 vital(s): mode-completeness",
+            "verify": "python3 tools/discover_environment.py <root>",
+            "kind": "audit-capability"},
+        "decisions_owed": [],
+    }
+    LINEAGE = {
+        "summary": {"traced_to_a_primitive": 768,
+                    "stops_before_a_primitive": 303,
+                    "with_a_named_consumer": 204, "longest_chain": 4},
+        "fully_traceable_families": ["motion", "radius"],
+        "blast_radius": [{
+            "token": "color-surface", "tier": "primitive", "family": "color",
+            "dependent_tokens": ["a", "b"],
+            "components": ["Button", "Chip", "Card"], "component_count": 3,
+        }],
+        "chains": [],
+    }
+
+    def render(self, unlock=None, lineage=None, freshness=None):
+        document = open(
+            os.path.join(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))), "assets/report-template.html"),
+            encoding="utf-8").read()
+        return render_discovery.render_confidence_slots(
+            document,
+            self.UNLOCK if unlock is None else unlock,
+            self.LINEAGE if lineage is None else lineage,
+            freshness)
+
+    def test_the_headline_replaces_the_template_sample(self):
+        html = self.render()
+        self.assertIn("5 of 8 vitals verified", html)
+        section = html.split('id="confidence"')[1].split("</section>")[0]
+        self.assertNotIn("Sample report", section)
+
+    def test_the_two_gap_counts_are_rendered_and_never_summed(self):
+        html = self.render()
+        self.assertIn('data-gap-kind="not-visible"', html)
+        self.assertIn('data-gap-kind="your-code"', html)
+        self.assertNotIn('data-gap-kind="total"', html)
+
+    def test_every_unlock_step_renders_its_action_unlocks_and_command(self):
+        html = self.render()
+        self.assertIn("Give the run a resolved output per mode", html)
+        self.assertIn("mode-completeness", html)
+        self.assertIn("discover_environment.py", html)
+
+    def test_the_next_15_minutes_card_is_present_with_all_three_parts(self):
+        html = self.render()
+        card = html.split('data-report-region="unlock-path"')[1]
+        self.assertIn("Unlocks 1 vital(s)", card)
+        self.assertIn('data-card="next-15-minutes"', card)
+
+    def test_the_wins_are_rendered_rather_than_left_in_json(self):
+        self.assertIn("Import graph verified", self.render())
+
+    def test_the_blast_radius_names_the_components_not_only_the_count(self):
+        html = self.render()
+        self.assertIn("color-surface", html)
+        self.assertIn("Button", html)
+        self.assertIn("3", html)
+
+    def test_freshness_is_shown_when_it_was_measured(self):
+        html = self.render(freshness={
+            "state": "stale", "ref": "8934653a48ff", "commits_since": 14,
+            "dirty": False,
+            "note": "Evidence is behind the tree: 14 commit(s) since 8934653a48ff."})
+        self.assertIn("8934653a48ff", html)
+        self.assertIn('data-freshness="stale"', html)
+
+    def test_an_unexplained_boundary_is_rendered_as_owed_not_as_a_win(self):
+        unlock = dict(self.UNLOCK, decisions_owed=["mode-completeness"])
+        html = self.render(unlock=unlock)
+        self.assertIn('data-decisions-owed="1"', html)
+
+    def test_nothing_to_render_leaves_the_region_honest_not_sampled(self):
+        html = self.render(unlock={}, lineage={})
+        section = html.split('id="confidence"')[1].split("</section>")[0]
+        self.assertNotIn("Sample report", section)
+        self.assertIn("not produced", section)

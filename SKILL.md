@@ -15,6 +15,28 @@ You are grading a codebase's design token layer against eight fixed vitals
 and reporting what you found — with evidence, never an average. Work through
 the seven stages below in order.
 
+## Stage 0 — Ask what this run is for
+
+**One question, before anything runs.** The same eight vitals answer four
+different questions, and the one being asked decides which finding leads,
+what counts as done, and what the report should say about a gap.
+
+| Intent | Leads with | Done when |
+|---|---|---|
+| `baseline` | What can be proven today, and what cannot yet | Every vital has a confidence state and the unlock path is written down |
+| `adoption` | Component token usage and the leakage ranking | The `assess-first` band is worked through |
+| `themes` | Mode resolution and cross-mode parity | Every declared mode resolves with real output |
+| `release` | Regressions against the stored baseline | No vital moved backwards |
+
+Default to `baseline` for a first run on a repository and to `release` when a
+baseline was given. Record it as `run.intent`. **Never diff two runs with
+different intents** — they were scoped to answer different questions, and
+`tools/trend.py` already refuses on a scope divergence for the same reason.
+
+A first run is almost always `baseline`, and saying so out loud matters: it
+sets the expectation that gaps in what the audit can SEE are the expected
+output of a first run rather than a verdict on the codebase.
+
 ## Stage 1 — Framework and token-source discovery
 
 **Required, and it runs before any inventory or grading.** Start with:
@@ -55,8 +77,8 @@ proven; value equality alone never authorizes a replacement. `near_miss` and
 `semantic_equivalence` come back as states, not as a bare string: with no
 literal in any consumer style nothing can be a near-miss, and with no
 exact-value candidate no replacement's semantic role is in question, so both
-read `counted` with none found and leakage becomes gradeable. Where literals
-do exist both stay `not-visible` and say how many remain to compare.
+read `counted` with none found and leakage becomes gradeable. Where
+literals do exist both stay `not-visible` and say how many remain to compare.
 
 Typography and brand color are identity-critical outputs, not decorative
 examples. Token discovery must produce `identity.typography` and
@@ -169,12 +191,12 @@ this run did not establish. A family found only in an unverified source is
 
 `discover_tokens.py` decides this for you and publishes it as
 `family_states`: `counted` carries a count, `not-visible` carries **no
-number at all**, and `none-used` is the one state that has earned the number
-0. Read that block rather than `family_counts`, which cannot tell a family
-the run proved empty from one it never reached — and note that a family is
-also `not-visible` when a confirmed source declared it with a value the
-reader would not invent, as `backdropBlur: spacing[2]` does.
-`render_discovery.py` fills `inventory.families` from it.
+number at all**, and `none-used` is the one state that has earned the number 0.
+Read that block rather than `family_counts`, which cannot tell a family the
+run proved empty from one it never reached — and note that a family is also
+`not-visible` when a confirmed source declared it with a value the reader
+would not invent, as `backdropBlur: spacing[2]` does. `render_discovery.py`
+fills `inventory.families` from it.
 
 Five status values only: `healthy`, `watch`, `needs-work`, `not-visible`,
 `not-needed`. Attach at least one real `file:line` to every grade that
@@ -184,13 +206,13 @@ point at when nothing was found, or when the check could not run. A vital
 with a count and no reachable instance is `not-visible`, never `needs-work` —
 silence is not evidence.
 
-## Stage 5 — Choose the report view, rendering tier, and form per section
+## Stage 5 — Choose the report view (everything else is derived)
 
 Choose the report's initial view independently of its data density:
 
 - `snapshot` — open on the dashboard: what matters now.
-- `action` — open the working plan: priorities, owners, component roadmap,
-  gaps, and rollout guidance.
+- `action` — open the working plan: the one card that leads, then priorities,
+  owners, component roadmap, gaps, and rollout guidance.
 - `evidence` — open the complete audit: inventory, lineage, discovery,
   provenance, and every implementation detail.
 
@@ -202,22 +224,24 @@ initial view. Treat the view as progressive disclosure, never as permission
 to omit evidence. Make a deep link reveal the least-detailed view containing
 its target, and show every section when printing.
 
-Count the tokens the stack detected and choose the tier from
-`references/report.md`: under 150 tokens is `full`; 150 to 600 inclusive is
-`short`; over 600 is `summary`. A count of exactly 150 is
-`short`; a count of exactly 600 is `short`. Record the tier in
-`assets/capability-map.yml`'s `rendering.tier`.
+**The list size and the per-section form are derived, not chosen.** Run:
 
-Then choose a rendering form for each listing section, from the form table
-in "Change the mark, don't cut the data" (`references/report.md`). The
-input is that section's own finding count, not the token total: a repo can
-land in `short` on token count and still have a leakage section large
-enough to need the densest form. Record one form per section under
-`rendering.forms` — `color`, `typography`, `spacing`, `leaks`, `orphans`,
-`modes`, `families` — using the value names in that table's columns:
-`rows`, `swatches`, `ramps`, `specimens`, `bars`, `grouped`,
-`distribution`, `chips`, `by-family`, `matrix`, `coverage-bar`,
-`health-strip`, `by-namespace`.
+```
+python3 tools/rendering_choices.py
+```
+
+`rendering_choices.apply()` writes both into `rendering`: the list size from
+the token count (`full` under 150, `short` through 600 inclusive, `summary`
+above), and one form per section from **that section's own** count, using
+the table in `references/report.md`. A small repository can still have a
+leakage section large enough to need the densest form, which is why the
+token total never decides a section.
+
+These were two hand-set axes — three list sizes and thirteen form values
+across seven sections — where a wrong value is a silent formatting bug
+rather than an error, and both rules were already deterministic and written
+down. The only axis still chosen is `rendering.view`, because it encodes
+what the run is FOR rather than how much data came back.
 
 Recording the view, tier, and forms lets two runs be compared on presentation
 as well as on findings. A run that grades the same and renders differently has
@@ -259,10 +283,49 @@ findings. All of them go into both the HTML and the JSON.
   in the component section. This orders investigation by token footprint.
   Runtime frequency, migration safety, and component quality require separate
   evidence.
-- **Trace lineage** from primitive to semantic alias to projection to
-  consumers. A lineage edge is what separates a deliberate alias from a
-  duplicate definition; mark an untraced link as untraced rather than
-  guessing at it.
+- **Split the gaps, and build the unlock path**, with
+  `tools/unlock_path.py`. `not-visible` says two unrelated things in one word —
+  *your system has a problem* and *this audit cannot see far enough yet* —
+  and a repository whose token layer is in good shape reads as mostly
+  blocked, which is both wrong and the reason a reader closes the tab. Every
+  vital gets one of four confidence states: `verified`,
+  `needs-work`, `not-visible`, `not-needed`. **Report
+  the two kinds of gap as two numbers and never sum them.** Order the
+  capability gaps by how many vitals each unlocks, give each one an action
+  and the command that shows whether it worked, and lead the dashboard with
+  the single `next_15_minutes` card. A `not-needed` vital is a declared
+  boundary and belongs with the wins, not with the holes.
+
+  ```
+  python3 tools/unlock_path.py .token-vitals/report.json --discovery .token-vitals/discovery.json --json .token-vitals/unlock.json
+  ```
+
+- **Draw the blast radius** from the same map. "Changing
+  `--color-action-primary` touches 11 components" is the question a designer
+  actually arrives with, and it needs no grade at all. A component is in a
+  token's radius when it spends that token **or anything downstream of it** —
+  the indirect consumers are the ones a change surprises somebody with.
+
+- **Draw the lineage map**, with `tools/lineage_map.py`. A rating says how a
+  system is doing; the map says what the system IS — this value, under this
+  role, carried by this variable, spent by these components — and it is the
+  one output a designer can act on without knowing what a check is. Render
+  the chain, not the count. A family where **every** token traces to a
+  primitive is a real win and is named as one; a majority is not.
+
+  The tiers it draws are already on the concepts: discovery derives `tier`
+  and `tier_evidence` in an order of evidence — a name that states its layer
+  is a declaration, a reference to another token is structural proof of an
+  alias, a concrete value with neither is a primitive, anything else stays
+  `untraced`. A lineage edge is what separates a deliberate alias from a
+  duplicate definition, so mark an untraced link untraced rather than
+  guessing at it, and never overwrite a tier with a reading of your own — if
+  the evidence is wrong, fix what produced it.
+
+  ```
+  python3 tools/lineage_map.py --tokens .token-vitals/tokens.json --components .token-vitals/components.json --json .token-vitals/lineage.json
+  ```
+
 - **Fill the coverage matrix**: entry bundle by mode by family, every cell
   `counted`, `not-visible` or `not-needed`, with evidence.
 - **Derive the unification strategy** from the same measured facts. Follow
@@ -279,11 +342,23 @@ Derive the stage from `references/maturity.md`, and collect every close
 call you recorded in a `note` into `decisions` — each with what it moved
 and the other reading.
 
+**Date the evidence.** `tools/freshness.py` places the run in history:
+fresh against the commit it measured, or so many commits and a dirty tree
+behind it. A report with no age on its numbers is trusted for as long as
+somebody leaves the tab open, and a token audit goes stale the next time
+anyone touches a stylesheet. `render_discovery.py` measures this for you.
+
 If the user gave a baseline, run:
 
 ```
 python3 tools/trend.py <baseline>/report.json .token-vitals/report.json
 ```
+
+In CI, use `--ci`: one line, and a non-zero exit **only** on a regression.
+A gate that fails an absolute threshold — forty leaked values, say — fails
+the build every day until somebody deletes the gate; a gate that fails only
+when the number grows is one a team keeps. A missing baseline is a first
+run, not a failure.
 
 It refuses when the framework, adapters, owned paths, scan scope or token
 sources diverge. **Take the refusal.** A forced diff across incompatible
@@ -323,8 +398,13 @@ After filling the template, merge and render the deterministic discovery and
 component-adoption views:
 
 ```
-python3 tools/render_discovery.py --refresh-template --report-view snapshot --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --leakage .token-vitals/literal-colors.json --report-json .token-vitals/report.json --html .token-vitals/report.html
+python3 tools/render_discovery.py --refresh-template --report-view snapshot --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --leakage .token-vitals/literal-colors.json --unlock .token-vitals/unlock.json --lineage .token-vitals/lineage.json --report-json .token-vitals/report.json --html .token-vitals/report.html
 ```
+
+`--unlock` and `--lineage` carry the confidence split, the unlock path, the
+wins and the blast radius into the page, and measure evidence freshness
+against the commit discovery recorded. Rule 19 fails a report that holds
+that evidence in the JSON and not in the HTML.
 
 ```
 python3 tools/render_component_usage.py --components .token-vitals/components.json --report-json .token-vitals/report.json --html .token-vitals/report.html
@@ -343,6 +423,30 @@ partial shell from silently dropping rich JSON-only evidence.
 
 `next-steps` is the one exception, and it goes the other way: it shows five
 ranked actions, because its value comes from what it leaves out.
+
+### One answer to "what do I do next"
+
+The report grew five differently-shaped answers to the most obvious question
+a reader has: `next_15_minutes`, `next-steps`, `fix-queue`, the roadmap
+bands, and the rollout phases in `adoption_strategy`. Someone opening the
+page and asking what to do got five, in five places, with no stated relation
+between them. That is not thoroughness; it is a reader deciding which list
+to believe.
+
+**One card leads: `next_15_minutes`.** It is the only action on the
+dashboard, and everything else is framed as the rest of *that* queue rather
+than as a parallel recommendation:
+
+| Surface | What it is, said out loud |
+|---|---|
+| `next_15_minutes` | The one thing to do now. On the dashboard. |
+| `next-steps` | The next five, once that one is done. |
+| `fix-queue` | Every mechanical fix, ranked — the long tail of `next-steps`. |
+| roadmap bands | Which components to *look at* first. Not a to-do list. |
+| `adoption_strategy` | The quarter-scale plan. Not this week's work. |
+
+Say which one a section is when you render it. A reader who cannot tell a
+fifteen-minute task from a quarter-long programme will do neither.
 
 Where a section exceeds even its densest form, a `<details>` element on the
 same page holds the tail, and the truncation line above it characterizes
@@ -380,6 +484,11 @@ paginate arbitrary table rows.
 - [ ] `vitals-grid`, `next-steps` (five, in the documented order)
 - [ ] `fix-queue` — priority inputs beside the score, confidence, effort,
       `safe_to_automate`, `data-finding` on every row
+- [ ] `unlock-path` — the two gap counts side by side and never summed, the
+      ordered capability steps with what each unlocks, and the single
+      `next_15_minutes` card with its action, payoff and verify command
+- [ ] `wins` — ground gained, in the run's own words: capabilities verified,
+      families fully traceable, declared boundaries named as decisions
 - [ ] `groups`, `discovery-engine`, `component-usage`, `lineage`, `coverage-matrix`
 - [ ] `inventory-color`, `inventory-type`, `inventory-space`,
       `family-coverage` — every taxonomy family as measured, unmeasured or
@@ -417,7 +526,7 @@ skill exists to catch.
 
 ### Validation gate — required before writing the report
 
-Run the eighteen rules as code, rather than checking yourself against them. The
+Run the nineteen rules as code, rather than checking yourself against them. The
 source-artifact inputs prevent an internally consistent but stale report from
 passing after a newer discovery or analysis step:
 
@@ -444,6 +553,7 @@ with the source token artifact. It fails when the closing unification strategy
 is absent, generic, stale against the report evidence, missing an integration
 constraint, architecture layer, or rollout phase, or inconsistent between JSON
 and HTML.
+It fails, as rule 19, when the confidence evidence is absent, when the HTML merges the two gap counts into one or disagrees with the JSON about either, or when a vital is switched off with `not-needed` and no rationale on record.
 It fails, as its own rule, when any region still holds the template's sample
 content — `a91f4c07` and the rest — rather than folding that into an identity
 complaint, because the fix is a region you did not fill, not the font evidence.
@@ -505,15 +615,23 @@ Stamp `provenance.skill_version` from `python3 tools/version.py` before
 writing. Then print five lines and stop:
 
 ```
+<n> verified · <n> need system work · <n> need audit capability · <n> not applicable
+next 15 min: <the card's action> → <its payoff>
+unlock: <first capability step> unlocks <n> vital(s): <which>
 <worst vital> <grade> — <one sentence on what it found>
-start: <the first fix-queue action, with its file:line>
-stage: <stage> → <next stage> after <the threshold>
-<n> confirmed · <n> blocked (<which>) · <n> unmeasured (<which>)
 <path to report.html>
 ```
 
-The worst thing, the first move, the stage, the confidence split, the
-path. The report is the deliverable; the summary points at it.
+Where a baseline was given, replace the first line with what
+`tools/trend.py` leads with — "No regressions. Evidence coverage improved
+from 1 to 6 verifiable vital(s)." — because on a follow-up run the movement
+is the finding.
+
+The split, the next move, what it unlocks, the worst thing, the path. The
+two kinds of gap stay two numbers on that first line: a reader who cannot
+tell "we could not see this" from "you have a problem here" learns the wrong
+thing about their own codebase, which is the failure this whole skill is
+against.
 
 ## Stop and ask
 

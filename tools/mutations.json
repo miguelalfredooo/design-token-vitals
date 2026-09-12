@@ -154,5 +154,227 @@
   "tests": [
    "test_audit_literal_colors.TestNothingToMeasure"
   ]
+ },
+ {
+  "name": "gap counts merged into one total",
+  "file": "tools/unlock_path.py",
+  "old": "        \"your_code\": sum(1 for item in confidence.values()\n                         if item[\"state\"] in (\"needs-work\", \"watch\")),",
+  "new": "        \"your_code\": sum(1 for item in confidence.values()\n                         if item[\"state\"] in (\"needs-work\", \"watch\", \"not-visible\")),",
+  "tests": [
+   "test_unlock_path.TestConfidence"
+  ]
+ },
+ {
+  "name": "blocked_by no longer recorded",
+  "file": "tools/unlock_path.py",
+  "old": "            entry[\"blocked_by\"] = missing",
+  "new": "            entry[\"blocked_by\"] = []",
+  "tests": [
+   "test_unlock_path.TestConfidence",
+   "test_unlock_path.TestUnlockPath",
+   "test_unlock_path.TestRunInputGaps"
+  ]
+ },
+ {
+  "name": "unlock path no longer ordered by impact",
+  "file": "tools/unlock_path.py",
+  "old": "    steps.sort(key=lambda item: (-item[\"unlocks_count\"],",
+  "new": "    steps.sort(key=lambda item: (item[\"unlocks_count\"],",
+  "tests": [
+   "test_unlock_path.TestUnlockPath"
+  ]
+ },
+ {
+  "name": "framework_versions no longer a named gap",
+  "file": "tools/unlock_path.py",
+  "old": "    \"coverage\": (\"token_source_discovery\", \"framework_versions\"),",
+  "new": "    \"coverage\": (\"token_source_discovery\",),",
+  "tests": [
+   "test_unlock_path.TestRunInputGaps"
+  ]
+ },
+ {
+  "name": "unexplained not-needed no longer owed",
+  "file": "tools/unlock_path.py",
+  "old": "        if entry[\"state\"] == \"not-needed\" and not entry.get(\"rationale\"))",
+  "new": "        if False)",
+  "tests": [
+   "test_unlock_path.TestNotApplicableOwesAReason"
+  ]
+ },
+ {
+  "name": "unexplained boundary celebrated as a win",
+  "file": "tools/unlock_path.py",
+  "old": "        if entry[\"state\"] == \"not-needed\" and entry.get(\"rationale\"))",
+  "new": "        if entry[\"state\"] == \"not-needed\")",
+  "tests": [
+   "test_unlock_path.TestNotApplicableOwesAReason"
+  ]
+ },
+ {
+  "name": "win emitted without any measurement",
+  "file": "tools/unlock_path.py",
+  "old": "        evidence = win_evidence(capability, discovery)\n        if not evidence:\n            continue",
+  "new": "        evidence = win_evidence(capability, discovery)",
+  "tests": [
+   "test_unlock_path.TestNoUnprovenClaims"
+  ]
+ },
+ {
+  "name": "ladder evidence fallback removed",
+  "file": "tools/unlock_path.py",
+  "old": "        return ladder_evidence(capability, discovery)",
+  "new": "        return []",
+  "tests": [
+   "test_unlock_path.TestNoUnprovenClaims"
+  ]
+ },
+ {
+  "name": "verify command keeps its <root> placeholder",
+  "file": "tools/unlock_path.py",
+  "old": "    return command.replace(\"<root>\", root) if root and command else command",
+  "new": "    return command",
+  "tests": [
+   "test_unlock_path.TestNoUnprovenClaims"
+  ]
+ },
+ {
+  "name": "lineage chain stops at the first hop",
+  "file": "tools/lineage_map.py",
+  "old": "        alias = current.get(\"alias_of\")\n        if not alias:\n            break",
+  "new": "        alias = None\n        if not alias:\n            break",
+  "tests": [
+   "test_lineage_map.TestChains",
+   "test_lineage_map.TestSummary"
+  ]
+ },
+ {
+  "name": "a broken chain reported as complete",
+  "file": "tools/lineage_map.py",
+  "old": "    complete = stops_at is None and hops and hops[-1][\"tier\"] == \"primitive\"",
+  "new": "    complete = True",
+  "tests": [
+   "test_lineage_map.TestChains",
+   "test_lineage_map.TestSummary"
+  ]
+ },
+ {
+  "name": "a family with one untraced token still a win",
+  "file": "tools/lineage_map.py",
+  "old": "    fully_traceable = sorted(family for family, flags in by_family.items()\n                             if family and all(flags))",
+  "new": "    fully_traceable = sorted(family for family, flags in by_family.items()\n                             if family and any(flags))",
+  "tests": [
+   "test_lineage_map.TestSummary"
+  ]
+ },
+ {
+  "name": "blast radius counts only direct consumers",
+  "file": "tools/lineage_map.py",
+  "old": "                if child not in seen and child != item[\"id\"]:",
+  "new": "                if child not in seen and child != item[\"id\"] and current == item[\"id\"]:",
+  "tests": [
+   "test_lineage_map.TestBlastRadius"
+  ]
+ },
+ {
+  "name": "a dirty tree reported as fresh",
+  "file": "tools/freshness.py",
+  "old": "    if behind == 0 and not dirty:",
+  "new": "    if behind == 0:",
+  "tests": [
+   "test_freshness"
+  ]
+ },
+ {
+  "name": "an unknown ref reported as stale",
+  "file": "tools/freshness.py",
+  "old": "    if git(root, \"rev-parse\", \"--verify\", \"--quiet\", \"%s^{commit}\" % ref) is None:",
+  "new": "    if False:",
+  "tests": [
+   "test_freshness"
+  ]
+ },
+ {
+  "name": "list-size thresholds shifted by one",
+  "file": "tools/rendering_choices.py",
+  "old": "    if token_count <= 600:",
+  "new": "    if token_count < 600:",
+  "tests": [
+   "test_rendering_choices.TestListSize"
+  ]
+ },
+ {
+  "name": "section form taken from the token total",
+  "file": "tools/rendering_choices.py",
+  "old": "    return {section: form_for(section, (section_counts or {}).get(section, 0))",
+  "new": "    return {section: form_for(section, 0)",
+  "tests": [
+   "test_rendering_choices.TestForms"
+  ]
+ },
+ {
+  "name": "rule 19 stops checking the HTML",
+  "file": "tools/validate_run.py",
+  "old": "    if html:\n        for region in (\"headline\", \"unlock-path\", \"wins\"):",
+  "new": "    if False:\n        for region in (\"headline\", \"unlock-path\", \"wins\"):",
+  "tests": [
+   "test_validate_run.TestRule19ConfidenceSplit"
+  ]
+ },
+ {
+  "name": "rule 19 accepts a missing confidence block",
+  "file": "tools/validate_run.py",
+  "old": "    if not isinstance(confidence, dict):\n        return Failure(\"19-confidence-split\",",
+  "new": "    if False:\n        return Failure(\"19-confidence-split\",",
+  "tests": [
+   "test_validate_run.TestRule19ConfidenceSplit"
+  ]
+ },
+ {
+  "name": "intent divergence no longer refuses a diff",
+  "file": "tools/trend.py",
+  "old": "        (\"intent\", get(base, \"run\", \"intent\"), get(cur, \"run\", \"intent\")),",
+  "new": "",
+  "tests": [
+   "test_trend.TestIntentGate"
+  ]
+ },
+ {
+  "name": "ci mode fails on a steady finding",
+  "file": "tools/trend.py",
+  "old": "        return EXIT_FINDING if result[\"regressions\"] else EXIT_OK\n",
+  "new": "        return EXIT_FINDING if result[\"current_total\"] else EXIT_OK\n",
+  "tests": [
+   "test_trend.TestCiMode"
+  ]
+ },
+ {
+  "name": "missing baseline treated as a failure",
+  "file": "tools/trend.py",
+  "old": "    if args.ci and not os.path.exists(args.baseline):",
+  "new": "    if False:",
+  "tests": [
+   "test_trend.TestCiMode"
+  ]
+ },
+ {
+  "name": "CONTROL: a comment reworded",
+  "file": "tools/unlock_path.py",
+  "old": "# One action per capability, in the imperative, with the command that shows",
+  "new": "# One action for each capability, in the imperative, with the command that shows",
+  "expect": "green",
+  "tests": [
+   "test_unlock_path"
+  ]
+ },
+ {
+  "name": "CONTROL: a docstring reworded",
+  "file": "tools/lineage_map.py",
+  "old": "    \"\"\"token id -> [{component, references, locations}], from the ranked view.\"\"\"",
+  "new": "    \"\"\"token id -> [{component, references, locations}], from the ranked list.\"\"\"",
+  "expect": "green",
+  "tests": [
+   "test_lineage_map"
+  ]
  }
 ]

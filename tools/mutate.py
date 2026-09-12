@@ -48,19 +48,25 @@ for m in MUTATIONS:
             [sys.executable, "-m", "unittest"] + m["tests"],
             cwd=os.path.join(root, "tools"), capture_output=True, text=True)
         went_red = proc.returncode != 0
-        detail = ""
-        if not went_red:
-            detail = "guard stayed GREEN with the bug restored"
-        results.append((m["name"], "bites" if went_red else "WEAK", detail))
+        # A control entry is a change that must NOT matter. If one goes red
+        # the harness is reporting its own noise as a guard biting, and the
+        # whole sweep is worthless — a clean result has to be falsifiable.
+        if m.get("expect") == "green":
+            results.append((m["name"], "control ok" if not went_red else "HARNESS-BROKEN",
+                            "" if not went_red else "a no-op change went red"))
+        else:
+            results.append((m["name"], "bites" if went_red else "WEAK",
+                            "" if went_red else "guard stayed GREEN with the bug restored"))
     finally:
         open(path, "w", encoding="utf-8").write(original)
 
 width = max(len(r[0]) for r in results)
 weak = 0
 for name, verdict, detail in results:
-    if verdict != "bites":
+    if verdict not in ("bites", "control ok"):
         weak += 1
     print("  %-*s  %-16s %s" % (width, name, verdict, detail))
-print("\n%d mutation(s): %d bite, %d need attention" %
-      (len(results), len(results) - weak, weak))
+controls = sum(1 for r in results if r[1] == "control ok")
+print("\n%d mutation(s): %d bite, %d control(s) held, %d need attention" %
+      (len(results) - controls, len(results) - weak - controls, controls, weak))
 sys.exit(1 if weak else 0)

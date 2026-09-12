@@ -12,6 +12,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import freshness  # noqa: E402
 from cli import EXIT_OK  # noqa: E402
 from adoption_strategy import (  # noqa: E402
     ACTIONABLE_UNRESOLVED_REASONS,
@@ -994,7 +995,7 @@ def family_states(tokens):
 
     Older token artifacts carry only `family_counts`, where a family the
     run never resolved and one it proved empty are both 0. Fall back to the
-    conservative reading of that: without a state, zero means not-visible.
+    conservative reading of that: without a state, zero means unmeasured.
     """
     states = tokens.get("family_states")
     if states:
@@ -1012,7 +1013,7 @@ def family_block(tokens, report):
     for family in sorted(states):
         state = states[family]["state"]
         count = states[family].get("count")
-        # `none-used` is the one state that has earned the number 0. A
+        # `none-used` is the one state that has earned the number 0. An
         # `not-visible` family shows the word, never a figure it cannot back.
         shown = "0" if state == "none-used" else (count if count else state)
         sources = sorted({site.rsplit(":", 1)[0]
@@ -1910,6 +1911,167 @@ def render_orphans_and_enforcement(report):
     return orphan_html, enforcement_html
 
 
+UNSET = ('<div class="panel"><p class="sub">This run did not produce this '
+         'evidence, so nothing is claimed here.</p></div>')
+
+GAP_KINDS = (
+    ("healthy", "healthy", "Healthy"),
+    ("your-code", "your_code", "To fix in your code"),
+    ("not-visible", "not_visible", "The audit cannot see these yet"),
+    ("not-needed", "not_needed", "You decided you do not need these"),
+)
+
+
+def render_headline(unlock, freshness):
+    """One sentence, and the age of the evidence behind it."""
+    line = (unlock or {}).get("headline")
+    if not line:
+        return ('<p class="lede">A confidence headline was not produced by '
+                'this run, so nothing is claimed here.</p>')
+    stamp = ""
+    if freshness:
+        stamp = ('<p class="sub" data-freshness="%s" data-freshness-ref="%s">'
+                 '%s</p>' % (esc(freshness.get("state", "unknown")),
+                             esc(freshness.get("ref") or ""),
+                             esc(freshness.get("note") or "")))
+    return '<p class="lede" data-report-region="headline">%s</p>%s' % (
+        esc(line), stamp)
+
+
+def render_unlock_path(unlock):
+    """The two gap counts, the ordered steps, and the one card that leads.
+
+    The counts are rendered as separate marks on purpose. There is no total,
+    and nothing here computes one: a reader who cannot tell "we could not
+    see this" from "you have a problem here" learns the wrong thing about
+    their own codebase, and a single number is exactly that confusion in
+    numeric form.
+    """
+    if not unlock:
+        return UNSET
+    split = unlock.get("split") or {}
+    marks = "".join(
+        '<div class="dashboard-metric" data-gap-kind="%s" data-gap-count="%d">'
+        '<span class="dashboard-value">%d</span>'
+        '<span class="dashboard-label">%s</span></div>'
+        % (kind, split.get(key, 0), split.get(key, 0), esc(label))
+        for kind, key, label in GAP_KINDS)
+
+    steps = unlock.get("unlock_path") or []
+    if steps:
+        rows = "".join(
+            '<li data-unlock-capability="%s" data-unlocks="%d">'
+            '<strong>%s</strong>'
+            '<p class="sub">Unlocks %d vital(s): %s</p>'
+            '<code class="path">%s</code></li>'
+            % (esc(step.get("capability", "")), step.get("unlocks_count", 0),
+               esc(step.get("action", "")), step.get("unlocks_count", 0),
+               esc(", ".join(step.get("unlocks", []))),
+               esc(step.get("verify") or ""))
+            for step in steps)
+        path_html = '<ol class="unlock-path">%s</ol>' % rows
+    else:
+        path_html = ('<p class="sub">No capability gap is holding a vital '
+                     'back.</p>')
+
+    card = unlock.get("next_15_minutes")
+    card_html = ""
+    if card:
+        card_html = (
+            '<div class="note" data-card="next-15-minutes" data-card-kind="%s">'
+            '<strong>Next best 15 minutes</strong>'
+            '<p>%s</p><p class="sub">%s</p><code class="path">%s</code></div>'
+            % (esc(card.get("kind", "")), esc(card.get("action", "")),
+               esc(card.get("payoff", "")), esc(card.get("verify") or "")))
+
+    owed = unlock.get("decisions_owed") or []
+    owed_html = ""
+    if owed:
+        owed_html = (
+            '<p class="sub" data-decisions-owed="%d">%s declared not '
+            'applicable with no reason on record. An unexplained N/A is how '
+            'a check gets switched off quietly.</p>'
+            % (len(owed), esc(", ".join(owed))))
+
+    return ('<div class="panel" data-report-region="unlock-path" '
+            'data-split-json="%s"><div class="dashboard-ribbon">%s</div>'
+            '%s%s%s</div>'
+            % (json_attr(split), marks, card_html, path_html, owed_html))
+
+
+def render_wins(unlock, lineage):
+    """Ground gained. A report that only lists holes is not a status."""
+    wins = [dict(win) for win in ((unlock or {}).get("wins") or [])
+            if isinstance(win, dict)]
+    families = (lineage or {}).get("fully_traceable_families") or []
+    if families:
+        wins.append({
+            "claim": "%d token %s traceable end to end"
+                     % (len(families),
+                        "families are" if len(families) != 1 else "family is"),
+            "evidence": [", ".join(families)]})
+    summary = (lineage or {}).get("summary") or {}
+    if summary.get("traced_to_a_primitive"):
+        wins.append({
+            "claim": "Tokens that trace to a primitive definition",
+            "evidence": ["%d of %d"
+                         % (summary["traced_to_a_primitive"],
+                            summary["traced_to_a_primitive"] +
+                            summary.get("stops_before_a_primitive", 0))]})
+    if not wins:
+        return UNSET
+    # The measurement renders beside the claim. A win a reader cannot check
+    # is a congratulation, and this report has no business issuing one.
+    rows = "".join(
+        '<li><strong>%s</strong> <span class="sub">%s</span></li>'
+        % (esc(win.get("claim", "")), esc(" · ".join(win.get("evidence") or [])))
+        for win in wins)
+    return ('<div class="panel" data-report-region="wins" data-win-count="%d">'
+            '<h3>What is trustworthy now</h3><ul>%s</ul></div>'
+            % (len(wins), rows))
+
+
+def render_blast_radius(lineage):
+    """What moves if this token changes — the question designers arrive with."""
+    rows = (lineage or {}).get("blast_radius") or []
+    reaching = [row for row in rows if row.get("component_count")]
+    if not reaching:
+        return UNSET
+    body = "".join(
+        '<tr data-token="%s" data-component-count="%d">'
+        '<td><code class="path">%s</code></td><td>%s</td>'
+        '<td class="num">%d</td><td class="num">%d</td><td>%s</td></tr>'
+        % (esc(row["token"]), row["component_count"], esc(row["token"]),
+           esc(row.get("tier") or ""), row["component_count"],
+           len(row.get("dependent_tokens") or []),
+           esc(", ".join(row.get("components") or [])))
+        for row in reaching[:20])
+    tail = ""
+    if len(reaching) > 20:
+        tail = ('<details><summary>See %d more tokens with a measured '
+                'reach</summary><div>%s</div></details>'
+                % (len(reaching) - 20,
+                   "<br>".join(esc("%s — %d component(s)"
+                                   % (row["token"], row["component_count"]))
+                               for row in reaching[20:])))
+    return ('<div class="panel" data-report-region="blast-radius" '
+            'data-radius-rows="%d"><h3>What moves if this changes</h3>'
+            '<table><thead><tr><th>Token</th><th>Tier</th>'
+            '<th class="num">Components</th><th class="num">Dependent tokens</th>'
+            '<th>Which components</th></tr></thead><tbody>%s</tbody></table>'
+            '%s</div>' % (len(reaching), body, tail))
+
+
+def render_confidence_slots(document, unlock, lineage, freshness=None):
+    document = replace_slot(document, "headline",
+                            render_headline(unlock, freshness))
+    document = replace_slot(document, "unlock-path", render_unlock_path(unlock))
+    document = replace_slot(document, "wins", render_wins(unlock, lineage))
+    document = replace_slot(document, "blast-radius",
+                            render_blast_radius(lineage))
+    return document
+
+
 def render_report_slots(document, report, tokens, discovery):
     strategy = derive_adoption_strategy(report)
     report["adoption_strategy"] = strategy
@@ -2280,7 +2442,8 @@ def sync_document_metadata(document, old_generated, generated,
 
 
 def augment(discovery_path, report_path, html_path, tokens_path=None,
-            leakage_path=None, refresh_template=False, report_view=None):
+            leakage_path=None, refresh_template=False, report_view=None,
+            unlock_path_file=None, lineage_path=None):
     with open(discovery_path, encoding="utf-8") as handle:
         discovery = json.load(handle)
     tokens = None
@@ -2291,6 +2454,14 @@ def augment(discovery_path, report_path, html_path, tokens_path=None,
     if leakage_path:
         with open(leakage_path, encoding="utf-8") as handle:
             leakage = json.load(handle)
+    unlock = None
+    if unlock_path_file:
+        with open(unlock_path_file, encoding="utf-8") as handle:
+            unlock = json.load(handle)
+    lineage = None
+    if lineage_path:
+        with open(lineage_path, encoding="utf-8") as handle:
+            lineage = json.load(handle)
     discovery = enrich(discovery, tokens)
     with open(report_path, encoding="utf-8") as handle:
         report = json.load(handle)
@@ -2305,6 +2476,17 @@ def augment(discovery_path, report_path, html_path, tokens_path=None,
     report["discovery"] = discovery
     sync_token_inventory(report, tokens)
     sync_leakage(report, leakage)
+    # The JSON duplicates exactly what the page shows, so the confidence and
+    # lineage evidence lands in both or in neither. Freshness is measured
+    # here rather than carried, because it is a fact about now.
+    if unlock:
+        report["confidence"] = unlock
+    if lineage:
+        report["token_chains"] = lineage
+    repository_root = (discovery.get("repository") or {}).get("root")
+    if repository_root:
+        report["freshness"] = freshness.measure(
+            repository_root, (discovery.get("repository") or {}).get("ref"))
     if isinstance(report.get("run"), dict):
         report["run"]["generated_at"] = generated
         report["run"]["repo_ref"] = discovery.get("repository", {}).get("ref")
@@ -2352,6 +2534,9 @@ def augment(discovery_path, report_path, html_path, tokens_path=None,
     else:
         raise ValueError("report has no discovery-engine or measurement insertion point")
     document = render_report_slots(document, report, tokens, discovery)
+    document = render_confidence_slots(document, report.get("confidence"),
+                                       report.get("token_chains"),
+                                       report.get("freshness"))
     document = render_token_slots(document, tokens, report)
     document = sync_count_narratives(document, tokens)
     document = replace_slot(document, "vitals-grid", render_vitals(report))
@@ -2393,6 +2578,10 @@ def main(argv):
     parser.add_argument("--html", required=True)
     parser.add_argument("--tokens")
     parser.add_argument("--leakage")
+    parser.add_argument("--unlock",
+                        help="the tools/unlock_path.py output for this run")
+    parser.add_argument("--lineage",
+                        help="the tools/lineage_map.py output for this run")
     parser.add_argument(
         "--refresh-template", action="store_true",
         help="start from the current report template before rendering every region",
@@ -2403,7 +2592,8 @@ def main(argv):
     )
     args = parser.parse_args(argv)
     augment(args.discovery, args.report_json, args.html, args.tokens,
-            args.leakage, args.refresh_template, args.report_view)
+            args.leakage, args.refresh_template, args.report_view,
+            args.unlock, args.lineage)
     print("rendered universal discovery into %s and %s" % (
         args.report_json, args.html))
     return EXIT_OK
