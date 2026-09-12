@@ -2,12 +2,12 @@
   "schema_version": 2,
   "provenance": {
     "report_schema_version": 2,
-    "skill_version": "0.1.0+fd7d7f0",
+    "skill_version": "0.1.0+d45f91b",
     "adapter_versions": {
-      "css-vars": "0.1.0+fd7d7f0",
-      "references/adapters/monorepo.md": "0.1.0+fd7d7f0",
-      "references/adapters/nextjs.md": "0.1.0+fd7d7f0",
-      "tailwind": "0.1.0+fd7d7f0"
+      "css-vars": "0.1.0+d45f91b",
+      "references/adapters/monorepo.md": "0.1.0+d45f91b",
+      "references/adapters/nextjs.md": "0.1.0+d45f91b",
+      "tailwind": "0.1.0+d45f91b"
     },
     "profile_registry_sources": [
       {
@@ -15,12 +15,12 @@
         "sha256": "e2ec80008cc676e3317677282befe72ac9745b55b029e5a18bf1e63850050056"
       }
     ],
-    "generated_at": "2026-09-12T01:33:28.671582Z",
+    "generated_at": "2026-09-12T01:35:08.184350Z",
     "repo_ref": "63c1308d112b",
     "validation_gate": {
       "passed": true,
       "exit_code": 0,
-      "checked_at": "2026-09-12T01:33:38Z"
+      "checked_at": "2026-09-12T01:35:18Z"
     }
   },
   "discovery": {
@@ -124780,7 +124780,7 @@
   },
   "run": {
     "intent": "baseline",
-    "generated_at": "2026-09-12T01:33:28.671582Z",
+    "generated_at": "2026-09-12T01:35:08.184350Z",
     "repo_ref": "63c1308d112b",
     "token_count": 1185,
     "family_count": 19,
@@ -182264,9 +182264,9 @@
       "note": "This repository has no distinct primitive layer to skip: `--primary` is a role name holding a concrete value (globals.css:107 light, :150 dark), so discovery classifies it `primitive` on its value shape. 59 of 101 component token references reach a concept tiered `primitive`, but that number measures the absence of a primitive layer rather than components bypassing a semantic one. Grading it would report a finding the evidence does not support."
     },
     "leakage": {
-      "grade": "not-visible",
+      "grade": "healthy",
       "tiers": {
-        "redundant": null,
+        "redundant": 0,
         "exact-value candidate": 0,
         "near-miss": null,
         "uncovered": null,
@@ -182420,13 +182420,10 @@
         "state": "not-visible"
       },
       "leakage": {
-        "blocked_by": [
-          "import_resolution",
-          "token_source_discovery"
-        ],
-        "grade": "not-visible",
-        "reason": "Waiting on following your imports, finding your token files \u2014 the run could not see enough to check this.",
-        "state": "not-visible"
+        "blocked_by": [],
+        "grade": "healthy",
+        "reason": "Checked, and nothing to fix.",
+        "state": "healthy"
       },
       "mode-completeness": {
         "blocked_by": [
@@ -182467,17 +182464,17 @@
       }
     },
     "decisions_owed": [],
-    "headline": "2 of 8 checks look healthy; 5 the audit cannot see yet \u2014 that is a limit of this run, not of your code; 1 with something to fix in your code.",
+    "headline": "3 of 8 checks look healthy; 4 the audit cannot see yet \u2014 that is a limit of this run, not of your code; 1 with something to fix in your code.",
     "next_15_minutes": {
       "action": "Confirm a reachable token source, or name one with --source",
       "kind": "not-visible",
-      "payoff": "Unlocks 3 more check(s): leakage, single-source, tier-integrity",
+      "payoff": "Unlocks 2 more check(s): single-source, tier-integrity",
       "verify": "python3 tools/discover_tokens.py /tmp/shadcn-audit/repo --discovery .token-vitals/discovery.json --json .token-vitals/tokens.json"
     },
     "split": {
-      "healthy": 2,
+      "healthy": 3,
       "not_needed": 0,
-      "not_visible": 5,
+      "not_visible": 4,
       "your_code": 1
     },
     "unlock_path": [
@@ -182486,11 +182483,10 @@
         "capability": "token_source_discovery",
         "label": "finding your token files",
         "unlocks": [
-          "leakage",
           "single-source",
           "tier-integrity"
         ],
-        "unlocks_count": 3,
+        "unlocks_count": 2,
         "verify": "python3 tools/discover_tokens.py /tmp/shadcn-audit/repo --discovery .token-vitals/discovery.json --json .token-vitals/tokens.json"
       },
       {
@@ -182498,10 +182494,9 @@
         "capability": "import_resolution",
         "label": "following your imports",
         "unlocks": [
-          "leakage",
           "single-source"
         ],
-        "unlocks_count": 2,
+        "unlocks_count": 1,
         "verify": "python3 tools/import_graph.py /tmp/shadcn-audit/repo --json .token-vitals/graph.json"
       },
       {
@@ -223074,7 +223069,7 @@
         "phase": 5,
         "title": "Enforce and expand",
         "objective": "Prevent new drift, publish deprecation rules, and expand shared components only where ownership and component contracts are proven.",
-        "evidence": "Enforcement is graded not-visible; leakage baseline: redundant not-visible, exact-value candidate 0, near-miss not-visible, uncovered not-visible, uncovered candidate 1.",
+        "evidence": "Enforcement is graded not-visible; leakage baseline: redundant 0, exact-value candidate 0, near-miss not-visible, uncovered not-visible, uncovered candidate 1.",
         "exit_criteria": "CI rejects invalid aliases, missing modes, inaccessible resolved pairs, unapproved literals, and public removals without deprecation."
       }
     ],
@@ -223108,7 +223103,7 @@
       {
         "id": "verified-leakage",
         "measure": "Semantically verified redundant literals",
-        "baseline": "not-visible",
+        "baseline": "0",
         "target": "zero, with a CI rule preventing recurrence"
       },
       {
