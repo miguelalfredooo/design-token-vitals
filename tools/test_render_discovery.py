@@ -1033,3 +1033,55 @@ class TestEverySectionHasAViewContract(unittest.TestCase):
             self.assertIsNotNone(declared, section_id)
             self.assertEqual(set(declared.group(1).split()), set(expected),
                              section_id)
+
+
+class TestLeakageSyncRespectsTheMeasurement(unittest.TestCase):
+    """The renderer was overwriting the one grade the audit had earned.
+
+    `audit_literal_colors.py` learned to report "measured, none found" when
+    a repository has no literal left to compare — the whole point being that
+    leakage becomes gradeable. `sync_leakage` then hardcoded
+    `redundant: None` and a note saying semantic equivalence was unmeasured,
+    which forced the vital back to `not-visible`. The fix was verified at the
+    audit tool and never through the renderer, so nothing caught it until a
+    full pipeline ran.
+    """
+
+    CLEAN = {
+        "consumer_files_scanned": 13,
+        "exact_value_candidates": [],
+        "uncovered_candidates": [],
+        "semantic_equivalence": {"state": "counted", "findings": 0, "note": "x"},
+        "near_miss": {"state": "counted", "findings": 0, "note": "y"},
+    }
+
+    def sync(self, leakage, grade="healthy"):
+        report = {"vitals": {"leakage": {"grade": grade, "evidence": ["a.css:1"]}}}
+        render_discovery.sync_leakage(report, leakage)
+        return report["vitals"]["leakage"]
+
+    def test_a_measured_none_found_run_keeps_its_grade(self):
+        vital = self.sync(self.CLEAN)
+        self.assertEqual(vital["grade"], "healthy")
+        self.assertEqual(vital["tiers"]["redundant"], 0)
+
+    def test_an_unmeasured_semantic_equivalence_still_blocks(self):
+        leakage = dict(self.CLEAN, semantic_equivalence={
+            "state": "not-visible", "findings": None, "note": "z"})
+        vital = self.sync(leakage)
+        self.assertEqual(vital["grade"], "not-visible")
+        self.assertIsNone(vital["tiers"]["redundant"])
+
+    def test_an_exact_value_candidate_blocks_until_its_role_is_proven(self):
+        leakage = dict(self.CLEAN,
+                       exact_value_candidates=[{"id": "a1b2c3d4e5f6"}],
+                       semantic_equivalence={"state": "not-visible",
+                                             "findings": None, "note": "z"})
+        vital = self.sync(leakage)
+        self.assertEqual(vital["grade"], "not-visible")
+
+    def test_no_consumer_style_scanned_is_still_unmeasured(self):
+        leakage = dict(self.CLEAN, consumer_files_scanned=0)
+        vital = self.sync(leakage)
+        self.assertEqual(vital["grade"], "not-visible")
+        self.assertIsNone(vital["tiers"]["redundant"])

@@ -1143,6 +1143,40 @@ def sync_leakage(report, leakage):
     report.setdefault("executive_summary", {}).setdefault(
         "affected", {})["owned_files"] = scanned
     leakage_vital = report.setdefault("vitals", {}).setdefault("leakage", {})
+
+    def state_of(key):
+        entry = leakage.get(key)
+        return entry.get("state") if isinstance(entry, dict) else entry
+
+    # `redundant` is the tier the grade reads, and it is only a number once
+    # semantic equivalence has been settled. This used to be hardcoded to
+    # None whatever the audit reported, which silently defeated the audit's
+    # own "measured, none found" result: a repository with no literal left to
+    # compare still could not grade the vital, and no input would ever
+    # change that. Now the renderer reports what the audit measured.
+    semantic_settled = (state_of("semantic_equivalence") == "counted" and
+                        not exact)
+    if scanned and semantic_settled:
+        near = state_of("near_miss")
+        note = (
+            "%d owned reachable consumer styles scanned. No exact-value "
+            "candidate was found, so no replacement's semantic role is in "
+            "question and the redundant tier is measured at zero. %d uncovered "
+            "candidate group(s) remain, and near misses are %s."
+        ) % (scanned, uncovered,
+             "measured with none found" if near == "counted"
+             else "not computed")
+        tiers = {
+            "redundant": 0,
+            "exact-value candidate": exact,
+            "near-miss": 0 if near == "counted" else None,
+            "uncovered": None,
+            "uncovered candidate": uncovered,
+        }
+        leakage_vital.setdefault("grade", "healthy")
+        leakage_vital["tiers"] = tiers
+        leakage_vital["note"] = leakage_vital.get("note") or note
+        return
     if scanned:
         note = (
             "%d exact-value candidate groups and %d uncovered candidate groups "

@@ -385,5 +385,14 @@
   "tests": [
    "test_render_discovery.TestEverySectionHasAViewContract"
   ]
+ },
+ {
+  "name": "renderer overwrites a measured leakage result",
+  "file": "tools/render_discovery.py",
+  "old": "    semantic_settled = (state_of(\"semantic_equivalence\") == \"counted\" and\n                        not exact)",
+  "new": "    semantic_settled = False",
+  "tests": [
+   "test_render_discovery.TestLeakageSyncRespectsTheMeasurement"
+  ]
  }
 ]
