@@ -1007,6 +1007,23 @@ def tier_for(item, known):
     return "untraced", "no concrete value and no traceable reference"
 
 
+# A directory earns the right to vouch for its neighbours only when its own
+# NAME says what it is. Co-location alone admitted 136 of 154 sources in one
+# real monorepo — a generated `registry/__index__.tsx` and an
+# `examples/aria/radio-group-rtl.tsx` among them — because a single file in
+# those directories happened to carry a token-ish filename. Kept short on
+# purpose: `styles/` and `lib/` hold component CSS and everything else.
+TOKEN_DIRECTORY_NAMES = {
+    "token", "tokens", "design-token", "design-tokens", "designtokens",
+    "theme", "themes", "foundation", "foundations", "primitive", "primitives",
+}
+
+
+def is_token_directory(directory):
+    name = family_key(os.path.basename(directory or ""))
+    return name in TOKEN_DIRECTORY_NAMES
+
+
 def source_role(path, decls, text, forced=False, admitted=False):
     if forced:
         return "canonical"
@@ -1077,9 +1094,11 @@ def discover(root, discovery, forced_sources=None):
                         source_role(path, decls, text, path in forced_sources),
                         None)
 
-    # Pass 2 — a directory that already holds a confirmed canonical source is
-    # evidence about the modules beside it. A filename is a guess, and it was
-    # rejecting five reachable modules of one real `src/tokens/` directory —
+    # Pass 2 — a directory NAMED for tokens that already holds a confirmed
+    # canonical source is evidence about the modules beside it. Both signals
+    # are required: the name alone is a guess, and co-location alone admits a
+    # whole monorepo. Together they rescued five reachable modules of one real
+    # `src/tokens/` directory —
     # every one of them imported by the same application, and between them
     # holding the opacity, aspect-ratio, z-index and blur values the run then
     # reported as zero of. Admission is NOT transitive: only a directory a
@@ -1088,7 +1107,8 @@ def discover(root, discovery, forced_sources=None):
     confirmed_directories = {
         os.path.dirname(path)
         for path, (decls, role, _) in graded.items()
-        if decls and role in ("canonical", "alias")
+        if decls and role in ("canonical", "alias") and
+        is_token_directory(os.path.dirname(path))
     }
     for path, _reach, text in readable:
         decls, role, _ = graded[path]

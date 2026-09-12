@@ -38,15 +38,29 @@ block split into `owned` and `outside_owned_scope`, with the basis that
 produced the split. The out-of-scope half stays visible and stops being a
 finding.
 
-**A token module is admitted by the company it keeps, not by its name.** In
-one real `src/tokens/` directory that admitted `colors.js`, `spacing.js` and
+**A token module is admitted by the company it keeps AND by where it keeps
+it.** In one real `src/tokens/` directory that admitted `colors.js`, `spacing.js` and
 `typography.js` and rejected `interaction.js`, `effects.js`,
 `componentGeometry.js`, `composition.js` and `visualSystemProfiles.js` —
 five reachable modules, imported by the same application, holding between
 them the opacity, aspect-ratio, z-index and blur values the run then
 reported as zero of. A module in a directory that already holds a confirmed
 canonical source is admitted on that evidence and says so in `admitted_by`.
-Admission is **not** transitive. 749 canonical concepts became 1,071.
+Admission is **not** transitive.
+
+Both signals are required, and the second one was learned the expensive way.
+Co-location alone — any directory holding one confirmed token file vouching
+for its neighbours — admitted **136 of 154 sources** in a second repository,
+including a generated `registry/__index__.tsx` carrying 455 declarations and
+an `examples/aria/radio-group-rtl.tsx`. One file in those directories
+happened to carry a token-ish name. A directory now has to be *named* for
+tokens as well as hold a confirmed source: the name alone is a guess,
+co-location alone admits a monorepo, and together they are evidence. The
+directory-name list is deliberately short — `styles/` and `lib/` hold
+component CSS and everything else.
+
+749 canonical concepts became 1,071 in the first repository, and the second
+went from 163 admitted sources to 27.
 
 **No family is a bare zero.** `family_states` applies the rule SKILL.md
 already stated: `counted` carries a count, `not-visible` carries **no number

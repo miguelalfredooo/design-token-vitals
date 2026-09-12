@@ -1,66 +1,158 @@
 [
- {"name":"asset spec probed as source again","file":"tools/import_graph.py",
-  "old":"            if os.path.splitext(stem)[1].lower() in ASSET_EXT:",
-  "new":"            if False:",
-  "tests":["test_import_graph.TestStaticAssets"]},
- {"name":"asset no longer terminal (walk parses it)","file":"tools/import_graph.py",
-  "old":"                terminal = os.path.splitext(hit)[1].lower() in ASSET_EXT",
-  "new":"                terminal = False",
-  "tests":["test_import_graph.TestStaticAssets"]},
- {"name":".worktrees back in the walk","file":"tools/import_graph.py",
-  "old":"    \".worktrees\", \"worktrees\", \"test-results\", \"playwright-report\",",
-  "new":"    \"worktrees\", \"test-results\", \"playwright-report\",",
-  "tests":["test_import_graph.TestGeneratedTreesAreNotScanned"]},
- {"name":"every generated tree back in the walk","file":"tools/import_graph.py",
-  "old":"    \".worktrees\", \"worktrees\", \"test-results\", \"playwright-report\",\n    \"storybook-static\", \".svelte-kit\", \".nuxt\", \".output\", \".astro\",",
-  "new":"    \".astro\",",
-  "tests":["test_import_graph.TestGeneratedTreesAreNotScanned"]},
- {"name":"root-only ignore applied at any depth","file":"tools/import_graph.py",
-  "old":"ROOT_ONLY_IGNORES = {\"vendor\", \"third_party\", \"worktrees\", \"target\"}",
-  "new":"ROOT_ONLY_IGNORES = {\"vendor\", \"third_party\"}",
-  "tests":["test_import_graph"]},
- {"name":"orphans no longer split by scope","file":"tools/discovery_engine.py",
-  "old":"        \"orphans\": orphan_scope(graph[\"orphans\"], ownership),",
-  "new":"        \"orphans\": {\"owned\": list(graph[\"orphans\"]), \"outside_owned_scope\": [], \"basis\": ownership.get(\"basis\"), \"note\": \"\"},",
-  "tests":["test_discover_environment.TestOrphanScope"]},
- {"name":"sibling admission switched off","file":"tools/discover_tokens.py",
-  "old":"        sibling_decls = declarations(text, path, admitted=True)",
-  "new":"        sibling_decls = declarations(text, path, admitted=False)",
-  "tests":["test_discover_tokens.TestTokenSourceSiblings"]},
- {"name":"sibling admission made transitive","file":"tools/discover_tokens.py",
-  "old":"        if decls and role in (\"canonical\", \"alias\")\n    }",
-  "new":"        if decls\n    }",
-  "tests":["test_discover_tokens.TestTokenSourceSiblings"]},
- {"name":"unmeasured family reported as 0 again","file":"tools/discover_tokens.py",
-  "old":"            family_states[family] = {\"state\": \"not-visible\"}",
-  "new":"            family_states[family] = {\"state\": \"not-visible\", \"count\": 0}",
-  "tests":["test_discover_tokens.TestFamilyStates","test_discover_tokens.TestUnreadableValues"]},
- {"name":"absent and not-visible collapsed","file":"tools/discover_tokens.py",
-  "old":"        elif family in held_out_families or family in unresolved_families:",
-  "new":"        elif False:",
-  "tests":["test_discover_tokens.TestFamilyStates","test_discover_tokens.TestUnreadableValues"]},
- {"name":"unreadable JS values no longer seen","file":"tools/discover_tokens.py",
-  "old":"            unresolved_families.update(\n                family_for(name, \"\") for name in js_referenced_names(text))",
-  "new":"            pass",
-  "tests":["test_discover_tokens.TestUnreadableValues"]},
- {"name":"identity reads the normalized id again","file":"tools/discover_tokens.py",
-  "old":"        spellings = concept.get(\"names\") or [concept.get(\"id\", \"\")]",
-  "new":"        spellings = [concept.get(\"id\", \"\")]",
-  "tests":["test_discover_tokens.TestCamelCaseFontFamily"]},
- {"name":"tier picked despite disagreeing definitions","file":"tools/discover_tokens.py",
-  "old":"    if len(shapes) > 1:",
-  "new":"    if False:",
-  "tests":["test_discover_tokens.TestConflictingDefinitions"]},
- {"name":"conflicting definitions not reported","file":"tools/discover_tokens.py",
-  "old":"        if len(set(values)) < 2:",
-  "new":"        if True:",
-  "tests":["test_discover_tokens.TestConflictReport"]},
- {"name":"leakage back to unconditional unmeasured","file":"tools/audit_literal_colors.py",
-  "old":"    near_miss = (\n        {\"state\": \"counted\", \"findings\": 0,",
-  "new":"    near_miss = (\n        {\"state\": \"not-visible\", \"findings\": None,",
-  "tests":["test_audit_literal_colors.TestNothingToMeasure"]},
- {"name":"semantic equivalence back to unmeasured","file":"tools/audit_literal_colors.py",
-  "old":"    semantic_equivalence = (\n        {\"state\": \"counted\", \"findings\": 0,",
-  "new":"    semantic_equivalence = (\n        {\"state\": \"not-visible\", \"findings\": None,",
-  "tests":["test_audit_literal_colors.TestNothingToMeasure"]}
+ {
+  "name": "asset spec probed as source again",
+  "file": "tools/import_graph.py",
+  "old": "            if os.path.splitext(stem)[1].lower() in ASSET_EXT:",
+  "new": "            if False:",
+  "tests": [
+   "test_import_graph.TestStaticAssets"
+  ]
+ },
+ {
+  "name": "asset no longer terminal (walk parses it)",
+  "file": "tools/import_graph.py",
+  "old": "                terminal = os.path.splitext(hit)[1].lower() in ASSET_EXT",
+  "new": "                terminal = False",
+  "tests": [
+   "test_import_graph.TestStaticAssets"
+  ]
+ },
+ {
+  "name": ".worktrees back in the walk",
+  "file": "tools/import_graph.py",
+  "old": "    \".worktrees\", \"worktrees\", \"test-results\", \"playwright-report\",",
+  "new": "    \"worktrees\", \"test-results\", \"playwright-report\",",
+  "tests": [
+   "test_import_graph.TestGeneratedTreesAreNotScanned"
+  ]
+ },
+ {
+  "name": "every generated tree back in the walk",
+  "file": "tools/import_graph.py",
+  "old": "    \".worktrees\", \"worktrees\", \"test-results\", \"playwright-report\",\n    \"storybook-static\", \".svelte-kit\", \".nuxt\", \".output\", \".astro\",",
+  "new": "    \".astro\",",
+  "tests": [
+   "test_import_graph.TestGeneratedTreesAreNotScanned"
+  ]
+ },
+ {
+  "name": "root-only ignore applied at any depth",
+  "file": "tools/import_graph.py",
+  "old": "ROOT_ONLY_IGNORES = {\"vendor\", \"third_party\", \"worktrees\", \"target\"}",
+  "new": "ROOT_ONLY_IGNORES = {\"vendor\", \"third_party\"}",
+  "tests": [
+   "test_import_graph"
+  ]
+ },
+ {
+  "name": "orphans no longer split by scope",
+  "file": "tools/discovery_engine.py",
+  "old": "        \"orphans\": orphan_scope(graph[\"orphans\"], ownership),",
+  "new": "        \"orphans\": {\"owned\": list(graph[\"orphans\"]), \"outside_owned_scope\": [], \"basis\": ownership.get(\"basis\"), \"note\": \"\"},",
+  "tests": [
+   "test_discover_environment.TestOrphanScope"
+  ]
+ },
+ {
+  "name": "sibling admission switched off",
+  "file": "tools/discover_tokens.py",
+  "old": "        sibling_decls = declarations(text, path, admitted=True)",
+  "new": "        sibling_decls = declarations(text, path, admitted=False)",
+  "tests": [
+   "test_discover_tokens.TestTokenSourceSiblings"
+  ]
+ },
+ {
+  "name": "sibling admission made transitive",
+  "file": "tools/discover_tokens.py",
+  "old": "        if decls and role in (\"canonical\", \"alias\") and\n        is_token_directory(os.path.dirname(path))",
+  "new": "        if decls and\n        is_token_directory(os.path.dirname(path))",
+  "tests": [
+   "test_discover_tokens.TestTokenSourceSiblings",
+   "test_discover_tokens.TestSiblingAdmissionIsNarrow"
+  ]
+ },
+ {
+  "name": "any directory holding one token file vouches for siblings",
+  "file": "tools/discover_tokens.py",
+  "old": "        is_token_directory(os.path.dirname(path))",
+  "new": "        True",
+  "tests": [
+   "test_discover_tokens.TestSiblingAdmissionIsNarrow"
+  ]
+ },
+ {
+  "name": "unmeasured family reported as 0 again",
+  "file": "tools/discover_tokens.py",
+  "old": "            family_states[family] = {\"state\": \"not-visible\"}",
+  "new": "            family_states[family] = {\"state\": \"not-visible\", \"count\": 0}",
+  "tests": [
+   "test_discover_tokens.TestFamilyStates",
+   "test_discover_tokens.TestUnreadableValues"
+  ]
+ },
+ {
+  "name": "absent and not-visible collapsed",
+  "file": "tools/discover_tokens.py",
+  "old": "        elif family in held_out_families or family in unresolved_families:",
+  "new": "        elif False:",
+  "tests": [
+   "test_discover_tokens.TestFamilyStates",
+   "test_discover_tokens.TestUnreadableValues"
+  ]
+ },
+ {
+  "name": "unreadable JS values no longer seen",
+  "file": "tools/discover_tokens.py",
+  "old": "            unresolved_families.update(\n                family_for(name, \"\") for name in js_referenced_names(text))",
+  "new": "            pass",
+  "tests": [
+   "test_discover_tokens.TestUnreadableValues"
+  ]
+ },
+ {
+  "name": "identity reads the normalized id again",
+  "file": "tools/discover_tokens.py",
+  "old": "        spellings = concept.get(\"names\") or [concept.get(\"id\", \"\")]",
+  "new": "        spellings = [concept.get(\"id\", \"\")]",
+  "tests": [
+   "test_discover_tokens.TestCamelCaseFontFamily"
+  ]
+ },
+ {
+  "name": "tier picked despite disagreeing definitions",
+  "file": "tools/discover_tokens.py",
+  "old": "    if len(shapes) > 1:",
+  "new": "    if False:",
+  "tests": [
+   "test_discover_tokens.TestConflictingDefinitions"
+  ]
+ },
+ {
+  "name": "conflicting definitions not reported",
+  "file": "tools/discover_tokens.py",
+  "old": "        if len(set(values)) < 2:",
+  "new": "        if True:",
+  "tests": [
+   "test_discover_tokens.TestConflictReport"
+  ]
+ },
+ {
+  "name": "leakage back to unconditional unmeasured",
+  "file": "tools/audit_literal_colors.py",
+  "old": "    near_miss = (\n        {\"state\": \"counted\", \"findings\": 0,",
+  "new": "    near_miss = (\n        {\"state\": \"not-visible\", \"findings\": None,",
+  "tests": [
+   "test_audit_literal_colors.TestNothingToMeasure"
+  ]
+ },
+ {
+  "name": "semantic equivalence back to unmeasured",
+  "file": "tools/audit_literal_colors.py",
+  "old": "    semantic_equivalence = (\n        {\"state\": \"counted\", \"findings\": 0,",
+  "new": "    semantic_equivalence = (\n        {\"state\": \"not-visible\", \"findings\": None,",
+  "tests": [
+   "test_audit_literal_colors.TestNothingToMeasure"
+  ]
+ }
 ]

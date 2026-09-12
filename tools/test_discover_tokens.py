@@ -1086,3 +1086,66 @@ class TestConflictReport(unittest.TestCase):
         kinds = {item["token"]: item["kind"] for item in conflicts}
         self.assertEqual(kinds["a"], "two aliases")
         self.assertEqual(kinds["b"], "two literals")
+
+
+class TestSiblingAdmissionIsNarrow(unittest.TestCase):
+    """Holding one token file does not make a directory a token directory.
+
+    Co-location alone admitted 136 of 154 sources in a real monorepo —
+    `registry/__index__.tsx` (455 generated declarations) and
+    `examples/aria/radio-group-rtl.tsx` among them — because one file in
+    those directories happened to carry a token-ish filename. A directory
+    earns the right to vouch for its neighbours only when its own NAME says
+    what it is AND it holds a confirmed source. Either signal alone is a
+    guess; together they are evidence.
+    """
+
+    BASE = {
+        "package.json": '{"name":"app","devDependencies":{"vite":"^5"}}',
+        "vite.config.js": "export default {}",
+        "index.html": '<script type="module" src="/src/main.js"></script>',
+        "src/globals.css": (
+            ":root{--color-brand:#6b5bf0;--color-text:#111;--spacing-2:8px;"
+            "--spacing-4:16px;--radius-md:6px;--border-width:1px}"),
+    }
+
+    def confirmed(self, files, entry):
+        root = make_repo(dict(self.BASE, **files, **{"src/main.js": entry}))
+        discovery = discover_environment.discover(root, ["src/**"])
+        return {item["path"] for item in
+                discover_tokens.discover(root, discovery)["sources"]
+                if item["role"] in ("canonical", "alias")}
+
+    THEME_OBJECT = ("export const tokens = Object.freeze({\n"
+                    "  '--x-a': '#111111',\n  '--x-b': '4px',\n})\n")
+
+    def test_a_token_directory_vouches_for_its_siblings(self):
+        confirmed = self.confirmed({
+            "src/tokens/colors.js": self.THEME_OBJECT,
+            "src/tokens/geometry.js": self.THEME_OBJECT,
+        }, 'import "./globals.css";\nimport "./tokens/colors.js";\nimport "./tokens/geometry.js";')
+        self.assertIn("src/tokens/geometry.js", confirmed)
+
+    def test_a_registry_directory_does_not(self):
+        """`registry/` holds one colour file and 400 other things."""
+        confirmed = self.confirmed({
+            "src/registry/colors.ts": self.THEME_OBJECT,
+            "src/registry/__index__.tsx": self.THEME_OBJECT,
+        }, 'import "./globals.css";\nimport "./registry/colors.ts";\nimport "./registry/__index__.tsx";')
+        self.assertIn("src/registry/colors.ts", confirmed)
+        self.assertNotIn("src/registry/__index__.tsx", confirmed)
+
+    def test_an_examples_directory_does_not(self):
+        confirmed = self.confirmed({
+            "src/examples/theme-demo.tsx": self.THEME_OBJECT,
+            "src/examples/radio-group-rtl.tsx": self.THEME_OBJECT,
+        }, 'import "./globals.css";\nimport "./examples/theme-demo.tsx";\nimport "./examples/radio-group-rtl.tsx";')
+        self.assertNotIn("src/examples/radio-group-rtl.tsx", confirmed)
+
+    def test_a_token_directory_with_no_confirmed_source_vouches_for_nothing(self):
+        """The name alone is not enough either — both signals are required."""
+        confirmed = self.confirmed({
+            "src/tokens/widgets.js": self.THEME_OBJECT,
+            "src/tokens/shapes.js": self.THEME_OBJECT,
+        }, 'import "./globals.css";\nimport "./tokens/widgets.js";\nimport "./tokens/shapes.js";')
+        self.assertNotIn("src/tokens/shapes.js", confirmed)
