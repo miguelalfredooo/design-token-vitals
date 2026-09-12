@@ -996,3 +996,92 @@ class TestConfidenceAndLineageRegions(unittest.TestCase):
         section = html.split('id="confidence"')[1].split("</section>")[0]
         self.assertNotIn("Sample report", section)
         self.assertIn("not produced", section)
+
+
+class TestEverySectionHasAViewContract(unittest.TestCase):
+    """A section in the template but not in the registry fails rule 6.
+
+    `#confidence` was added to the template and not to REPORT_VIEW_SECTIONS,
+    so every report carrying it failed validation with "confidence section
+    has no report-view contract". Caught by running the pipeline against a
+    second repository, which is the only thing that exercises the whole
+    shape at once.
+    """
+
+    def test_the_registry_covers_every_section_in_the_template(self):
+        template = open(
+            os.path.join(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))), "assets/report-template.html"),
+            encoding="utf-8").read()
+        ids = re.findall(r'<section\b[^>]*\bid="([^"]+)"', template)
+        self.assertTrue(ids)
+        missing = [i for i in ids if i not in render_discovery.REPORT_VIEW_SECTIONS]
+        self.assertEqual(missing, [], "sections with no view contract")
+
+    def test_every_registered_section_declares_those_views_in_the_markup(self):
+        template = open(
+            os.path.join(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))), "assets/report-template.html"),
+            encoding="utf-8").read()
+        for match in re.finditer(r'<section\b([^>]*)\bid="([^"]+)"([^>]*)>', template):
+            attrs = match.group(1) + match.group(3)
+            section_id = match.group(2)
+            expected = render_discovery.REPORT_VIEW_SECTIONS.get(section_id)
+            if expected is None:
+                continue
+            declared = re.search(r'data-report-views="([^"]*)"', attrs)
+            self.assertIsNotNone(declared, section_id)
+            self.assertEqual(set(declared.group(1).split()), set(expected),
+                             section_id)
+
+
+class TestLeakageSyncRespectsTheMeasurement(unittest.TestCase):
+    """The renderer was overwriting the one grade the audit had earned.
+
+    `audit_literal_colors.py` learned to report "measured, none found" when
+    a repository has no literal left to compare — the whole point being that
+    leakage becomes gradeable. `sync_leakage` then hardcoded
+    `redundant: None` and a note saying semantic equivalence was unmeasured,
+    which forced the vital back to `not-visible`. The fix was verified at the
+    audit tool and never through the renderer, so nothing caught it until a
+    full pipeline ran.
+    """
+
+    CLEAN = {
+        "consumer_files_scanned": 13,
+        "exact_value_candidates": [],
+        "uncovered_candidates": [],
+        "semantic_equivalence": {"state": "counted", "findings": 0, "note": "x"},
+        "near_miss": {"state": "counted", "findings": 0, "note": "y"},
+    }
+
+    def sync(self, leakage, grade="healthy"):
+        report = {"vitals": {"leakage": {"grade": grade, "evidence": ["a.css:1"]}}}
+        render_discovery.sync_leakage(report, leakage)
+        return report["vitals"]["leakage"]
+
+    def test_a_measured_none_found_run_keeps_its_grade(self):
+        vital = self.sync(self.CLEAN)
+        self.assertEqual(vital["grade"], "healthy")
+        self.assertEqual(vital["tiers"]["redundant"], 0)
+
+    def test_an_unmeasured_semantic_equivalence_still_blocks(self):
+        leakage = dict(self.CLEAN, semantic_equivalence={
+            "state": "not-visible", "findings": None, "note": "z"})
+        vital = self.sync(leakage)
+        self.assertEqual(vital["grade"], "not-visible")
+        self.assertIsNone(vital["tiers"]["redundant"])
+
+    def test_an_exact_value_candidate_blocks_until_its_role_is_proven(self):
+        leakage = dict(self.CLEAN,
+                       exact_value_candidates=[{"id": "a1b2c3d4e5f6"}],
+                       semantic_equivalence={"state": "not-visible",
+                                             "findings": None, "note": "z"})
+        vital = self.sync(leakage)
+        self.assertEqual(vital["grade"], "not-visible")
+
+    def test_no_consumer_style_scanned_is_still_unmeasured(self):
+        leakage = dict(self.CLEAN, consumer_files_scanned=0)
+        vital = self.sync(leakage)
+        self.assertEqual(vital["grade"], "not-visible")
+        self.assertIsNone(vital["tiers"]["redundant"])
