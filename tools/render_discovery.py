@@ -52,6 +52,11 @@ REPORT_VIEW_COPY = {
     "evidence": ("Evidence", "How we know", "Showing every finding and measurement detail."),
 }
 REPORT_VIEW_SECTIONS = {
+    # The confidence section leads every view: a reader who cannot tell "we
+    # could not see this" from "you have a problem here" learns the wrong
+    # thing about their own codebase, and that is the first thing the page
+    # has to settle.
+    "confidence": ("snapshot", "action", "evidence"),
     "glance": ("snapshot", "action", "evidence"),
     "summary": ("action", "evidence"),
     "decisions": ("action", "evidence"),

@@ -996,3 +996,40 @@ class TestConfidenceAndLineageRegions(unittest.TestCase):
         section = html.split('id="confidence"')[1].split("</section>")[0]
         self.assertNotIn("Sample report", section)
         self.assertIn("not produced", section)
+
+
+class TestEverySectionHasAViewContract(unittest.TestCase):
+    """A section in the template but not in the registry fails rule 6.
+
+    `#confidence` was added to the template and not to REPORT_VIEW_SECTIONS,
+    so every report carrying it failed validation with "confidence section
+    has no report-view contract". Caught by running the pipeline against a
+    second repository, which is the only thing that exercises the whole
+    shape at once.
+    """
+
+    def test_the_registry_covers_every_section_in_the_template(self):
+        template = open(
+            os.path.join(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))), "assets/report-template.html"),
+            encoding="utf-8").read()
+        ids = re.findall(r'<section\b[^>]*\bid="([^"]+)"', template)
+        self.assertTrue(ids)
+        missing = [i for i in ids if i not in render_discovery.REPORT_VIEW_SECTIONS]
+        self.assertEqual(missing, [], "sections with no view contract")
+
+    def test_every_registered_section_declares_those_views_in_the_markup(self):
+        template = open(
+            os.path.join(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))), "assets/report-template.html"),
+            encoding="utf-8").read()
+        for match in re.finditer(r'<section\b([^>]*)\bid="([^"]+)"([^>]*)>', template):
+            attrs = match.group(1) + match.group(3)
+            section_id = match.group(2)
+            expected = render_discovery.REPORT_VIEW_SECTIONS.get(section_id)
+            if expected is None:
+                continue
+            declared = re.search(r'data-report-views="([^"]*)"', attrs)
+            self.assertIsNotNone(declared, section_id)
+            self.assertEqual(set(declared.group(1).split()), set(expected),
+                             section_id)

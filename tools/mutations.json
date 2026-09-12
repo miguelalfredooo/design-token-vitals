@@ -376,5 +376,14 @@
   "tests": [
    "test_lineage_map"
   ]
+ },
+ {
+  "name": "a template section left out of the view registry",
+  "file": "tools/render_discovery.py",
+  "old": "    \"confidence\": (\"snapshot\", \"action\", \"evidence\"),\n",
+  "new": "",
+  "tests": [
+   "test_render_discovery.TestEverySectionHasAViewContract"
+  ]
  }
 ]
