@@ -51,6 +51,7 @@ UTILITY_PREFIXES = {
     "inset-shadow": ("inset-shadow",),
     "drop-shadow": ("drop-shadow",),
     "blur": ("blur",),
+    "perspective": ("perspective",),
     "ease": ("ease",),
     "animate": ("animate",),
     "aspect": ("aspect",),
@@ -78,7 +79,11 @@ def split_name(name):
             return namespace, ""
         if bare.startswith(namespace + "-"):
             return namespace, bare[len(namespace) + 1:]
-    return None, bare
+    # Fall back to first dash-segment for unknown namespaces.
+    if "-" in bare:
+        parts = bare.split("-", 1)
+        return parts[0], parts[1]
+    return bare, ""
 
 
 def parse_theme(text):
@@ -86,8 +91,6 @@ def parse_theme(text):
     for block in THEME_BLOCK.findall(text):
         for name, value in DECLARATION.findall(block):
             namespace, key = split_name(name)
-            if namespace is None:
-                continue
             theme.setdefault(namespace, {})[key] = value.strip()
     return theme
 

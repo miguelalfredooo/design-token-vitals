@@ -49,14 +49,14 @@ class TestThemeMap(unittest.TestCase):
             "@theme {\n"
             "  --color-brand: #123456;\n"
             "  --breakpoint-md: 48rem;\n"
-            "  --perspective-near: 300px;\n"
+            "  --wibble-thing: 2px;\n"
             "}\n"
         )
         coverage = tailwind_adapter.namespace_coverage(theme)
         self.assertIn("color", coverage["covered"])
         self.assertIn("breakpoint", coverage["non_utility"])
         self.assertNotIn("breakpoint", coverage["uncovered"])
-        self.assertIn("perspective", coverage["uncovered"])
+        self.assertIn("wibble", coverage["uncovered"])
 
     def test_every_namespace_in_the_table_exists_in_a_real_default_theme(self):
         # The prefix-to-namespace mapping is authored, because it lives only
@@ -78,3 +78,10 @@ class TestThemeMap(unittest.TestCase):
             for prefix, namespaces in tailwind_adapter.UTILITY_PREFIXES.items()
         }
         self.assertGreater(len(set(concepts.values())), 1)
+
+    def test_a_namespace_the_table_never_heard_of_is_declared_not_dropped(self):
+        # Silently dropping it would make an unknown namespace indistinguishable
+        # from one that was never declared.
+        theme = tailwind_adapter.parse_theme(
+            "@theme {\n  --wibble-thing: 2px;\n}\n")
+        self.assertEqual(theme["wibble"], {"thing": "2px"})
