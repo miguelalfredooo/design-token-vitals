@@ -6,6 +6,55 @@ that produced it.
 
 ## Unreleased
 
+### Fixed — a frozen object kept its keys but lost its path
+
+`Object.freeze({` never matched the object-open pattern, because that pattern
+required a line ending in a bare `{`. So a frozen object never entered the
+nesting stack and **every leaf inside it got a bare name**. Four different
+components each declaring a `height` collapsed into one concept called
+`height`, which was then reported as a duplicate definition: two distinct
+tokens merged and a false conflict invented in the same line of code. And
+`Object.freeze` is the common idiom in a token module, so this hit the normal
+case rather than an exotic one.
+
+```
+community-ds   concepts  1,071 -> 1,104     conflicts  87 -> 80
+```
+
+A key spelled `--foo` stays global, though. It names a CSS custom property, so
+prefixing it with the JS object that happens to carry it would break the link
+to the same variable declared in a stylesheet — which is the only reason a
+profile module writes keys in that spelling.
+
+**Two of this repository's own tests were green because of the bug**, their
+fixtures relying on a frozen object flattening its keys.
+
+Three more defects from the same audit:
+
+- **The stamped banner said "all 18 rules" while nineteen ran** — the same
+  drift as the summary line's `17`, in the one place a reader actually sees it.
+  Both are derived now, and a guard fails on any rule-count literal left in the
+  source.
+- **Eleven `ResourceWarning`s** from unclosed reads of the report template.
+  Noise in a test run is where a real warning hides.
+- **`tools/rendering_choices.py` accepted only a bare token count**, so
+  per-section forms still had to be applied by hand from the reference
+  thresholds — the exact authoring decision the module exists to remove. It
+  now reads `--tokens`, `--leakage` and `--discovery`, and prints the count
+  each form was chosen from. A family the run could not see contributes
+  nothing rather than a zero.
+
+The published example moved with the reader change, since shipping the old
+file would recreate the staleness this fixes:
+
+```
+shadcn-ui   concepts  1,185 -> 1,197   conflicts  102 -> 103
+            58 conflicts now attributed to registry/themes.ts, was 44
+```
+
+604 tests, 45 mutations bite, 2 controls hold, and all nineteen rules still
+pass on the regenerated example.
+
 ### The audit says whose problem it is
 
 A repository whose token layer is in good shape read as mostly blocked. It
@@ -285,7 +334,7 @@ rediscover:
 ### Changed — the published tree carries no client identifiers
 
 The repository is public, and five spots in it named a client, its brand
-colour, or the machine a report was produced on. None were introduced by the
+color, or the machine a report was produced on. None were introduced by the
 work above; all had been on `main` since the example was first committed.
 
 - A client name in `references/report.md` and `tools/test_discover_tokens.py`.
