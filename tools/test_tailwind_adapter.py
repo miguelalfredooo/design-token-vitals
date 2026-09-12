@@ -190,3 +190,51 @@ class TestClassify(unittest.TestCase):
 
     def test_an_ordinary_class_is_not_a_leak(self):
         self.assertIsNone(tailwind_adapter.classify("bg-muted"))
+
+
+class TestDetect(unittest.TestCase):
+    def discovery(self, *paths):
+        return {"owned_import_graph": {"reachable": {p: {"via": []} for p in paths}}}
+
+    def reader(self, files):
+        def read_text(path):
+            if path not in files:
+                raise OSError(path)
+            return files[path]
+        return read_text
+
+    def test_no_tailwind_means_no_adapter(self):
+        files = {"app/main.css": ":root { --brand: #123456; }"}
+        found = tailwind_adapter.detect(
+            "/repo", self.discovery(*files), self.reader(files))
+        self.assertIsNone(found)
+
+    def test_an_at_theme_block_is_enough(self):
+        files = {"app/globals.css": '@import "tailwindcss";\n@theme {\n  --color-brand: #123456;\n}\n'}
+        found = tailwind_adapter.detect(
+            "/repo", self.discovery(*files), self.reader(files))
+        self.assertEqual(found.shape, "v4-theme-block")
+        self.assertEqual(found.path, "app/globals.css")
+        self.assertEqual(found.theme["color"]["brand"], "#123456")
+
+    def test_an_unreadable_default_theme_is_recorded_never_invented(self):
+        files = {"app/globals.css": "@theme {\n  --color-brand: #123456;\n}\n"}
+        found = tailwind_adapter.detect(
+            "/repo", self.discovery(*files), self.reader(files))
+        self.assertFalse(found.default_theme_read)
+        self.assertEqual(found.version, "unrecorded")
+
+    def test_the_version_comes_from_the_manifest_when_there_is_one(self):
+        files = {
+            "app/globals.css": "@theme {\n  --color-brand: #123456;\n}\n",
+            "package.json": '{"devDependencies": {"tailwindcss": "^4.2.1"}}',
+        }
+        found = tailwind_adapter.detect(
+            "/repo", self.discovery("app/globals.css"), self.reader(files))
+        self.assertEqual(found.version, "4.2.1")
+
+    def test_an_unparseable_theme_block_declines_rather_than_half_resolving(self):
+        files = {"app/globals.css": "@theme {\n  --color-brand: #123456\n"}
+        found = tailwind_adapter.detect(
+            "/repo", self.discovery(*files), self.reader(files))
+        self.assertIsNone(found)

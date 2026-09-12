@@ -6,6 +6,8 @@ a second parser and not a Tailwind emulator. It maps a class name onto a
 theme key, or declines.
 """
 from collections import namedtuple
+import json
+import os
 import re
 
 THEME_BLOCK = re.compile(r"@theme[^{]*\{(.*?)\n\}", re.S)
@@ -213,3 +215,66 @@ def classify(class_name):
     if value.startswith("--"):
         return Leak("redundant", value, match.group("prefix"))
     return Leak("literal", value, match.group("prefix"))
+
+
+ThemeSource = namedtuple(
+    "ThemeSource", "shape path version theme coverage default_theme_read")
+
+TAILWIND_MARKER = re.compile(r'@import\s+["\']tailwindcss["\']|@theme\b')
+VERSION = re.compile(r"[\^~>=<\s]*([0-9]+\.[0-9]+\.[0-9]+)")
+DEFAULT_THEME_PATH = os.path.join("node_modules", "tailwindcss", "theme.css")
+STYLE_SUFFIXES = (".css", ".scss", ".sass", ".less")
+
+
+def _disk_reader(root):
+    def read_text(path):
+        with open(os.path.join(root, path), encoding="utf-8", errors="replace") as handle:
+            return handle.read()
+    return read_text
+
+
+def _version_from_manifest(read_text):
+    try:
+        manifest = json.loads(read_text("package.json"))
+    except (OSError, ValueError):
+        return "unrecorded"
+    for field in ("dependencies", "devDependencies"):
+        pinned = (manifest.get(field) or {}).get("tailwindcss")
+        if pinned:
+            match = VERSION.search(pinned)
+            if match:
+                return match.group(1)
+    return "unrecorded"
+
+
+def detect(root, discovery, read_text=None):
+    """The theme source, or None. None means every output stays as it is."""
+    read_text = read_text or _disk_reader(root)
+    reachable = (discovery.get("owned_import_graph") or {}).get("reachable") or {}
+    for path in sorted(reachable):
+        if not path.endswith(STYLE_SUFFIXES):
+            continue
+        try:
+            text = read_text(path)
+        except OSError:
+            continue
+        if not TAILWIND_MARKER.search(text):
+            continue
+        project = parse_theme(text)
+        if not project:
+            continue
+        try:
+            default_text = read_text(DEFAULT_THEME_PATH)
+            default_read = True
+        except OSError:
+            default_text, default_read = "", False
+        theme = theme_map(text, default_text)
+        return ThemeSource(
+            shape="v4-theme-block",
+            path=path,
+            version=_version_from_manifest(read_text),
+            theme=theme,
+            coverage=namespace_coverage(theme),
+            default_theme_read=default_read,
+        )
+    return None
