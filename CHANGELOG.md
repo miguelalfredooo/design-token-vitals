@@ -6,6 +6,90 @@ that produced it.
 
 ## Unreleased
 
+### The audit stops reporting absences it never measured
+
+A run against a 75-component design system was audited finding by finding.
+Six of its conclusions were wrong, and every one was wrong in the same
+direction: the tool reported an absence where it had a gap. The numbers
+below are that repository before and after, from the skill's own Stage 1.
+
+**An existing asset is no longer a missing import.** 186 of 333 unresolved
+imports — 56% of the list — were `.png`, `.svg`, `.webp`, `.mp4` and `.jpg`
+files that were all on disk. The probe only ever appended *source*
+extensions, so `./logo.svg` was looked for at `logo.svg.ts` and
+`logo.svg/index.tsx`. An asset spec now resolves to its own literal path and
+terminates the walk: reachable, never opened, never scanned for imports it
+cannot have. 333 unresolved became 147, and 162 reachable files became 291.
+
+**A checkout of the repository inside itself is not the codebase.**
+`.worktrees`, `test-results`, `playwright-report`, `storybook-static`,
+`.svelte-kit`, `.nuxt`, `.output`, `.astro`, `.vercel`, `.netlify` and the
+Python equivalents are now ignored; `worktrees` and `target` at the
+repository root only, because each is a plausible name for a real source
+directory one level down. This one is **reported, not reproduced** — the
+repository measured here has no such directories, so it is guarded by
+`TestGeneratedTreesAreNotScanned` rather than by a before-and-after count,
+and no number is claimed for it.
+
+**`--owned` now constrains what an orphan IS.** The owned graph honoured the
+scope; the full graph computed orphans over every stylesheet in the tree,
+and the full list is what a report cited. Discovery publishes an `orphans`
+block split into `owned` and `outside_owned_scope`, with the basis that
+produced the split. The out-of-scope half stays visible and stops being a
+finding.
+
+**A token module is admitted by the company it keeps, not by its name.** In
+one real `src/tokens/` directory that admitted `colors.js`, `spacing.js` and
+`typography.js` and rejected `interaction.js`, `effects.js`,
+`componentGeometry.js`, `composition.js` and `visualSystemProfiles.js` —
+five reachable modules, imported by the same application, holding between
+them the opacity, aspect-ratio, z-index and blur values the run then
+reported as zero of. A module in a directory that already holds a confirmed
+canonical source is admitted on that evidence and says so in `admitted_by`.
+Admission is **not** transitive. 749 canonical concepts became 1,071.
+
+**No family is a bare zero.** `family_states` applies the rule SKILL.md
+already stated: `counted` carries a count, `not-visible` carries **no number
+at all**, and `none-used` is the one state that has earned the number 0.
+Five families read `0` before and now read: aspect 2, density 4, layer 5,
+opacity 2, and blur `not-visible` — because `backdropBlur: spacing[2]` is a
+real blur token whose value the reader is right to refuse to invent.
+
+**Identity reads the spelling a token was declared in.** The font-family
+selector tested the concept id, which `normalize()` has already lowercased,
+so `typography.fontFamily.sans` was stored as `typography.fontfamily.sans`,
+the word boundary was gone, and the family the application actually loads
+was invisible — the product's typeface was reported as the one in a legacy
+JSON export instead. Concepts keep their declared `names` beside the
+normalized id. The result is `not-visible` with both candidates shown, which
+is what SKILL.md asks for when two equally strong declarations disagree.
+
+**Every concept carries a tier.** 749 carried none, so `tier-integrity` and
+`single-source` had no field to read. `tier` and `tier_evidence` are derived
+in an order of evidence — a name that states its layer is a declaration, a
+reference to another token is structural proof of an alias, a concrete value
+with neither is a primitive, anything else stays `untraced`. That
+repository: 606 primitive, 230 semantic, 189 component, 46 untraced, with
+162 resolved alias edges and 10 that reference a token this run did not find.
+
+**Leakage can now pass.** `near_miss` and `semantic_equivalence` returned the
+string `"unmeasured"` unconditionally, and `validate_run` rejects a leakage
+grade while semantic equivalence is unmeasured — so a codebase whose every
+color already came from its token source could not grade the vital at all,
+and no input would ever change the answer. With no literal in any consumer
+style nothing can be a near-miss, and with no exact-value candidate no
+replacement's semantic role is in question.
+
+**And a token defined twice is a finding.** 87 concepts carried more than one
+value — 46 a literal beside an alias, 26 two literals, 15 two aliases — with
+`--button-outline-border` defined three times across a stylesheet and two
+visual-system profiles. The evidence was recorded per definition and never
+surfaced. Three different things live in that list and only a person can
+tell them apart: a per-profile variant, a redundant literal, and a real
+clash. The run names which shape it is and leaves the judgment — and a
+concept whose definitions disagree about the layer is `untraced` rather than
+filed by whichever definition the walk reached last.
+
 ### One set of rating words a person can read out loud
 
 The ratings were three vocabularies wearing one coat: a school report card
