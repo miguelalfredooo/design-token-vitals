@@ -215,8 +215,8 @@ def render_roadmap(usage):
 
 
 def render_section(usage):
-    measured = [item for item in usage.get("measurement", []) if item.get("state") == "measured"]
-    incomplete = [item for item in usage.get("measurement", []) if item.get("state") != "measured"]
+    measured = [item for item in usage.get("measurement", []) if item.get("state") == "counted"]
+    incomplete = [item for item in usage.get("measurement", []) if item.get("state") != "counted"]
     boundary = "; ".join("%s: %s (%s)" % (
         esc(item.get("syntax")), esc(item.get("state")), esc(item.get("evidence")))
         for item in measured + incomplete)

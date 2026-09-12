@@ -18,7 +18,7 @@ is. Each names what it forbids and how it is checked.
 This skill is in active use and under revision.
 
 What is stable: the eight vitals, the five status values
-(`pass`, `attention`, `fail`, `blocked`, `not_applicable`), the refusal to
+(`healthy`, `watch`, `needs-work`, `not-visible`, `not-needed`), the refusal to
 produce a composite score, and the rule that every finding carries a real
 `file:line`. Those are the design, and changing them would make it a
 different skill. Every report also ships an unmissable "not validated"
@@ -266,10 +266,10 @@ bundled tools directly against your repository.
 Mode completeness is graded per mode your project actually declares. Say
 one project declares only `light` and `dark`: it never claimed a
 high-contrast mode, so a high-contrast check has nothing to grade against
-and comes back `not_applicable` — not counted against the project. Say a
+and comes back `not-needed` — not counted against the project. Say a
 second project declares `light`, `dark`, and `high-contrast` in its own
 config, and its token source defines that third mode for some tokens but
-not others: the same check now finds a real gap, and grades `fail`, with
+not others: the same check now finds a real gap, and grades `needs-work`, with
 the token name and the mode it's missing from attached as evidence.
 
 Same check, opposite verdicts, and the difference never comes from an

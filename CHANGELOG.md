@@ -6,6 +6,46 @@ that produced it.
 
 ## Unreleased
 
+### One set of rating words a person can read out loud
+
+The ratings were three vocabularies wearing one coat: a school report card
+(`pass` / `attention` / `fail`), lab notes (`measured` / `unmeasured` /
+`absent`), and a rendering implementation detail (`collapsed` /
+`family-only`). `blocked` meant two unrelated things depending on which
+field you read it in — your system has a problem, and this audit cannot see
+far enough yet — and `not_applicable` and `not-applicable` differed only in
+punctuation.
+
+One set now, and each word says whose problem it is:
+
+| Rating | Means |
+|---|---|
+| `healthy` | Checked, nothing to fix |
+| `watch` | Checked, worth a look |
+| `needs-work` | Checked, and there are findings in your code |
+| `not-visible` | The audit could not see enough to check this |
+| `not-needed` | Does not apply here, by decision |
+
+Families rate on the same scale — `counted`, `not-visible`, `none-used` —
+and how much of a list is shown is `full` / `short` / `summary`. The
+provenance line reads "short list" rather than "collapsed density".
+
+607 replacements across 37 files, applied only to quoted string literals,
+attribute values and backticked prose, never to bare identifiers — so
+Python's own `pass` and every `test_..._fails` are untouched.
+
+Two things the merge exposed, both fixed here. Capability states had three
+values where nothing downstream ever told two of them apart, so `state_rank`
+is two levels instead of a dict with a duplicate key. And several value
+lists named the merged word twice, which reads as a fourth state that does
+not exist.
+
+`examples/shadcn-ui/` is deliberately **not** renamed: rewriting the words in
+a finished report would edit a measurement after the fact, which is the one
+thing this skill exists to prevent. Its README says so, and says how to tell
+what has moved.
+
+
 ### Measured — `naming-coherence` does not need a tool yet
 
 `naming-coherence` is graded by judgment, which principle 7 says is a rule

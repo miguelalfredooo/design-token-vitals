@@ -321,7 +321,7 @@ def build_roadmap(rows):
             "share_of_ranked_references": rounded_percent(references, total),
         })
     return {
-        "state": "measured",
+        "state": "counted",
         "basis": (
             "Confirmed canonical token-reference occurrences in the ranked "
             "component view. This ranks investigation by token footprint. "
@@ -437,7 +437,7 @@ def analyze(root, discovery, tokens, limit=20):
     shown_components = sum(1 for item in selected if item["kind"] == "component")
     fallback_surfaces = len(selected) - shown_components
     return {
-        "state": "measured",
+        "state": "counted",
         "component_definition": (
             "A framework-neutral UI ownership unit inferred from component paths; "
             "otherwise a stylesheet or template surface. Device variants with the same owner and name are grouped."
@@ -452,9 +452,9 @@ def analyze(root, discovery, tokens, limit=20):
         "fallback_surfaces": fallback_surfaces,
         "not_shown": max(0, len(components) - shown_components),
         "measurement": [
-            {"syntax": "css-custom-property", "state": "measured", "evidence": "var(--token)"},
-            {"syntax": "scss-variable", "state": "measured", "evidence": "$token references excluding declaration left-hand sides"},
-            {"syntax": "framework-generated-utility", "state": "unmeasured", "evidence": "requires an active adapter to resolve utility output to canonical tokens"},
+            {"syntax": "css-custom-property", "state": "counted", "evidence": "var(--token)"},
+            {"syntax": "scss-variable", "state": "counted", "evidence": "$token references excluding declaration left-hand sides"},
+            {"syntax": "framework-generated-utility", "state": "not-visible", "evidence": "requires an active adapter to resolve utility output to canonical tokens"},
         ],
         "roadmap": roadmap,
         "top_20": selected,

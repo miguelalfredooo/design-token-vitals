@@ -34,7 +34,7 @@ declared, and never silent" below.
 ## The inventory always renders
 
 A token inventory is the tokens, shown — never a summary written about
-them — at `full`, `collapsed`, and `family-only` alike:
+them — at `full`, `short`, and `summary` alike:
 
 - **Color** renders as swatches. Where token names form a ramp — `blue-50`
   through `blue-900` — render the ramp as one strip instead of ten separate
@@ -54,7 +54,7 @@ and line heights" describes a type scale; it does not show one, and it
 hides the exact thing a reader needs to see — the step that lands at 26px
 when a 1.25 ratio from the step below says it should land at 25.
 
-At `family-only`, the ramp form is what makes a large palette practical to
+At `summary`, the ramp form is what makes a large palette practical to
 render in full: 840 colors as 840 individual swatches would be a wall of
 chips, but the same 840 colors grouped into a few dozen ramps render as a
 few dozen strips. The answer to a large palette is a better rendering,
@@ -94,14 +94,14 @@ evidence renders inline versus rolls up into a count.
 | Tokens | Tier ID | Treatment |
 |---|---|---|
 | Under 150 | `full` | Everything rendered in its sparse form: rows, labeled swatches, the whole mode matrix |
-| 150 to 600 inclusive | `collapsed` | Families collapsed by default, exceptions expanded, listings in their dense form |
-| Over 600 | `family-only` | Family rows only, palette as ramps, modes as an exception report, listings in their densest form |
+| 150 to 600 inclusive | `short` | Families collapsed by default, exceptions expanded, listings in their dense form |
+| Over 600 | `summary` | Family rows only, palette as ramps, modes as an exception report, listings in their densest form |
 
 `full` is what a small system earns: every color as its own swatch, every
 leakage finding as its own row, the whole mode matrix laid out top to
-bottom. `collapsed` groups your tokens by family and opens only the
+bottom. `short` groups your tokens by family and opens only the
 families with something wrong, because 400 tokens do not need 400 rows to
-show you the dozen that matter. `family-only` stops listing individual
+show you the dozen that matter. `summary` stops listing individual
 tokens altogether — a family row carries a count, a health indicator per
 vital, and one real `file:line`, and your palette renders as ramps instead
 of a wall of chips. The health indicator is five pips, one for each vital
@@ -112,7 +112,7 @@ any one family, so they do not appear in a family row.
 
 ### Two findings that only exist at scale
 
-At `family-only`, two kinds of finding appear that a small system rarely
+At `summary`, two kinds of finding appear that a small system rarely
 produces enough of to matter:
 
 - **Outliers** — a color belonging to no ramp, added by hand outside the
@@ -135,10 +135,10 @@ the same repository always produce the same plan.
 
 Order by class first, then by blast radius descending within each class:
 
-1. **Unblock measurement.** Any vital graded `blocked` comes first — you
+1. **Unblock measurement.** Any vital graded `not-visible` comes first — you
    cannot improve what you cannot measure. For `enforcement` specifically,
    a single rule both unblocks the check and stops every other finding in
-   the report from regressing, so a `blocked` enforcement grade earns the
+   the report from regressing, so a `not-visible` enforcement grade earns the
    first action even when another vital's raw finding count is larger.
 2. **Verified mechanical fixes.** `redundant` leaks from
    `references/leakage.md` — both the value and the semantic role match, so
@@ -320,7 +320,7 @@ completed rather than inferring the missing link.
 typography, spacing, radius, border, elevation, opacity, z-index,
 breakpoint and motion.
 
-Every cell is `measured`, `unmeasured`, `not_applicable` or `blocked`, and
+Every cell is `counted`, `not-visible` or `not-needed`, and
 carries its evidence. A gap in what the run could see becomes a shape on
 the page rather than an absence a reader has to notice.
 
@@ -395,7 +395,7 @@ accessibility.
 
 ## The invariants
 
-Every rendering tier, from `full` down to `family-only`, follows the same
+Every rendering tier, from `full` down to `summary`, follows the same
 rules. They are what keeps a dense report honest instead of merely shorter.
 
 ### Aggregate the count, never the evidence
@@ -487,7 +487,7 @@ every orphan, every leak group, in whatever form fits. `inventory-color`,
 Whenever a section holds back any part of what the run found, it says so on
 the page, in the `truncation` slot from `references/voice.md`, and it names
 where the rest lives — the `<details>` element immediately below, never a
-pointer to another file. This is the same principle behind `blocked` in
+pointer to another file. This is the same principle behind `not-visible` in
 `references/vitals.md`: silence reads as a pass, and nothing in this report
 is allowed to let silence do that job.
 

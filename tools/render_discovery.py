@@ -390,7 +390,7 @@ def enrich(discovery, tokens=None):
         imports_complete = capabilities.get("import_resolution") == "verified"
         state = (
             "verified" if has_sources and roots_complete and imports_complete else
-            "blocked"
+            "not-visible"
         )
         result.setdefault("capabilities", {})["token_source_discovery"] = state
         for step in result.get("capability_ladder", {}).get("steps", []):
@@ -745,7 +745,7 @@ def typography_block(concepts, identity, repository_root=None):
     confidence = identity.get("confidence", "unresolved")
     identity_evidence = identity.get("evidence", []) or []
     embedded = embedded_font_asset(identity, repository_root) if verified else None
-    specimen_state = "verified" if embedded else "blocked"
+    specimen_state = "verified" if embedded else "not-visible"
     candidates = identity.get("candidates", []) or []
     specimens = []
     for concept in concepts:
@@ -867,7 +867,7 @@ def typography_block(concepts, identity, repository_root=None):
         '<h3>Typography identity</h3>'
         '<p class="sub">%d canonical concepts · %s</p>%s%s'
         '<div class="stack-16">%s</div></div>' % (
-            esc(identity.get("state", "blocked")), esc(family or ""),
+            esc(identity.get("state", "not-visible")), esc(family or ""),
             esc(family_source or ""), esc(confidence), json_attr(identity_evidence),
             esc(specimen_state),
             esc(embedded["asset"].get("path") if embedded else ""),
@@ -888,7 +888,7 @@ def color_block(concepts, identity):
         item.get("namespace") for item in subject_namespaces
         if isinstance(item, dict) and item.get("namespace")
     ]
-    state = identity.get("state", "blocked")
+    state = identity.get("state", "not-visible")
     confidence = identity.get("confidence", "unresolved")
     swatches = []
     evidence_rows = []
@@ -996,8 +996,8 @@ def family_block(tokens, report):
     rows = []
     for family in sorted(counts):
         count = counts[family]
-        state = "measured" if count else existing.get(family, {}).get(
-            "state", "unmeasured")
+        state = "counted" if count else existing.get(family, {}).get(
+            "state", "not-visible")
         sources = sorted({site.rsplit(":", 1)[0]
                           for concept in concepts if concept.get("family") == family
                           for site in concept.get("sites", [])})
@@ -1025,14 +1025,14 @@ def family_block(tokens, report):
             '<td>%s</td><td>%s</td><td class="num">%s</td><td>%s</td></tr>' % (
                 esc(family), esc(state), esc(count if count else ""),
                 json_attr(sources),
-                esc(family), esc(state), esc(count if count else "unmeasured"),
+                esc(family), esc(state), esc(count if count else "not-visible"),
                 note,
             )
         )
     unclassified = len([item for item in concepts
                         if item.get("family") == "unclassified"])
     rows.append(
-        '<tr data-family="unclassified" data-family-state="measured" '
+        '<tr data-family="unclassified" data-family-state="counted" '
         'data-family-count="%d"><td>unclassified</td><td>measured</td>'
         '<td class="num">%d</td><td>Listed in the foundational inventory for review</td></tr>' %
         (unclassified, unclassified)
@@ -1056,12 +1056,12 @@ def sync_token_inventory(report, tokens):
         "candidate_or_local_override_sources", [])
     inventory["identity"] = tokens.get("identity", {
         "typography": {
-            "state": "blocked", "confidence": "unresolved",
+            "state": "not-visible", "confidence": "unresolved",
             "family": None, "token": None, "evidence": [],
             "note": "Identity evidence was not produced by token discovery.",
         },
         "brand_colors": {
-            "state": "blocked", "confidence": "unresolved", "colors": [],
+            "state": "not-visible", "confidence": "unresolved", "colors": [],
             "note": "Identity evidence was not produced by token discovery.",
         },
     })
@@ -1077,13 +1077,13 @@ def sync_token_inventory(report, tokens):
         entry.clear()
         if count:
             entry.update({
-                "state": "measured", "count": count, "sources": sources,
+                "state": "counted", "count": count, "sources": sources,
                 "tiers": {"primitive": None, "semantic": None},
                 "note": None,
             })
         else:
             entry.update({
-                "state": "unmeasured", "sources": [],
+                "state": "not-visible", "sources": [],
                 "tiers": {"primitive": None, "semantic": None},
                 "note": "No canonical concept was confirmed; held-out candidates may still contain local decisions.",
             })
@@ -1143,7 +1143,7 @@ def sync_leakage(report, leakage):
             "uncovered candidate": None,
         }
     leakage_vital.update({
-        "grade": "blocked", "evidence": [], "note": note, "tiers": tiers,
+        "grade": "not-visible", "evidence": [], "note": note, "tiers": tiers,
     })
 
 
@@ -1152,7 +1152,7 @@ def render_vitals(report):
     vitals = report.get("vitals", {}) or {}
     for name in VITAL_ORDER:
         vital = vitals.get(name, {}) or {}
-        grade = vital.get("grade", "blocked")
+        grade = vital.get("grade", "not-visible")
         note = vital.get("note") or "No current evidence was recorded."
         evidence = vital.get("evidence") or []
         evidence_text = (
@@ -1188,7 +1188,7 @@ def render_dashboard_component_roadmap(report):
     usage = report.get("component_usage", {}) or {}
     roadmap = usage.get("roadmap", {}) or {}
     components = usage.get("top_20", []) or []
-    if usage.get("state") != "measured" or not components or not roadmap.get("bands"):
+    if usage.get("state") != "counted" or not components or not roadmap.get("bands"):
         return ""
     band_labels = {
         item.get("id"): item.get("label")
@@ -1265,7 +1265,7 @@ def render_at_a_glance(report):
     vitals = report.get("vitals", {}) or {}
     grades = {}
     for vital in vitals.values():
-        grade = vital.get("grade", "blocked")
+        grade = vital.get("grade", "not-visible")
         grades[grade] = grades.get(grade, 0) + 1
     confidence = report.get("executive_summary", {}).get(
         "confidence_split", {}) or {}
@@ -1273,14 +1273,14 @@ def render_at_a_glance(report):
     run = report.get("run", {}) or {}
     families = report.get("inventory", {}).get("families", {}) or {}
     measured_families = len([
-        item for item in families.values() if item.get("state") == "measured"
+        item for item in families.values() if item.get("state") == "counted"
     ])
     unmeasured_families = len([
         item for item in families.values()
-        if item.get("state") in ("unmeasured", "blocked")
+        if item.get("state") == "not-visible"
     ])
     absent_families = len([
-        item for item in families.values() if item.get("state") == "absent"
+        item for item in families.values() if item.get("state") == "none-used"
     ])
     measured_family_text = "%d measured %s" % (
         measured_families, "family" if measured_families == 1 else "families")
@@ -1297,7 +1297,7 @@ def render_at_a_glance(report):
             absent_families, "family" if absent_families == 1 else "families"))
     grade_text = " · ".join(
         "%d %s" % (grades.get(name, 0), name)
-        for name in ("pass", "attention", "fail", "blocked", "not_applicable")
+        for name in ("healthy", "watch", "needs-work", "not-visible", "not-needed")
         if grades.get(name, 0)
     ) or "No vitals graded"
     stage_order = ("scattered", "declared", "adopted", "layered", "complete", "held")
@@ -1312,10 +1312,10 @@ def render_at_a_glance(report):
     grade_segments = "".join(
         '<i data-g="%s" style="width:%.3f%%"></i>' % (
             esc(name), 100.0 * grades.get(name, 0) / vital_total)
-        for name in ("fail", "attention", "pass", "blocked", "not_applicable")
+        for name in ("needs-work", "watch", "healthy", "not-visible", "not-needed")
         if grades.get(name, 0)
     )
-    confidence_keys = ("confirmed", "blocked", "unmeasured")
+    confidence_keys = ("confirmed", "not-visible")
     confidence_total = max(sum(int(confidence.get(name, 0) or 0)
                                for name in confidence_keys), 1)
     confidence_segments = "".join(
@@ -1371,11 +1371,11 @@ def render_at_a_glance(report):
     graded_total = sum(grades.values())
     if not graded_total:
         health = "Not yet graded"
-    elif grades.get("fail", 0):
+    elif grades.get("needs-work", 0):
         health = "Needs focus"
-    elif grades.get("blocked", 0):
+    elif grades.get("not-visible", 0):
         health = "More evidence needed"
-    elif grades.get("attention", 0):
+    elif grades.get("watch", 0):
         health = "Moving forward"
     else:
         health = "Well supported"
@@ -1467,8 +1467,8 @@ def render_at_a_glance(report):
     first_detail = first.get("action") or (
         "Review candidate matches by design role before choosing a replacement."
     )
-    mode_grade = vitals.get("mode-completeness", {}).get("grade", "blocked")
-    if mode_grade in ("blocked", "fail"):
+    mode_grade = vitals.get("mode-completeness", {}).get("grade", "not-visible")
+    if mode_grade in ("not-visible", "needs-work"):
         mode_title = "Prove every theme before migration"
         mode_detail = (
             "Generate resolved output for each registered mode and product surface "
@@ -1494,16 +1494,16 @@ def render_at_a_glance(report):
         ownership_cta = "Plan guardrails"
 
     friendly_grade = {
-        "pass": "Well supported",
-        "attention": "Worth a look",
-        "fail": "Needs action",
-        "blocked": "Needs evidence",
-        "not_applicable": "Not needed here",
+        "healthy": "Well supported",
+        "watch": "Worth a look",
+        "needs-work": "Needs action",
+        "not-visible": "Needs evidence",
+        "not-needed": "Not needed here",
     }
     vital_cards = []
     for name in VITAL_ORDER:
         vital = vitals.get(name, {}) or {}
-        grade = vital.get("grade", "blocked")
+        grade = vital.get("grade", "not-visible")
         vital_cards.append(
             '<a class="dashboard-vital" data-grade="%s" href="#vital-%s">'
             '<span class="dashboard-vital-name">%s</span>'
@@ -1515,8 +1515,8 @@ def render_at_a_glance(report):
         )
 
     confirmed = int(confidence.get("confirmed", 0) or 0)
-    blocked = int(confidence.get("blocked", 0) or 0)
-    unmeasured = int(confidence.get("unmeasured", 0) or 0)
+    blocked = int(confidence.get("not-visible", 0) or 0)
+    unmeasured = int(confidence.get("not-visible", 0) or 0)
     blocked_text = "%d %s %s evidence" % (
         blocked, "item" if blocked == 1 else "items",
         "needs" if blocked == 1 else "need",
@@ -1623,8 +1623,8 @@ def render_exec_summary(report):
             esc(affected.get("owned_files", 0)), esc(affected.get("components", 0)),
             esc(first.get("action") or "No semantically verified replacement is ready."),
             esc(first.get("file_line") or "—"),
-            esc(confidence.get("confirmed", 0)), esc(confidence.get("blocked", 0)),
-            esc(confidence.get("unmeasured", 0)),
+            esc(confidence.get("confirmed", 0)), esc(confidence.get("not-visible", 0)),
+            esc(confidence.get("not-visible", 0)),
             esc(" · ".join(waiting) or "nothing recorded"),
         )
     )
@@ -1813,13 +1813,13 @@ def render_coverage_matrix(report):
             for family in families:
                 item = keyed.get((bundle, mode, family), {
                     "bundle": bundle, "mode": mode, "family": family,
-                    "state": "unmeasured", "evidence": [],
+                    "state": "not-visible", "evidence": [],
                     "note": "No coverage cell was recorded.",
                 })
-                state = item.get("state", "unmeasured")
+                state = item.get("state", "not-visible")
                 label = {
-                    "measured": "ok", "unmeasured": "?",
-                    "blocked": "blk", "not_applicable": "n/a",
+                    "counted": "ok", "not-visible": "?",
+                    "not-visible": "blk", "not-needed": "n/a",
                 }.get(state, "?")
                 cell_id = "%s|%s|%s" % (bundle, mode, family)
                 columns.append(
@@ -1843,7 +1843,7 @@ def render_modes(report):
     cells = matrix.get("cells", []) or []
     states = {}
     for item in cells:
-        state = item.get("state", "unmeasured")
+        state = item.get("state", "not-visible")
         states[state] = states.get(state, 0) + 1
     coverage = (
         '<div data-report-region="modes-coverage" data-modes-json="%s" class="note">'
@@ -1870,14 +1870,14 @@ def render_orphans_and_enforcement(report):
         '<div class="panel" data-report-region="orphans" data-vital-json="%s">'
         '<h3>Orphan measurement</h3>'
         '<p class="sub">%s</p><div class="note">%s</div></div>' % (
-            json_attr(orphans), esc(orphans.get("grade", "blocked")),
+            json_attr(orphans), esc(orphans.get("grade", "not-visible")),
             esc(orphans.get("note") or "No orphan evidence was recorded."))
     )
     enforcement_html = (
         '<div class="panel" data-report-region="enforcement" data-vital-json="%s">'
         '<h3>What protects this today</h3>'
         '<p class="sub">%s</p><div class="note">%s</div></div>' % (
-            json_attr(enforcement), esc(enforcement.get("grade", "blocked")),
+            json_attr(enforcement), esc(enforcement.get("grade", "not-visible")),
             esc(enforcement.get("note") or "No enforcement evidence was recorded."))
     )
     return orphan_html, enforcement_html
@@ -2063,7 +2063,7 @@ def render_measurement(discovery, tokens, report, skill_version, generated):
     held_out = len((tokens or {}).get("candidate_or_local_override_sources", []))
     adapters = report.get("provenance", {}).get("adapter_versions", {})
     rendering = report.get("rendering", {})
-    rendering_summary = "%s view · %s density" % (
+    rendering_summary = "%s view · %s list" % (
         rendering.get("view") or "unrecorded",
         rendering.get("tier") or "unrecorded",
     )
@@ -2097,7 +2097,7 @@ def render_measurement(discovery, tokens, report, skill_version, generated):
                 "%d %s" % (count, reason)
                 for reason, count in unresolved["by_reason"].items()
             ) or "none"),
-            esc(concept_count if concept_count is not None else "unmeasured"),
+            esc(concept_count if concept_count is not None else "not-visible"),
             source_count, held_out,
             json_attr(adapters),
             esc(report.get("schema_version")), esc(skill_version),
@@ -2133,7 +2133,7 @@ def render_runhead(discovery, tokens, report, skill_version):
             json_attr(summary), esc(" · ".join(summary["profiles"])),
             summary["roots"], summary["owned_roots"], summary["reachable"],
             summary["owned_reachable"],
-            esc(summary["concepts"] if summary["concepts"] is not None else "unmeasured"),
+            esc(summary["concepts"] if summary["concepts"] is not None else "not-visible"),
             summary["token_sources"],
             esc(report.get("provenance", {}).get("repo_ref") or "unrecorded"),
             esc(skill_version),
@@ -2144,7 +2144,7 @@ def render_runhead(discovery, tokens, report, skill_version):
 def render_footer(discovery, tokens, skill_version):
     owned_roots = len([item for item in discovery.get("roots", [])
                        if item.get("ownership") == "owned"])
-    concept_count = (tokens or {}).get("concept_count", "unmeasured")
+    concept_count = (tokens or {}).get("concept_count", "not-visible")
     summary = {
         "profiles": discovery.get("environment", []),
         "concepts": concept_count,

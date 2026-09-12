@@ -143,7 +143,7 @@ class TestTokenDiscovery(unittest.TestCase):
             "sites": ["styles/colors.scss:1"], "identity_contexts": [],
         }]
         identity = discover_tokens.identity_summary(concepts)
-        self.assertEqual(identity["brand_colors"]["state"], "blocked")
+        self.assertEqual(identity["brand_colors"]["state"], "not-visible")
         self.assertEqual(identity["brand_colors"]["colors"], [])
 
     def test_generic_brand_section_does_not_promote_service_colors(self):
@@ -156,7 +156,7 @@ class TestTokenDiscovery(unittest.TestCase):
             }],
         }]
         identity = discover_tokens.identity_summary(concepts)
-        self.assertEqual(identity["brand_colors"]["state"], "blocked")
+        self.assertEqual(identity["brand_colors"]["state"], "not-visible")
 
     def test_service_prefixed_brand_token_needs_product_context(self):
         concepts = [{
@@ -165,7 +165,7 @@ class TestTokenDiscovery(unittest.TestCase):
             "identity_contexts": [],
         }]
         identity = discover_tokens.identity_summary(concepts)
-        self.assertEqual(identity["brand_colors"]["state"], "blocked")
+        self.assertEqual(identity["brand_colors"]["state"], "not-visible")
 
     def test_third_party_brand_heading_does_not_promote_service_color(self):
         for label in ("Facebook Brand Colors", "Visual Identity"):
@@ -179,7 +179,7 @@ class TestTokenDiscovery(unittest.TestCase):
                     }],
                 }]
                 identity = discover_tokens.identity_summary(concepts)
-                self.assertEqual(identity["brand_colors"]["state"], "blocked")
+                self.assertEqual(identity["brand_colors"]["state"], "not-visible")
 
     def test_audited_product_namespace_can_use_its_own_service_name(self):
         concepts = [{
@@ -258,7 +258,7 @@ class TestTokenDiscovery(unittest.TestCase):
                     "identity_contexts": [],
                 }]
                 identity = discover_tokens.identity_summary(concepts)
-                self.assertEqual(identity["brand_colors"]["state"], "blocked")
+                self.assertEqual(identity["brand_colors"]["state"], "not-visible")
 
     def test_brand_context_and_value_evidence_stay_paired(self):
         concepts = [{
@@ -302,7 +302,7 @@ class TestTokenDiscovery(unittest.TestCase):
             ],
         }]
         brand = discover_tokens.identity_summary(concepts)["brand_colors"]
-        self.assertEqual(brand["state"], "blocked")
+        self.assertEqual(brand["state"], "not-visible")
         self.assertEqual(brand["colors"], [])
         self.assertEqual(brand["conflicts"][0]["token"], "brand-primary")
 
@@ -323,7 +323,7 @@ class TestTokenDiscovery(unittest.TestCase):
                     concepts, subject_namespaces=[{
                         "namespace": "acme", "evidence": ["remote owner"],
                     }])
-                self.assertEqual(identity["brand_colors"]["state"], "blocked")
+                self.assertEqual(identity["brand_colors"]["state"], "not-visible")
 
     def test_identity_blocks_equal_priority_font_conflicts(self):
         concepts = [{
@@ -338,7 +338,7 @@ class TestTokenDiscovery(unittest.TestCase):
             ],
         }]
         identity = discover_tokens.identity_summary(concepts)
-        self.assertEqual(identity["typography"]["state"], "blocked")
+        self.assertEqual(identity["typography"]["state"], "not-visible")
         self.assertEqual(
             {item["family"] for item in identity["typography"]["candidates"]},
             {"Inter", "DM Sans"},
@@ -355,8 +355,8 @@ class TestTokenDiscovery(unittest.TestCase):
             "representations": ["css-custom-property"],
         }]
         identity = discover_tokens.identity_summary(concepts)
-        self.assertEqual(identity["typography"]["state"], "blocked")
-        self.assertEqual(identity["brand_colors"]["state"], "blocked")
+        self.assertEqual(identity["typography"]["state"], "not-visible")
+        self.assertEqual(identity["brand_colors"]["state"], "not-visible")
 
     def test_font_identity_uses_the_first_stack_item_only(self):
         cases = {
@@ -401,7 +401,7 @@ class TestTokenDiscovery(unittest.TestCase):
             root, discovery, ["styles/typography.scss"])
         self.assertEqual(
             result["identity"]["typography"]["specimen"]["state"],
-            "blocked",
+            "not-visible",
         )
 
     def test_commented_font_face_cannot_verify_a_specimen(self):
@@ -420,7 +420,7 @@ class TestTokenDiscovery(unittest.TestCase):
             root, discovery, ["styles/typography.scss"])
         self.assertEqual(
             result["identity"]["typography"]["specimen"]["state"],
-            "blocked",
+            "not-visible",
         )
 
     def test_family_matching_uses_token_boundaries_and_taxonomy_terms(self):
@@ -549,10 +549,10 @@ class TestTokenDiscovery(unittest.TestCase):
         discovery["capabilities"] = {
             "production_roots": "verified",
             "import_resolution": "verified",
-            "token_source_discovery": "unmeasured",
+            "token_source_discovery": "not-visible",
         }
         discovery["capability_ladder"] = {
-            "steps": [{"capability": "token_source_discovery", "state": "unmeasured"}],
+            "steps": [{"capability": "token_source_discovery", "state": "not-visible"}],
         }
         path = os.path.join(root, "discovery.json")
         with open(path, "w", encoding="utf-8") as handle:
@@ -571,9 +571,9 @@ class TestTokenDiscovery(unittest.TestCase):
         root, discovery = self.repo({
             "styles/card.scss": ":root { --one: 1; --two: 2; }",
         })
-        discovery["capabilities"] = {"token_source_discovery": "unmeasured"}
+        discovery["capabilities"] = {"token_source_discovery": "not-visible"}
         discovery["capability_ladder"] = {
-            "steps": [{"capability": "token_source_discovery", "state": "unmeasured"}],
+            "steps": [{"capability": "token_source_discovery", "state": "not-visible"}],
         }
         path = os.path.join(root, "discovery.json")
         with open(path, "w", encoding="utf-8") as handle:
@@ -585,7 +585,7 @@ class TestTokenDiscovery(unittest.TestCase):
         with open(path, encoding="utf-8") as handle:
             updated = json.load(handle)
         self.assertEqual(updated["capabilities"]["token_source_discovery"],
-                         "blocked")
+                         "not-visible")
         self.assertEqual(updated["capability_ladder"]["steps"][0]["evidence"], [])
 
 
@@ -596,7 +596,7 @@ class TestFontFamilyFromAJsTokenArray(unittest.TestCase):
     'system-ui', 'sans-serif']` — and that is the literal source text a JS
     token file carries. concrete_font_family read it as one CSS value, the
     leading bracket failed the name pattern, and identity.typography came
-    back `blocked` on a design system whose typeface IS a token.
+    back `not-visible` on a design system whose typeface IS a token.
     """
 
     def test_a_bracketed_stack_resolves_to_its_first_real_family(self):

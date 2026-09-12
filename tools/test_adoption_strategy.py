@@ -7,7 +7,7 @@ import adoption_strategy  # noqa: E402
 import validate_run  # noqa: E402
 
 
-def report_fixture(component_state="measured"):
+def report_fixture(component_state="counted"):
     return {
         "run": {"token_count": 24},
         "stack": {
@@ -21,11 +21,11 @@ def report_fixture(component_state="measured"):
             "capabilities": {
                 "detection": "verified",
                 "production_roots": "verified",
-                "import_resolution": "blocked",
+                "import_resolution": "not-visible",
                 "token_source_discovery": "verified",
                 "ownership": "verified",
-                "mode_resolution": "blocked",
-                "runtime_verification": "unmeasured",
+                "mode_resolution": "not-visible",
+                "runtime_verification": "not-visible",
             },
             "roots": [
                 {"path": "app.scss", "ownership": "owned"},
@@ -58,13 +58,13 @@ def report_fixture(component_state="measured"):
         },
         "component_usage": {
             "state": component_state,
-            "total_components_with_token_usage": 8 if component_state == "measured" else None,
+            "total_components_with_token_usage": 8 if component_state == "counted" else None,
             "top_20": (
-                [{"name": "product / card"}] if component_state == "measured" else []
+                [{"name": "product / card"}] if component_state == "counted" else []
             ),
         },
         "vitals": {
-            "enforcement": {"grade": "blocked"},
+            "enforcement": {"grade": "not-visible"},
             "leakage": {
                 "tiers": {
                     "redundant": 3,
@@ -94,10 +94,10 @@ class TestDerive(unittest.TestCase):
         self.assertIn("product / card", strategy["rollout"][4]["evidence"])
 
     def test_holds_component_consolidation_when_adoption_is_unmeasured(self):
-        strategy = adoption_strategy.derive(report_fixture("unmeasured"))
+        strategy = adoption_strategy.derive(report_fixture("not-visible"))
 
         self.assertEqual(strategy["model"], "token-first-foundation")
-        self.assertIn("unmeasured", strategy["rollout"][4]["evidence"])
+        self.assertIn("not-visible", strategy["rollout"][4]["evidence"])
 
     def test_renders_unmeasured_leakage_without_python_none(self):
         report = report_fixture()
@@ -106,7 +106,7 @@ class TestDerive(unittest.TestCase):
         strategy = adoption_strategy.derive(report)
 
         self.assertNotIn("None", strategy["rollout"][5]["evidence"])
-        self.assertEqual(strategy["success_metrics"][3]["baseline"], "unmeasured")
+        self.assertEqual(strategy["success_metrics"][3]["baseline"], "not-visible")
 
     def test_current_discovery_evidence_wins_over_stale_stack_sources(self):
         report = report_fixture()

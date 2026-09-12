@@ -28,7 +28,7 @@ class TestSingleSource(unittest.TestCase):
         path = os.path.join(ROOT, "fixtures", "expected.json")
         with open(path, encoding="utf-8") as fh:
             fams = json.load(fh)["inventory_families"]
-        listed = fams["measured"] + fams["absent"] + fams["unmeasured"]
+        listed = fams["counted"] + fams["none-used"] + fams["not-visible"]
         self.assertEqual(sorted(listed), sorted(taxonomy.FAMILIES))
 
     def test_validate_run_uses_this_list(self):

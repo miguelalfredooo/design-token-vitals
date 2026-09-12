@@ -6,11 +6,11 @@ guess and never an average.
 
 ## Grading vocabulary
 
-- `pass` — checked, nothing to fix
-- `attention` — worth a look, not urgent
-- `fail` — real problems with a clear fix
-- `blocked` — could not check this one
-- `not_applicable` — does not apply to this setup
+- `healthy` — checked, nothing to fix
+- `watch` — worth a look, not urgent
+- `needs-work` — real problems with a clear fix
+- `not-visible` — could not check this one
+- `not-needed` — does not apply to this setup
 
 Five status values, and that is the full set — no fractional grade and no
 extra label sits between them.
@@ -20,9 +20,9 @@ matters: a system with 1,645 leaked values and perfect naming would land in
 the middle of a blended number, and the leakage is what you needed to see
 first. If your setup has no dark mode — a mode being a named variant of
 your token values, such as light, dark, or high-contrast — mode
-completeness is `not_applicable` on that mode rather than counted against
+completeness is `not-needed` on that mode rather than counted against
 you. If a check could not run — no CI config to read, no build output to
-scan — it is `blocked`, never averaged in as a silent pass.
+scan — it is `not-visible`, never averaged in as a silent pass.
 
 Each vital below has four parts: **Catches** (what it looks for), **Signal**
 (what gets counted), **Grading** (the thresholds that produce a verdict),
@@ -71,14 +71,14 @@ raw value directly, skipping the layer built to carry meaning.
 **Signal:** the count of component styles that reference a primitive-tier
 token or a literal value where a semantic token already covers that case.
 
-**Grading:** `pass` when zero component styles skip the semantic layer;
-`attention` from one skip up to and including 5% of component styles;
-`fail` above 5%.
+**Grading:** `healthy` when zero component styles skip the semantic layer;
+`watch` from one skip up to and including 5% of component styles;
+`needs-work` above 5%.
 
 **Evidence:** at least one real `file:line` where a component style reaches
 past the semantic tier — for example `bg-neutral-800` in a component that
 has `--surface-raised` available. A vital with a count and no reachable
-instance is graded `blocked`, never `fail`.
+instance is graded `not-visible`, never `needs-work`.
 
 ## leakage
 
@@ -91,15 +91,15 @@ candidate (same value, unresolved role), near miss (close to a token without
 matching it), and uncovered (no token exists yet).
 
 **Grading:** driven by the redundant tier, since that is the count whose
-value and semantic role are both proven: `pass` at zero redundant findings; `attention` from 1
-to 10 inclusive; `fail` at 11 or more. **A finding is one distinct
+value and semantic role are both proven: `healthy` at zero redundant findings; `watch` from 1
+to 10 inclusive; `needs-work` at 11 or more. **A finding is one distinct
 literal-to-token pair** — `8px` to `--space-2` is one finding whether it
 appears twice or seventy times. Occurrences and files are its blast
 radius, reported beside it, and never the number the grade reads. Two runs
 graded attention and fail on the same eight pairs over this word.
 
 **Evidence:** at least one real `file:line` per tier reported. A vital with
-a count and no reachable instance is graded `blocked`, never `fail`.
+a count and no reachable instance is graded `not-visible`, never `needs-work`.
 
 ## coverage
 
@@ -117,16 +117,16 @@ framework's own default theme rather than the project's own declaration —
 see `references/adapters/tailwind.md` — checking the installed version of
 that framework is a precondition for grading `coverage` at all, not an
 optional extra step. If the installed version cannot be determined,
-`coverage` is `blocked` with a note saying so; it is never graded `pass` on
+`coverage` is `not-visible` with a note saying so; it is never graded `healthy` on
 an unchecked assumption that a default theme covers a category.
 
-**Grading:** `pass` at 11 of 11 categories present; `attention` at 8–10;
-`fail` below 8.
+**Grading:** `healthy` at 11 of 11 categories present; `watch` at 8–10;
+`needs-work` below 8.
 
 **Evidence:** at least one real `file:line` for a missing category — the
 first place a value in that category appears hardcoded, since the category
 itself has no token to point at. A vital with a count and no reachable
-instance is graded `blocked`, never `fail`.
+instance is graded `not-visible`, never `needs-work`.
 
 ## mode-completeness
 
@@ -142,13 +142,13 @@ default, since a token like `--radius` can legitimately hold one value
 across every mode. A token that stays deliberately constant across modes
 is a design decision, not a gap.
 
-**Grading:** `pass` at 0 gaps; `fail` at any gap in a declared mode;
-`not_applicable` for a mode you have not declared, so an undeclared mode is
+**Grading:** `healthy` at 0 gaps; `needs-work` at any gap in a declared mode;
+`not-needed` for a mode you have not declared, so an undeclared mode is
 never counted against you.
 
 **Evidence:** at least one real `file:line` naming the token and the mode
 it is missing from. A vital with a count and no reachable instance is
-graded `blocked`, never `fail`.
+graded `not-visible`, never `needs-work`.
 
 ## naming-coherence
 
@@ -160,15 +160,15 @@ to guess another's.
 for example `--btn-pad-x` and `--button-padding-inline` naming the same
 kind of thing two different ways.
 
-**Grading:** `pass` at one grammar; `attention` at two; `fail` at three or
+**Grading:** `healthy` at one grammar; `watch` at two; `needs-work` at three or
 more. A second grammar that belongs to one named legacy family — tokens
 carried over from before a naming convention existed — is worth calling
 out by name in the finding, but it does not change the grade: two grammars
-is `attention` either way, because the count is still bounded and a reader
+is `watch` either way, because the count is still bounded and a reader
 can hold two patterns in their head.
 
 **Evidence:** at least one real `file:line` per grammar found. A vital with
-a count and no reachable instance is graded `blocked`, never `fail`.
+a count and no reachable instance is graded `not-visible`, never `needs-work`.
 
 ## single-source
 
@@ -179,12 +179,12 @@ other.
 **Signal:** the count of independent definition sites per concept, and
 whether those sites currently agree.
 
-**Grading:** `pass` at 1 site; `attention` if duplicated but every site
-still agrees; `fail` if any duplicated site disagrees with another.
+**Grading:** `healthy` at 1 site; `watch` if duplicated but every site
+still agrees; `needs-work` if any duplicated site disagrees with another.
 
 **Evidence:** at least one real `file:line` per definition site for a
 duplicated concept. A vital with a count and no reachable instance is
-graded `blocked`, never `fail`.
+graded `not-visible`, never `needs-work`.
 
 ## orphans
 
@@ -194,12 +194,12 @@ is, and they are safe to delete once you can see they are unused.
 
 **Signal:** defined tokens minus referenced tokens.
 
-**Grading:** `pass` below 2% orphaned; `attention` from 2% up to and
-including 10%; `fail` above 10%.
+**Grading:** `healthy` below 2% orphaned; `watch` from 2% up to and
+including 10%; `needs-work` above 10%.
 
 **Evidence:** at least one real `file:line` where the orphaned token is
 defined. A vital with a count and no reachable instance is graded
-`blocked`, never `fail`.
+`not-visible`, never `needs-work`.
 
 ## enforcement
 
@@ -210,13 +210,13 @@ it started the day after a report is read.
 **Signal:** lint rules and CI gates that actually read tokens, rather than
 rules that exist for unrelated reasons.
 
-**Grading:** `pass` at 2 or more such rules; `attention` at 1; `blocked` at
+**Grading:** `healthy` at 2 or more such rules; `watch` at 1; `not-visible` at
 0 — with nothing in place, there is nothing to verify as protected, so this
-is the one vital where the worst outcome is `blocked` rather than `fail`.
+is the one vital where the worst outcome is `not-visible` rather than `needs-work`.
 
 **Evidence:** at least one real `file:line` for each rule counted — the
 lint rule definition or the CI step that runs it. A vital with a count and
-no reachable instance is graded `blocked`, never `fail`.
+no reachable instance is graded `not-visible`, never `needs-work`.
 
 ## Held for a later release
 

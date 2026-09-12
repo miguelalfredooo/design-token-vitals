@@ -17,9 +17,9 @@ CAPABILITIES = [
 ]
 CONFIDENCE = {
     "framework-registered", "import-graph verified", "static candidate",
-    "runtime verified", "blocked",
+    "runtime verified", "not-visible",
 }
-CAPABILITY_STATES = {"verified", "unmeasured", "blocked"}
+CAPABILITY_STATES = {"verified", "not-visible"}
 SIGNAL_TYPES = {
     "path_any", "content_any", "package_dependency_any", "package_json_key",
 }

@@ -16,9 +16,9 @@ If you find yourself wanting a fraction, render the threshold instead.
 | Stage | What is true | Threshold to leave it |
 |---|---|---|
 | `scattered` | No token layer the product actually loads | One canonical source, reachable from an owned production entry point |
-| `declared` | Tokens exist and ship, and components go around them | `leakage` out of `fail`, with `redundant` cleared |
-| `adopted` | Components use the tokens | `tier-integrity` out of `fail` — components reach for roles over primitives |
-| `layered` | A semantic layer exists and holds | `mode-completeness` and `coverage` both graded, and neither at `fail` |
+| `declared` | Tokens exist and ship, and components go around them | `leakage` out of `needs-work`, with `redundant` cleared |
+| `adopted` | Components use the tokens | `tier-integrity` out of `needs-work` — components reach for roles over primitives |
+| `layered` | A semantic layer exists and holds | `mode-completeness` and `coverage` both graded, and neither at `needs-work` |
 | `complete` | Every declared mode resolves, every declared family has tokens | `enforcement` passing |
 | `held` | Nothing above can regress without someone being told | — |
 

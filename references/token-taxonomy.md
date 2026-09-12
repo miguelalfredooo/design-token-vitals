@@ -77,7 +77,7 @@ Three different states, and the report keeps them apart:
 |---|---|---|
 | Measured | The run found this family and counted it | The count, and the tokens |
 | Unmeasured | The run could not resolve this family — an unreachable source, an uncompiled theme, a build step it could not run | Named as unmeasured, with what is missing |
-| Absent | The project declares no tokens for this family | `not_applicable`, and nothing counted against the project |
+| Absent | The project declares no tokens for this family | `not-needed`, and nothing counted against the project |
 
 Rendering an unmeasured family as `0` states that the project has none,
 which is a claim the run never established. Validation rule 4 fails an
@@ -90,11 +90,11 @@ For each family, search the candidate sources found in
 custom properties, preprocessor variables and maps, JS and TS theme
 objects, and JSON token files. Record per family:
 
-- `state`: `measured`, `unmeasured`, or `absent`
+- `state`: `counted`, `not-visible`, or `none-used`
 - `count`: tokens found, where measured
 - `tiers`: how many sit at primitive and how many at semantic
 - `sources`: the source ids that define it
 - `note`: what is missing, where unmeasured
 
-A family found only in an unverified source is `unmeasured`, never
-`measured` — reachability decides, the same as everywhere else.
+A family found only in an unverified source is `not-visible`, never
+`counted` — reachability decides, the same as everywhere else.

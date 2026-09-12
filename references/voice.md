@@ -15,7 +15,7 @@ and generated prose — in one voice.
 ## Rules
 
 - Write in second person. Say what a finding means for the reader before stating the principle.
-- On the dashboard, lead with the plain-language meaning and keep the audit term as secondary evidence. For example, show `Needs evidence` before `blocked`, and `Worth a look` before `attention`.
+- On the dashboard, lead with the plain-language meaning and keep the audit term as secondary evidence. For example, show `Needs evidence` before `not-visible`, and `Worth a look` before `watch`.
 - Pair every concern with a concrete next action. A reader should never have to translate a status into what to do next.
 - Use calm, specific labels that answer the reader's question: `You’re here`, `How the system is doing`, `What we could verify`, and `Start here`.
 - Describe component planning as token footprint: `Where component token work has the widest footprint`, `Assess first`, `Plan next`, and `Focused follow-up`. State that this measures references inside code rather than runtime impressions or screen frequency.

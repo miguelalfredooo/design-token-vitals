@@ -107,7 +107,7 @@ def detect_layers(root):
     if not layers:
         layers.append("unknown")
         ev.append(evidence("Unknown environment", "fallback", ".",
-                           "no framework profile matched", "blocked",
+                           "no framework profile matched", "not-visible",
                            artifact_needed="confirmed production entry point"))
     return layers, ev
 

@@ -57,11 +57,11 @@ Typography and brand color are identity-critical outputs, not decorative
 examples. Token discovery must produce `identity.typography` and
 `identity.brand_colors` with a state, confidence, and real evidence. Select a
 font only from the strongest concrete reachable `font-family` token; if two
-equally strong declarations disagree, mark identity `blocked` and do not
+equally strong declarations disagree, mark identity `not-visible` and do not
 render an inherited or substitute specimen. A verified specimen must embed a
 reachable repository-owned WOFF2, WOFF, TTF, or OTF asset whose format, magic
 bytes, size, and hash were checked; otherwise keep the family evidence visible
-but mark the specimen `blocked`. Select brand colors only when a
+but mark the specimen `not-visible`. Select brand colors only when a
 concrete reachable value has an explicit `brand` token name or lives under a
 source heading that explicitly says brand or visual identity. Never infer a
 brand palette from broad names such as `primary`, `secondary`, or `accent`
@@ -129,7 +129,7 @@ being recorded here; see the framework-default rule in
 
 Read the repository for its declared modes, categories, and accessibility
 target — never assume a standard. This is the step that decides, later,
-whether a missing high-contrast mode is `fail` or `not_applicable`: a mode
+whether a missing high-contrast mode is `needs-work` or `not-needed`: a mode
 the project never declared cannot be missing from it. Record these under
 `declared` in the capability map before grading anything.
 
@@ -149,23 +149,23 @@ For `coverage`, when the active adapter says a category can come from a
 framework's own default theme, checking that framework's installed version
 is required before grading — not optional. If `run.framework_versions` was
 not recorded in Stage 2 and the version cannot be determined now, grade
-`coverage` as `blocked` with a note saying so; never `pass` on an unchecked
+`coverage` as `not-visible` with a note saying so; never `healthy` on an unchecked
 assumption. See `references/vitals.md`'s `coverage` vital.
 
 Inventory every foundational family in `references/token-taxonomy.md`, and
-record each as `measured`, `unmeasured`, or `absent` under
+record each as `counted`, `not-visible`, or `none-used` under
 `inventory.families`, with a count where measured and a note saying what is
 missing where unmeasured. **A family the run could not resolve is never
 reported as `0`** — zero states that the project has none, which is a claim
 this run did not establish. A family found only in an unverified source is
-`unmeasured`, because reachability decides here the same as everywhere else.
+`not-visible`, because reachability decides here the same as everywhere else.
 
-Five status values only: `pass`, `attention`, `fail`, `blocked`,
-`not_applicable`. Attach at least one real `file:line` to every grade that
-reports a finding. A clean `pass` and a `blocked` check may carry an empty
+Five status values only: `healthy`, `watch`, `needs-work`, `not-visible`,
+`not-needed`. Attach at least one real `file:line` to every grade that
+reports a finding. A clean `healthy` and a `not-visible` check may carry an empty
 evidence list instead, with a note explaining why — there is nothing to
 point at when nothing was found, or when the check could not run. A vital
-with a count and no reachable instance is `blocked`, never `fail` —
+with a count and no reachable instance is `not-visible`, never `needs-work` —
 silence is not evidence.
 
 ## Stage 5 — Choose the report view, rendering tier, and form per section
@@ -188,14 +188,14 @@ its target, and show every section when printing.
 
 Count the tokens the stack detected and choose the tier from
 `references/report.md`: under 150 tokens is `full`; 150 to 600 inclusive is
-`collapsed`; over 600 is `family-only`. A count of exactly 150 is
-`collapsed`; a count of exactly 600 is `collapsed`. Record the tier in
+`short`; over 600 is `summary`. A count of exactly 150 is
+`short`; a count of exactly 600 is `short`. Record the tier in
 `assets/capability-map.yml`'s `rendering.tier`.
 
 Then choose a rendering form for each listing section, from the form table
 in "Change the mark, don't cut the data" (`references/report.md`). The
 input is that section's own finding count, not the token total: a repo can
-land in `collapsed` on token count and still have a leakage section large
+land in `short` on token count and still have a leakage section large
 enough to need the densest form. Record one form per section under
 `rendering.forms` — `color`, `typography`, `spacing`, `leaks`, `orphans`,
 `modes`, `families` — using the value names in that table's columns:
@@ -248,7 +248,7 @@ findings. All of them go into both the HTML and the JSON.
   duplicate definition; mark an untraced link as untraced rather than
   guessing at it.
 - **Fill the coverage matrix**: entry bundle by mode by family, every cell
-  `measured`, `unmeasured`, `not_applicable` or `blocked`, with evidence.
+  `counted`, `not-visible` or `not-needed`, with evidence.
 - **Derive the unification strategy** from the same measured facts. Follow
   `references/adoption-strategy.md`: recommend a framework-neutral token
   contract, generated delivery adapters, and shared components only where

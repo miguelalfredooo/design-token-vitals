@@ -53,7 +53,7 @@ order, and the first one that matches wins:
    A framework's derived scale is one token — the multiplier — and a step
    generated from it has no name to swap to, so a value that only that
    scale would cover is `uncovered`, never `redundant`. Two runs graded
-   leakage `attention` and `fail` on this one question; this settles it.
+   leakage `watch` and `needs-work` on this one question; this settles it.
 3. Otherwise, if the value falls within the near-miss threshold of any token
    in the same category, classify it `near-miss`, reported against the
    single closest token.

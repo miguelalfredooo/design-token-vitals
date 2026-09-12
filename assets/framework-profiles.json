@@ -35,7 +35,7 @@
       "load_paths": ["app/assets/stylesheets"],
       "capability_contributions": {
         "mode_resolution": {
-          "state": "blocked",
+          "state": "not-visible",
           "evidence": ["Discourse scheme-aware Sass mechanism detected"],
           "limitation": "No compiled bundle-by-scheme output was inspected.",
           "next_step": "Provide resolved output for every declared bundle and scheme."

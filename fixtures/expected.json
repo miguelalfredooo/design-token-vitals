@@ -100,14 +100,14 @@
     "_spacing_note": "--spacing is declared in @theme and again under .theme-compact, a scheme class. One name, two roots, counted once. A run reporting 22 counted the override as a second token."
   },
   "inventory_families": {
-    "measured": [
+    "counted": [
       "color",
       "typography",
       "spacing",
       "radius",
       "motion"
     ],
-    "absent": [
+    "none-used": [
       "sizing",
       "border",
       "elevation",
@@ -123,7 +123,7 @@
       "blur",
       "density"
     ],
-    "unmeasured": [],
+    "not-visible": [],
     "_note": "19 families total. A run reporting 0 for an absent family rather than the absent state fails validate_run rule 4.",
     "_spacing_note": "--spacing joins spacing; the family stays measured."
   },
@@ -197,13 +197,13 @@
     "_note": "Only the three redundant groups. Near-miss needs a person to decide whether the drift was deliberate; uncovered needs a token to exist first."
   },
   "vitals": {
-    "mode-completeness": "blocked",
+    "mode-completeness": "not-visible",
     "_mode_note": "theme.config.json declares high-contrast and no source resolves it. A run grading this pass, attention or fail fails validate_run rule 3.",
-    "orphans": "attention",
+    "orphans": "watch",
     "_orphans_note": "exactly one: --unused-legacy-accent",
-    "enforcement": "blocked",
+    "enforcement": "not-visible",
     "_enforcement_note": "no lint config and no CI in the fixture",
-    "leakage": "attention"
+    "leakage": "watch"
   },
   "validation": {
     "expected": "all current validation rules pass"

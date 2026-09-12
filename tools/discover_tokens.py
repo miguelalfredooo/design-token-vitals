@@ -298,7 +298,7 @@ def font_face_evidence(root, path, text):
         asset_path = resolve_font_asset(root, path, url)
         font_format = os.path.splitext(url.split("?", 1)[0])[1].lstrip(".").lower()
         asset = {
-            "state": "blocked",
+            "state": "not-visible",
             "family": family,
             "declaration": "%s:%d" % (path, line_for(clean, match.start())),
             "url": url,
@@ -530,14 +530,14 @@ def identity_summary(concepts, font_faces=None, subject_namespaces=None):
         item["evidence"] = list(dict.fromkeys(item["evidence"]))
     font_candidates.sort(key=lambda item: (-item["priority"], item["token"]))
     typography = {
-        "state": "blocked",
+        "state": "not-visible",
         "family": None,
         "token": None,
         "confidence": "unresolved",
         "evidence": [],
         "candidates": font_candidates,
         "specimen": {
-            "state": "blocked", "asset": None,
+            "state": "not-visible", "asset": None,
             "note": "No verified font asset was found for a self-contained specimen.",
         },
         "note": "No concrete reachable font-family token was confirmed.",
@@ -680,7 +680,7 @@ def identity_summary(concepts, font_faces=None, subject_namespaces=None):
         item["token"],
     ))
     brand = {
-        "state": "verified" if brand_colors else "blocked",
+        "state": "verified" if brand_colors else "not-visible",
         "confidence": "explicit-brand-semantics" if brand_colors else "unresolved",
         "colors": brand_colors,
         "conflicts": brand_conflicts,
@@ -1019,11 +1019,11 @@ def discover(root, discovery, forced_sources=None):
         "identity": identity_summary(
             sorted_concepts, font_faces, subject_namespaces),
         "measurement": [
-            {"syntax": "css-custom-property", "state": "measured"},
-            {"syntax": "scss-variable-and-map", "state": "measured"},
-            {"syntax": "dtcg-and-style-dictionary-json", "state": "measured"},
-            {"syntax": "conservative-js-theme-object", "state": "measured"},
-            {"syntax": "runtime-generated-theme-values", "state": "unmeasured"},
+            {"syntax": "css-custom-property", "state": "counted"},
+            {"syntax": "scss-variable-and-map", "state": "counted"},
+            {"syntax": "dtcg-and-style-dictionary-json", "state": "counted"},
+            {"syntax": "conservative-js-theme-object", "state": "counted"},
+            {"syntax": "runtime-generated-theme-values", "state": "not-visible"},
         ],
     }
 
@@ -1038,7 +1038,7 @@ def update_discovery(path, result):
     imports_complete = capabilities.get("import_resolution") == "verified"
     state = (
         "verified" if confirmed and roots_complete and imports_complete else
-        "blocked"
+        "not-visible"
     )
     capabilities["token_source_discovery"] = state
     ladder = discovery.get("capability_ladder", {})

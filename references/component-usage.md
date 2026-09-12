@@ -41,7 +41,7 @@ points to the exact consumer line.
 
 An adapter may additionally resolve Tailwind utilities, CSS-in-JS theme
 accessors, generated classes, template helpers or runtime theme APIs. Record
-each syntax separately as `measured`, `unmeasured` or `blocked`. A class that
+each syntax separately as `counted` or `not-visible`. A class that
 looks token-like but has no proven mapping is unmeasured, never usage.
 
 Exclude canonical and alias declaration sources from consumer counts. Keep

@@ -27,7 +27,7 @@ def usage():
             "cumulative_share_of_ranked_references"):
         component[field] = roadmap_row[field]
     return {
-        "state": "measured",
+        "state": "counted",
         "files_scanned": 3,
         "total_components_with_token_usage": 1,
         "additional_style_surfaces": 0,
@@ -36,7 +36,7 @@ def usage():
         "fallback_surfaces": 0,
         "not_shown": 0,
         "measurement": [
-            {"syntax": "css-custom-property", "state": "measured", "evidence": "var(--token)"},
+            {"syntax": "css-custom-property", "state": "counted", "evidence": "var(--token)"},
         ],
         "roadmap": roadmap,
         "top_20": [component],

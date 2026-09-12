@@ -40,7 +40,7 @@ switch cannot live in a `$variable` alone — it needs a mixin that emits both
 sets of rules, or a class-scoped override applied at runtime. Find that
 mechanism before you grade modes here; grading against the variables alone
 will miss where the actual switch happens. If your repository has no mode
-mechanism at all, `mode-completeness` is `not_applicable`, not `fail` —
+mechanism at all, `mode-completeness` is `not-needed`, not `needs-work` —
 note in the finding that no mode mechanism was found, so the grade reads as
 absence of a mode story rather than a broken one.
 

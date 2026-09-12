@@ -12,7 +12,7 @@ import profile_extractors
 
 
 CONFIDENCE_RANK = {
-    "blocked": 0, "static candidate": 1, "import-graph verified": 2,
+    "not-visible": 0, "static candidate": 1, "import-graph verified": 2,
     "framework-registered": 3, "runtime verified": 4,
 }
 ROOT_SEED_CONFIDENCE = {
@@ -238,7 +238,7 @@ def capability_ladder(capabilities, active_ids, roots, graph, ownership,
                 profile_contributions[name]["profiles"]
                 if name in profile_contributions else
                 (active_ids if name != "ownership" else
-                 [ownership.get("basis", "unmeasured")])
+                 [ownership.get("basis", "not-visible")])
             ),
             "evidence": (
                 profile_contributions[name].get("evidence", [])
@@ -305,7 +305,7 @@ def discover(root, owned_patterns=None, profile_ids=None, app_root=None,
             })
         elif len(applications) > 1:
             selection.update({
-                "state": "blocked",
+                "state": "not-visible",
                 "reason": "multiple application candidates; rerun with --app",
             })
 
@@ -377,7 +377,7 @@ def discover(root, owned_patterns=None, profile_ids=None, app_root=None,
     if not active:
         ledger.append(evidence(
             "Unknown environment", "fallback", ".",
-            "no framework profile matched", "blocked",
+            "no framework profile matched", "not-visible",
             artifact_needed="confirmed production entry point",
             profiles=["generic"],
         ))
@@ -416,7 +416,7 @@ def discover(root, owned_patterns=None, profile_ids=None, app_root=None,
                 item.get("ownership", "unknown"))
             roots.append(item)
 
-    if selection["state"] != "blocked":
+    if selection["state"] != "not-visible":
         conventional_root = os.path.join(root, scope_prefix) if scope_prefix else root
         for item in import_graph.detect_roots(
                 conventional_root, import_graph.DEFAULT_IGNORES):
@@ -522,7 +522,7 @@ def discover(root, owned_patterns=None, profile_ids=None, app_root=None,
     ownership = {
         "owned_patterns": owned_patterns,
         "basis": ("user-supplied scope" if owned_patterns else
-                  ("framework profile" if owned_roots else "unmeasured")),
+                  ("framework profile" if owned_roots else "not-visible")),
         "inferred_owned_roots": ([] if owned_patterns else
                                  [item["path"] for item in owned_roots]),
         "inferred_owned_patterns": ([] if owned_patterns else inferred_patterns),
@@ -532,7 +532,10 @@ def discover(root, owned_patterns=None, profile_ids=None, app_root=None,
                        if item.get("ownership") == "demo"],
     }
     profile_contributions = {}
-    state_rank = {"verified": 0, "unmeasured": 1, "blocked": 2}
+    # Two levels, because for a reader there were only ever two: we proved
+    # this, or we could not see it yet. The third value said which flavour
+    # of "could not see", which nothing downstream ever acted on.
+    state_rank = {"verified": 0, "not-visible": 1}
     for profile_id in active_ids:
         for capability, contribution in definitions[profile_id].get(
                 "capability_contributions", {}).items():
@@ -581,12 +584,12 @@ def discover(root, owned_patterns=None, profile_ids=None, app_root=None,
             rewrite_conflicts)
         if existing:
             existing["profiles"] = sorted(set(existing["profiles"] + profiles))
-            existing["states"] = sorted(set(existing["states"] + ["blocked"]))
+            existing["states"] = sorted(set(existing["states"] + ["not-visible"]))
             existing["resolution"] += "; " + resolution
         else:
             capability_conflicts.append({
                 "capability": "import_resolution", "profiles": profiles,
-                "states": ["blocked"], "resolution": resolution,
+                "states": ["not-visible"], "resolution": resolution,
             })
     mode_contribution = profile_contributions.get("mode_resolution")
     mode_resolution = {
@@ -610,19 +613,19 @@ def discover(root, owned_patterns=None, profile_ids=None, app_root=None,
         item for item in root_records if not item.get("exists")
     ]
     capabilities = {
-        "detection": "verified" if active else "blocked",
+        "detection": "verified" if active else "not-visible",
         "production_roots": (
             "verified" if product_roots and not missing_registered_roots else
-            "blocked"
+            "not-visible"
         ),
         "import_resolution": (
-            "blocked" if actionable_unresolved else
-            ("verified" if graph["reachable"] else "blocked")
+            "not-visible" if actionable_unresolved else
+            ("verified" if graph["reachable"] else "not-visible")
         ),
-        "token_source_discovery": "unmeasured",
-        "ownership": "verified" if owned_roots else "unmeasured",
-        "mode_resolution": "unmeasured",
-        "runtime_verification": "unmeasured",
+        "token_source_discovery": "not-visible",
+        "ownership": "verified" if owned_roots else "not-visible",
+        "mode_resolution": "not-visible",
+        "runtime_verification": "not-visible",
     }
     for capability, contribution in profile_contributions.items():
         if state_rank[contribution["state"]] > state_rank[capabilities[capability]]:
