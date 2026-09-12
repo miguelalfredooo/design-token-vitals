@@ -87,3 +87,65 @@ class TestThemeMap(unittest.TestCase):
         theme = tailwind_adapter.parse_theme(
             "@theme {\n  --wibble-thing: 2px;\n}\n")
         self.assertEqual(theme["wibble"], {"thing": "2px"})
+
+
+class TestResolve(unittest.TestCase):
+    def theme(self):
+        return tailwind_adapter.theme_map(
+            "@theme {\n"
+            "  --color-muted: #eee;\n"
+            "  --color-brand: #123456;\n"
+            "  --text-brand: 2rem;\n"
+            "  --spacing: 0.25rem;\n"
+            "  --spacing-lg: 2rem;\n"
+            "  --radius-md: 6px;\n"
+            "}\n"
+        )
+
+    def test_variants_modifiers_and_important_all_peel_to_the_same_base(self):
+        theme = self.theme()
+        spellings = [
+            "bg-muted", "dark:bg-muted", "dark:hover:bg-muted", "md:bg-muted",
+            "group-hover:bg-muted", "bg-muted/50", "!bg-muted", "bg-muted!",
+            "supports-[display:grid]:bg-muted",
+        ]
+        results = {s: tailwind_adapter.resolve(s, theme) for s in spellings}
+        for spelling, result in results.items():
+            self.assertEqual(result.concept, "color-muted", spelling)
+
+    def test_an_ambiguous_prefix_resolves_to_nothing_and_names_both(self):
+        # text- draws from --color-* and --text-*. Guessing here attributes a
+        # reference to the wrong family, which is worse than not counting it,
+        # because it looks like a measurement.
+        result = tailwind_adapter.resolve("text-brand", self.theme())
+        self.assertEqual(result.state, "ambiguous")
+        self.assertIsNone(result.concept)
+        self.assertEqual(result.candidates, ("color-brand", "text-brand"))
+        self.assertNotEqual(result.concept, result.candidates[0])
+
+    def test_a_derived_step_and_a_named_step_land_differently(self):
+        # Variety, not presence: both resolve, and they must not be the same
+        # kind of thing, or a derived step would inflate named adoption.
+        theme = self.theme()
+        derived = tailwind_adapter.resolve("p-4", theme)
+        named = tailwind_adapter.resolve("p-lg", theme)
+        self.assertEqual(derived.concept, "spacing")
+        self.assertTrue(derived.derived)
+        self.assertEqual(named.concept, "spacing-lg")
+        self.assertFalse(named.derived)
+        self.assertNotEqual(derived.concept, named.concept)
+
+    def test_a_key_the_theme_never_declared_resolves_to_nothing(self):
+        result = tailwind_adapter.resolve("bg-nonexistent", self.theme())
+        self.assertEqual(result.state, "unresolved")
+        self.assertIsNone(result.concept)
+
+    def test_an_unknown_prefix_resolves_to_nothing(self):
+        result = tailwind_adapter.resolve("scroll-mt-md", self.theme())
+        self.assertEqual(result.state, "unresolved")
+
+    def test_no_two_distinct_classes_collapse_onto_one_concept(self):
+        theme = self.theme()
+        classes = ["bg-muted", "bg-brand", "rounded-md", "p-lg"]
+        concepts = [tailwind_adapter.resolve(c, theme).concept for c in classes]
+        self.assertEqual(len(set(concepts)), len(classes))

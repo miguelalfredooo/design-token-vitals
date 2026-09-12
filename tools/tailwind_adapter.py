@@ -6,6 +6,7 @@ a second parser and not a Tailwind emulator. It maps a class name onto a
 theme key, or declines.
 """
 import re
+from collections import namedtuple
 
 THEME_BLOCK = re.compile(r"@theme[^{]*\{(.*?)\n\}", re.S)
 DECLARATION = re.compile(r"^\s*(--[a-z0-9-]+)\s*:\s*([^;]+);", re.M)
@@ -121,3 +122,67 @@ def namespace_coverage(theme):
         else:
             uncovered.append(namespace)
     return {"covered": covered, "uncovered": uncovered, "non_utility": non_utility}
+
+
+Resolution = namedtuple("Resolution", "state concept candidates derived")
+UNRESOLVED = Resolution("unresolved", None, (), False)
+DERIVED_STEP = re.compile(r"^\d+(?:\.\d+)?$")
+
+
+def strip_variants(class_name):
+    """Everything after the last colon that is not inside brackets.
+
+    supports-[display:grid]:bg-muted has two colons and only the second
+    separates a variant.
+    """
+    depth = 0
+    cut = -1
+    for index, char in enumerate(class_name):
+        if char in "[(":
+            depth += 1
+        elif char in "])":
+            depth -= 1
+        elif char == ":" and depth == 0:
+            cut = index
+    return class_name[cut + 1:]
+
+
+def peel(class_name):
+    base = strip_variants(class_name.strip())
+    base = base.strip("!")
+    depth = 0
+    for index, char in enumerate(base):
+        if char in "[(":
+            depth += 1
+        elif char in "])":
+            depth -= 1
+        elif char == "/" and depth == 0:
+            base = base[:index]
+            break
+    negative = base.startswith("-")
+    return (base[1:] if negative else base), negative
+
+
+def resolve(class_name, theme):
+    base, _negative = peel(class_name)
+    if not base or "[" in base or "(" in base:
+        return UNRESOLVED
+    for prefix in sorted(UTILITY_PREFIXES, key=len, reverse=True):
+        if base != prefix and not base.startswith(prefix + "-"):
+            continue
+        key = base[len(prefix):].lstrip("-")
+        named, derived = [], []
+        for namespace in UTILITY_PREFIXES[prefix]:
+            keys = theme.get(namespace) or {}
+            if key in keys:
+                named.append(concept_id(namespace, key))
+            elif "" in keys and DERIVED_STEP.match(key):
+                derived.append(concept_id(namespace, ""))
+        if len(named) > 1:
+            return Resolution("ambiguous", None, tuple(sorted(named)), False)
+        if named:
+            return Resolution("resolved", named[0], (), False)
+        if derived:
+            return Resolution("resolved", derived[0], (), True)
+        return UNRESOLVED
+    return UNRESOLVED
