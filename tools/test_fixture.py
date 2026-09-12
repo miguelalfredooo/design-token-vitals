@@ -19,6 +19,8 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import discover_environment  # noqa: E402
+import discover_tokens  # noqa: E402
 import import_graph  # noqa: E402
 from validate_run import FAMILIES  # noqa: E402
 
@@ -126,6 +128,44 @@ class TestImportGraph(unittest.TestCase):
         joined = " ".join(self.graph["reachable"]) + " ".join(self.graph["orphans"])
         self.assertNotIn("node_modules", joined)
         self.assertNotIn("dist/", joined)
+
+
+
+class TestTheFixtureCoversTheNewerClasses(unittest.TestCase):
+    """The fixture is the only end-to-end check, so it has to hold these.
+
+    Every guard for asset resolution, generated trees and camelCase token
+    names was unit-level, and this fixture had 0 asset files, 0 camelCase
+    token modules and 0 generated directories — so nothing would have
+    noticed any of them regressing through the whole pipeline.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.graph = import_graph.build(FIXTURE, ["app/layout.tsx"])
+
+    def test_an_asset_resolves_and_terminates_the_walk(self):
+        for asset in ("app/assets/logo.svg", "app/assets/hero.png"):
+            with self.subTest(asset=asset):
+                self.assertIn(asset, self.graph["reachable"])
+                self.assertTrue(self.graph["reachable"][asset]["terminal"])
+
+    def test_no_asset_is_reported_as_a_missing_local_source(self):
+        missing = [item["spec"] for item in self.graph["unresolved"]
+                   if item["reason"] == "missing local source"]
+        self.assertEqual(missing, [])
+
+    def test_a_worktree_checkout_and_test_output_are_not_scanned(self):
+        seen = " ".join(self.graph["reachable"]) + " ".join(self.graph["orphans"])
+        self.assertNotIn(".worktrees", seen)
+        self.assertNotIn("test-results", seen)
+
+    def test_a_camelcase_font_family_is_discovered_through_the_pipeline(self):
+        discovery = discover_environment.discover(FIXTURE, ["app/**"])
+        tokens = discover_tokens.discover(FIXTURE, discovery)
+        families = {item["family"]
+                    for item in tokens["identity"]["typography"]["candidates"]}
+        self.assertIn("Fixture Sans", families)
 
 
 class TestTokenAccounting(unittest.TestCase):

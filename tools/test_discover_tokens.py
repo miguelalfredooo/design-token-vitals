@@ -766,6 +766,39 @@ class TestTokenSourceSiblings(unittest.TestCase):
         paths = {item["path"] for item in self.result()["sources"]}
         self.assertNotIn("src/components/Card/Card.jsx", paths)
 
+    def test_admission_is_not_transitive(self):
+        """Only a directory a filename ALREADY confirmed vouches for siblings.
+
+        The negative test above was vacuous: Card.jsx has no declarations at
+        all, so it was never admitted whatever the rule said. A mutation that
+        let ANY directory with declarations vouch for its neighbours stayed
+        green through it. This is the case that bites — a directory whose own
+        module is only a candidate must not pull its sibling in behind it.
+        """
+        root = make_repo({
+            "package.json": '{"name":"app","devDependencies":{"vite":"^5"}}',
+            "vite.config.js": "export default {}",
+            "index.html": '<script type="module" src="/src/main.js"></script>',
+            "src/main.js": ('import "./globals.css";\n'
+                            'import "./lib/widgets.js";\n'
+                            'import "./lib/shapes.js";'),
+            "src/globals.css": (
+                ":root{--color-brand:#6b5bf0;--color-text:#111;--spacing-2:8px;"
+                "--spacing-4:16px;--radius-md:6px;--border-width:1px}"),
+            # `widgets.js` holds a theme object but its NAME confirms nothing,
+            # so it is a candidate and its directory is not an authority.
+            "src/lib/widgets.js": ("export const tokens = Object.freeze({\n"
+                                   "  '--widget-bg': '#111111',\n})\n"),
+            "src/lib/shapes.js": ("export const shapes = Object.freeze({\n"
+                                  "  '--shape-radius': '4px',\n})\n"),
+        })
+        discovery = discover_environment.discover(root, ["src/**"])
+        result = discover_tokens.discover(root, discovery)
+        confirmed = {item["path"] for item in result["sources"]
+                     if item["role"] in ("canonical", "alias")}
+        self.assertNotIn("src/lib/shapes.js", confirmed)
+        self.assertNotIn("src/lib/widgets.js", confirmed)
+
     def test_the_concepts_those_modules_hold_are_counted(self):
         counts = self.result()["family_counts"]
         self.assertGreaterEqual(counts["opacity"], 1)

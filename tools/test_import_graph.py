@@ -533,6 +533,24 @@ class TestGeneratedTreesAreNotScanned(unittest.TestCase):
         self.assertEqual(g["orphans"], [])
         self.assertEqual(g["style_files"], 1)
 
+    def test_a_root_only_ignore_does_not_reach_down_the_tree(self):
+        """`target/` is Rust build output. `src/target/` is somebody's code.
+
+        Written after a mutation moved `worktrees` and `target` out of the
+        root-only set — ignoring them at every depth — and every test stayed
+        green. The comment claimed the distinction; nothing checked it.
+        """
+        root = make_repo({
+            "app/globals.css": ":root{--a:1px}",
+            "target/build.css": ":root{--a:1px}",
+            "worktrees/copy.css": ":root{--a:1px}",
+            "src/target/panel.css": ".p{color:red}",
+            "src/worktrees/panel.css": ".p{color:red}",
+        })
+        g = import_graph.build(root, ["app/globals.css"])
+        self.assertEqual(sorted(g["orphans"]),
+                         ["src/target/panel.css", "src/worktrees/panel.css"])
+
     def test_a_directory_that_merely_reads_generated_is_still_scanned(self):
         """The ignore list names trees, not words. `src/output/` is source."""
         root = make_repo({
