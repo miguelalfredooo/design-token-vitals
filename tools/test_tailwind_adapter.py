@@ -149,3 +149,15 @@ class TestResolve(unittest.TestCase):
         classes = ["bg-muted", "bg-brand", "rounded-md", "p-lg"]
         concepts = [tailwind_adapter.resolve(c, theme).concept for c in classes]
         self.assertEqual(len(set(concepts)), len(classes))
+
+    def test_a_negative_utility_names_the_same_token_as_its_positive(self):
+        # -mt-4 and mt-4 spend the same spacing token; the sign changes the
+        # value, never which token was referenced.
+        theme = self.theme()
+        negative = tailwind_adapter.resolve("-mt-4", theme)
+        positive = tailwind_adapter.resolve("mt-4", theme)
+        self.assertEqual(negative.concept, positive.concept)
+        self.assertEqual(negative.concept, "spacing")
+        self.assertTrue(negative.derived)
+        self.assertEqual(tailwind_adapter.peel("-mt-4"), ("mt-4", True))
+        self.assertEqual(tailwind_adapter.peel("mt-4"), ("mt-4", False))

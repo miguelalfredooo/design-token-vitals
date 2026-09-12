@@ -5,8 +5,8 @@ This is a name-resolution layer over concepts discovery already found, not
 a second parser and not a Tailwind emulator. It maps a class name onto a
 theme key, or declines.
 """
-import re
 from collections import namedtuple
+import re
 
 THEME_BLOCK = re.compile(r"@theme[^{]*\{(.*?)\n\}", re.S)
 DECLARATION = re.compile(r"^\s*(--[a-z0-9-]+)\s*:\s*([^;]+);", re.M)
