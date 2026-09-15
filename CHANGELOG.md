@@ -4,7 +4,42 @@ What changed, by version. The skill stamps its version into every report
 as `provenance.skill_version`, so a report can be traced back to the rules
 that produced it.
 
-## Unreleased
+## 0.2.0 — 2026-09-15
+
+Three things landed on top of the entries below, all on 2026-09-15.
+
+### The Tailwind utility adapter (#31)
+
+`tools/tailwind_adapter.py` resolves a Tailwind utility class to a theme key, or
+declines. Longest prefix wins, ambiguity is reported as `ambiguous` with its
+candidates rather than resolved to a guess, and an arbitrary value is classified
+by spelling: `bg-[#ff0000]` is a literal leak, `bg-[var(--brand)]` is a reference
+and is not.
+
+**It is not yet wired into the audit path**, so it changes no grade on its own.
+
+### `TRIGGERS.md` (#32)
+
+Six prompts the skill should answer, four it should decline, each declining row
+naming what owns the request instead. Both sets are data rather than prose, so
+they can be counted. `check_voice.py` now covers the file in CI.
+
+### Exit 2 means could not run (#33)
+
+Four cases were driven before they were fixed, and **two returned a clean verdict
+over a file nobody read**: `check_voice.py` with no arguments printed
+`voice: clean (0 file(s))`, and `palette.py` announced that text clears AA in
+every theme on a document containing no color at all. The other two raised, and
+an uncaught raise exits 1 — the same code as "found problems", so a missing file
+arrived as a finding.
+
+`0` clean · `1` findings · **`2` could not run**, with the reason on stderr.
+Scoped to the two tools CI gates on; the rest of `tools/` is not audited for this.
+
+### Everything below was already merged and unreleased
+
+These shipped to `main` between 0.1.0 and now and had accumulated under an
+`Unreleased` heading. They are part of this release.
 
 ### Fixed — a frozen object kept its keys but lost its path
 
