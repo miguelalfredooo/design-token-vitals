@@ -286,3 +286,36 @@ target the project set for itself.
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
+
+## Scheduled report
+
+`tools/sweep.py` runs every self-check at once and writes the result to
+`reports/sweep-<date>.md`. The per-change checks answer "did this edit break
+anything"; this answers "what is the standing state of the project", which
+nothing else asks.
+
+The report is written for somebody who has never seen the project: what was
+found comes before what it means, no term appears without a plain phrase first,
+and every line says what would fix it. A check that could **not** run counts as
+open rather than as a pass.
+
+**Run it now**
+
+```bash
+python3 tools/sweep.py
+```
+
+Or from GitHub: **Actions → sweep → Run workflow**.
+
+**Change the frequency.** There is no schedule by default — a report that
+arrives on its own is one nobody asked for. To add one, uncomment `schedule:`
+in `.github/workflows/sweep.yml` and pick a line (UTC):
+
+```yaml
+- cron: "0 15 * * 5"    # every Friday at 15:00
+- cron: "0 9 1 * *"     # the 1st of each month at 09:00
+- cron: "0 9 * * 1,4"   # Mondays and Thursdays at 09:00
+```
+
+The report is checked for plain language before it is filed, by this project's
+own `check_voice.py`. A sample is committed in [`reports/`](reports/).
