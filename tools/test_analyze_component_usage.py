@@ -8,7 +8,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import analyze_component_usage  # noqa: E402
 
 
-class TestComponentUsage(unittest.TestCase):
+class RepoFixture:
+    """Lifted off TestComponentUsage so a second class can build a repository
+    the same way. The body is moved verbatim — a refactor and a feature must not
+    fail together, or neither can be diagnosed."""
+
     def repo(self, files, concepts=None, sources=None, owned=None, reachable_paths=None,
              component_roots=None):
         root = tempfile.mkdtemp()
@@ -34,6 +38,8 @@ class TestComponentUsage(unittest.TestCase):
         }
         return root, discovery, tokens
 
+
+class TestComponentUsage(RepoFixture, unittest.TestCase):
     def test_counts_css_and_scss_references_with_locations(self):
         root, discovery, tokens = self.repo({
             "app/assets/stylesheets/components/card.scss": (
@@ -272,3 +278,113 @@ class TestComponentUsage(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTailwindUtilities(RepoFixture, unittest.TestCase):
+    """A Tailwind utility class IS a token reference. Before the adapter was
+    wired in, `bg-muted` was invisible here and the measurement block said so —
+    `framework-generated-utility: not-visible`. An audit that cannot see the
+    dominant styling syntax of the project it is grading reports adoption that
+    is not wrong so much as unrelated to the codebase."""
+
+    # component_identity() names a unit "components / card", not "card" — the
+    # plan predicted the short form and was wrong about it. Matched on the
+    # suffix so the assertion tests the reference counting rather than the
+    # naming convention, which has its own tests.
+    THEME = '@import "tailwindcss";\n@theme {\n  --color-muted: #eee;\n  --spacing: 0.25rem;\n}\n'
+    CONCEPTS = [{"id": "color-muted", "family": "color"},
+                {"id": "spacing", "family": "spacing"}]
+
+    def test_a_utility_class_counts_as_a_reference(self):
+        root, discovery, tokens = self.repo({
+            "app/globals.css": self.THEME,
+            "components/card.tsx": 'export const Card = () => <div className="bg-muted p-4" />;',
+        }, concepts=self.CONCEPTS)
+        result = analyze_component_usage.analyze(root, discovery, tokens)
+        card = [u for u in result["top_20"] if u["name"].endswith("card")][0]
+        self.assertIn("tailwind-utility", card["syntaxes"])
+        self.assertEqual({t["id"] for t in card["tokens"]}, {"color-muted", "spacing"})
+
+    def test_a_class_inside_a_helper_call_counts_too(self):
+        # cn("bg-muted", cond && "p-4") is the dominant idiom. Scanning
+        # className="…" alone would miss most real usage.
+        root, discovery, tokens = self.repo({
+            "app/globals.css": self.THEME,
+            "components/badge.tsx": 'const c = cn("bg-muted", active && "p-4");',
+        }, concepts=self.CONCEPTS)
+        result = analyze_component_usage.analyze(root, discovery, tokens)
+        badge = [u for u in result["top_20"] if u["name"].endswith("badge")][0]
+        self.assertEqual(badge["references"], 2)
+
+    def test_without_tailwind_nothing_about_the_result_changes(self):
+        root, discovery, tokens = self.repo(
+            {"app/card.scss": ".card { color: var(--brand-primary); }"})
+        result = analyze_component_usage.analyze(root, discovery, tokens)
+        states = {m["syntax"]: m["state"] for m in result["measurement"]}
+        self.assertEqual(states["framework-generated-utility"], "not-visible")
+
+    def test_the_measurement_state_flips_only_when_an_adapter_ran(self):
+        root, discovery, tokens = self.repo({
+            "app/globals.css": self.THEME,
+            "components/card.tsx": 'const c = "bg-muted";',
+        }, concepts=self.CONCEPTS)
+        result = analyze_component_usage.analyze(root, discovery, tokens)
+        states = {m["syntax"]: m["state"] for m in result["measurement"]}
+        self.assertEqual(states["framework-generated-utility"], "counted")
+
+    def test_a_class_that_resolves_to_nothing_is_not_invented_as_a_reference(self):
+        # The failure that would be worst: inflating adoption by counting every
+        # class as a hit. `flex` has no theme key and must stay uncounted.
+        root, discovery, tokens = self.repo({
+            "app/globals.css": self.THEME,
+            "components/row.tsx": 'const c = "flex items-center bg-muted";',
+        }, concepts=self.CONCEPTS)
+        result = analyze_component_usage.analyze(root, discovery, tokens)
+        row = [u for u in result["top_20"] if u["name"].endswith("row")][0]
+        self.assertEqual(row["references"], 1)
+
+    def test_prose_in_a_quoted_string_does_not_become_a_reference(self):
+        # The residual risk of scanning quoted strings, declared rather than
+        # pretended away: a sentence must not resolve.
+        root, discovery, tokens = self.repo({
+            "app/globals.css": self.THEME,
+            "components/copy.tsx": 'const t = "Choose a muted background for the card";',
+        }, concepts=self.CONCEPTS)
+        result = analyze_component_usage.analyze(root, discovery, tokens)
+        self.assertEqual([u for u in result["top_20"] if u["name"].endswith("copy")], [])
+
+
+class TestUtilityLineScanner(unittest.TestCase):
+    """Direct tests on `utility_references_in_line`.
+
+    WHY THESE EXIST SEPARATELY. The end-to-end tests above assert that `flex`
+    and prose do not become references — and they pass even with the resolve
+    gate removed, because `analyze()` filters again downstream. So they were
+    guarding the pipeline, not this function, and a mutation here went green
+    twice before that was noticed. These call the function directly, where a
+    wrong answer has nowhere to be filtered out.
+    """
+
+    THEME = {"color": {"muted": "#eee"}, "spacing": {"": "0.25rem"}}
+    CONCEPTS = {"color-muted", "spacing"}
+
+    def scan(self, line):
+        return analyze_component_usage.utility_references_in_line(line, self.CONCEPTS, self.THEME)
+
+    def test_a_resolving_class_is_returned(self):
+        self.assertEqual(self.scan('cn("bg-muted")'), ["color-muted"])
+
+    def test_a_class_with_no_theme_key_is_not_returned(self):
+        # `flex` is a static utility. Counting it would inflate adoption in the
+        # flattering direction, which is the worst way for this to be wrong.
+        self.assertEqual(self.scan('cn("flex items-center")'), [])
+
+    def test_prose_in_a_quoted_string_returns_nothing(self):
+        self.assertEqual(self.scan('const t = "Choose a muted background";'), [])
+
+    def test_a_resolving_class_outside_a_quoted_string_is_ignored(self):
+        # Unquoted text is JSX prose or code, never a class list.
+        self.assertEqual(self.scan("bg-muted p-4"), [])
+
+    def test_an_arbitrary_value_does_not_resolve(self):
+        self.assertEqual(self.scan('cn("bg-[#ff0000]")'), [])

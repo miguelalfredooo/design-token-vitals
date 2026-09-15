@@ -5,6 +5,8 @@ import hashlib
 import json
 import os
 import re
+
+import tailwind_adapter
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -259,8 +261,47 @@ def strip_comments_preserving_lines(text):
     return "".join(result)
 
 
-def references_in_text(text, concepts):
-    """Return canonical token references with exact line evidence."""
+# A quoted string literal on one line. `cn("bg-muted", cond && "p-4")` is the
+# dominant idiom, so scanning `className="…"` alone would miss most real usage.
+# Scanning quoted strings also excludes JSX text nodes by construction, which is
+# what keeps prose out of the count.
+QUOTED = re.compile(r"""\"([^"\n]*)\"|'([^'\n]*)'""")
+# A class list is whitespace-separated. Anything with a space inside a quoted
+# string is still split here; a word that resolves to no theme key is dropped.
+CLASS_SPLIT = re.compile(r"\s+")
+
+
+def utility_references_in_line(line, concepts, theme):
+    """Tailwind utility classes in one line, resolved to canonical concepts.
+
+    ONLY A CLASS THAT RESOLVES COUNTS. `flex` has no theme key and must stay
+    uncounted — inflating adoption by counting every word in every string is the
+    worst available failure here, because it would move the number in the
+    flattering direction and look like success.
+    """
+    found = []
+    for match in QUOTED.finditer(line):
+        literal = match.group(1) if match.group(1) is not None else match.group(2)
+        if not literal:
+            continue
+        for word in CLASS_SPLIT.split(literal.strip()):
+            if not word:
+                continue
+            resolution = tailwind_adapter.resolve(word, theme)
+            if resolution.state != "resolved":
+                continue
+            if resolution.concept in concepts:
+                found.append(resolution.concept)
+    return found
+
+
+def references_in_text(text, concepts, theme=None):
+    """Return canonical token references with exact line evidence.
+
+    `theme` is the Tailwind theme map when one was detected, and None otherwise.
+    The two existing positional arguments keep their meaning, so every current
+    caller is unchanged and a project with no Tailwind is byte-identical.
+    """
     found = []
     for number, original in enumerate(strip_comments_preserving_lines(text).splitlines(), 1):
         line = original
@@ -275,6 +316,9 @@ def references_in_text(text, concepts):
             token = normalize(match.group(1))
             if token in concepts:
                 found.append((token, number, "scss-variable"))
+        if theme:
+            for concept in utility_references_in_line(original, concepts, theme):
+                found.append((concept, number, "tailwind-utility"))
     return found
 
 
@@ -370,6 +414,10 @@ def analyze(root, discovery, tokens, limit=20):
             group["confidences"] or {"path-inferred"},
             key=lambda confidence: COMPONENT_CONFIDENCE_RANK[confidence],
         )
+    # ONE detection for the whole run, not one per file. It reads the import
+    # graph, so it must not depend on which file the loop happens to be on.
+    tailwind = tailwind_adapter.detect(root, discovery)
+    theme = tailwind.theme if tailwind else None
     units = {}
     scanned = 0
     for path in paths:
@@ -382,7 +430,7 @@ def analyze(root, discovery, tokens, limit=20):
         except OSError:
             continue
         scanned += 1
-        refs = references_in_text(text, concepts)
+        refs = references_in_text(text, concepts, theme)
         if not refs:
             continue
         key, name, kind = component_identity(path)
@@ -454,7 +502,15 @@ def analyze(root, discovery, tokens, limit=20):
         "measurement": [
             {"syntax": "css-custom-property", "state": "counted", "evidence": "var(--token)"},
             {"syntax": "scss-variable", "state": "counted", "evidence": "$token references excluding declaration left-hand sides"},
-            {"syntax": "framework-generated-utility", "state": "not-visible", "evidence": "requires an active adapter to resolve utility output to canonical tokens"},
+            # The state flips ONLY when an adapter actually ran. Saying
+            # "counted" on a project with no Tailwind would claim a measurement
+            # that never happened, which is the same defect as a clean verdict
+            # over a file nobody read.
+            {"syntax": "framework-generated-utility",
+             "state": "counted" if tailwind else "not-visible",
+             "evidence": ("Tailwind %s theme at %s; only classes resolving to a theme key are counted, "
+                          "and only inside quoted string literals" % (tailwind.version, tailwind.path))
+             if tailwind else "requires an active adapter to resolve utility output to canonical tokens"},
         ],
         "roadmap": roadmap,
         "top_20": selected,
