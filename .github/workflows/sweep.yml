@@ -1,0 +1,51 @@
+# Runs every self-check at once and writes the result up as a report.
+#
+# IT RUNS ONLY WHEN SOMEBODY TRIGGERS IT. Actions tab -> "sweep" -> Run workflow.
+# There is no schedule: a report that arrives on its own is a report nobody
+# asked for, and the first unread one teaches everybody to ignore the rest.
+#
+# TO PUT IT ON A SCHEDULE, uncomment `schedule:` and ONE cron line. Times are UTC.
+#
+#  schedule:
+#    - cron: "0 15 * * 5"    # every Friday at 15:00
+#    - cron: "0 9 1 * *"     # the 1st of each month at 09:00
+#    - cron: "0 9 * * 1,4"   # Mondays and Thursdays at 09:00
+#
+# It never merges and never fails a build.
+name: sweep
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the version check reads tags
+
+      - name: Write the report
+        run: python3 tools/sweep.py > /dev/null
+
+      # A REPORT THAT FAILS THE VOICE CHECK IS NOT FILED. The report exists so
+      # somebody new can read it; jargon that slips in makes it furniture. The
+      # checker is in this repo, so there is nothing to fetch.
+      - name: The report reads plainly, or it is not filed
+        run: python3 tools/check_voice.py "reports/sweep-$(date -u +%F).md"
+
+      - name: File it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          DATE=$(date -u +%F)
+          git config user.name  "sweep"
+          git config user.email "noreply@github.com"
+          git add -f "reports/sweep-$DATE.md"
+          git commit -qm "sweep: $DATE" && git push -q origin HEAD:${{ github.ref_name }} || echo "nothing new to file"
+          gh issue create --title "Project check — $DATE" --body-file "reports/sweep-$DATE.md"
