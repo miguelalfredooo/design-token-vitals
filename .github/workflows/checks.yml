@@ -33,7 +33,7 @@ jobs:
         run: python3 tools/taxonomy.py --check
 
       - name: Report copy holds the voice standard
-        run: python3 tools/check_voice.py SKILL.md README.md
+        run: python3 tools/check_voice.py SKILL.md README.md TRIGGERS.md
 
       # There is deliberately no step gating examples/shadcn-ui/ here. That
       # report passes the gate only on the machine that produced it: rule 16
