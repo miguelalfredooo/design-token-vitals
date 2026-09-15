@@ -87,9 +87,24 @@ def check(html):
 
 def main(argv):
     path = argv[0] if argv else "assets/report-template.html"
-    with open(path, encoding="utf-8") as fh:
-        html = fh.read()
+    # EXIT 2 IS "COULD NOT RUN". An unreadable file used to raise, and an
+    # uncaught raise exits 1 — the same code as "a pair is below AA". A file
+    # that is not there is not a contrast failure.
+    try:
+        with open(path, encoding="utf-8") as fh:
+            html = fh.read()
+    except OSError as exc:
+        print("could not run: %s" % exc, file=sys.stderr)
+        return 2
     table, failures = check(html)
+    # EXAMINING NOTHING IS NOT CLEAN. Handed a document with no colour pairs in
+    # it, this printed "text clears 4.5:1 in every theme" and returned 0 — a
+    # confident pass over a page it never measured. Measured, not imagined: a
+    # one-line .html reproduced it exactly.
+    if not table:
+        print("could not run: no colour pairs found in %s — nothing to measure" % path,
+              file=sys.stderr)
+        return 2
     for label, fg, fh_, bg, bh, ratio in table:
         mark = "  ok " if ratio >= minimum_contrast(fg) else " LOW "
         print("%s %-34s %-10s %s on %-10s %s  %.2f:1" % (mark, label[:34], fg, fh_, bg, bh, ratio))

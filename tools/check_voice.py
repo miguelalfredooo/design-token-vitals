@@ -126,10 +126,24 @@ def has_errors(findings):
 
 
 def main(paths):
+    # EXIT 2 IS "COULD NOT RUN", AND EXAMINING NOTHING IS A 2.
+    # Called with no paths this used to print "voice: clean (0 file(s))" and
+    # return 0 — a clean verdict over nothing, which is the shape a CI typo
+    # takes when it silently stops passing files.
+    if not paths:
+        print("could not run: no files given", file=sys.stderr)
+        return 2
     failed = False
     for path in paths:
-        with open(path, encoding="utf-8") as fh:
-            findings = check_text(fh.read())
+        try:
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+        except OSError as exc:
+            # An unreadable file used to raise, and an uncaught raise exits 1 —
+            # the same code as "found problems". A missing file is not a finding.
+            print("could not run: %s" % exc, file=sys.stderr)
+            return 2
+        findings = check_text(text)
         for f in findings:
             print("%s:%d  %-8s %-20s %s" % (path, f.line, f.level, f.rule, f.message))
         if has_errors(findings):
