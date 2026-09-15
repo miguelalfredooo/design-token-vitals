@@ -1,0 +1,28 @@
+/* Excerpt of tailwindcss 4.2.1's default theme — one representative
+   declaration per namespace, copied verbatim.
+   Purpose: the namespace table in tools/tailwind_adapter.py is authored,
+   and this is what falsifies it in an environment that installs no npm
+   packages. Regenerate with tools/tailwind_adapter.py --refresh-excerpt
+   against an installed copy, and record the new version here. */
+@theme default {
+  --color-red-500: oklch(63.7% 0.237 25.331);
+  --text-sm: 0.875rem;
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-weight-bold: 700;
+  --leading-normal: 1.5;
+  --tracking-tight: -0.025em;
+  --radius-md: 0.375rem;
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --inset-shadow-sm: inset 0 2px 4px rgb(0 0 0 / 0.05);
+  --drop-shadow-md: 0 3px 3px rgb(0 0 0 / 0.12);
+  --blur-sm: 8px;
+  --perspective-near: 300px;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --animate-spin: spin 1s linear infinite;
+  --container-sm: 24rem;
+  --max-width-prose: 65ch;
+  --aspect-video: 16 / 9;
+  --breakpoint-md: 48rem;
+  --spacing: 0.25rem;
+  --default-transition-duration: 150ms;
+}
