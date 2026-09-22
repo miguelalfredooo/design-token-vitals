@@ -53,7 +53,7 @@ tokens merged and a false conflict invented in the same line of code. And
 case rather than an exotic one.
 
 ```
-community-ds   concepts  1,071 -> 1,104     conflicts  87 -> 80
+production-ds  concepts  1,071 -> 1,104     conflicts  87 -> 80
 ```
 
 A key spelled `--foo` stays global, though. It names a CSS custom property, so
