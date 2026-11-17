@@ -1,6 +1,11 @@
 """Derive and render the report's framework-aware unification strategy."""
 import html
 import json
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from vocab import plain  # noqa: E402
 
 
 STANDARDS = [
@@ -149,7 +154,7 @@ def derive(report):
     else:
         headline = "Establish the token contract before consolidating components."
 
-    concept_text = str(concepts) if concepts is not None else "an unmeasured number of"
+    concept_text = str(concepts) if concepts is not None else "a number we could not count of"
     component_text = (
         count(component_count, "component") + " with confirmed token usage"
         if component_count is not None
@@ -293,8 +298,7 @@ def derive(report):
             "id": CONSTRAINT_IDS[4],
             "title": "Migration requires governance",
             "evidence": (
-                "Enforcement is graded %s and %s blocked or "
-                "unmeasured."
+                "Enforcement is graded %s and %s still blocked."
                 % (enforcement.get("grade") or "not-visible",
                    count(len(capability_work), "capability", "capabilities")
                    + (" remains" if len(capability_work) == 1 else " remain"))
@@ -317,13 +321,13 @@ def derive(report):
                 "would make later adoption claims unreliable."
             ),
             "evidence": (
-                "%s; %s still blocked or unmeasured."
+                "%s; %s still blocked."
                 % (count(len(unresolved), "unresolved import"),
                    count(len(capability_work), "capability", "capabilities"))
             ),
             "exit_criteria": (
                 "Every actionable import is resolved or explicitly exempted, production "
-                "roots are proven, and remaining unknowns are named as unmeasured."
+                "roots are proven, and what we still cannot see is named."
             ),
         },
         {
@@ -516,12 +520,32 @@ def derive(report):
     }
 
 
-def _esc(value):
+def _reasoning(rationale):
+    """The rationale without its opening tally.
+
+    The first sentence restates counts that are true of the whole run. Those
+    are said once, in About this run; here the reader gets the reasoning.
+    """
+    text = str(rationale or "")
+    head, _dot, rest = text.partition(". ")
+    return rest if head.startswith("This run found") and rest else text
+
+
+def _raw(value):
     return html.escape(str(value), quote=True)
 
 
+def _esc(value):
+    """Escaped, and in the report's own words.
+
+    The strategy's JSON keeps the raw states a script reads. A reader gets
+    the same sentence with `not-visible` said as blocked.
+    """
+    return _raw(plain(value))
+
+
 def _json_attr(value):
-    return _esc(json.dumps(value, separators=(",", ":"), sort_keys=True))
+    return _raw(json.dumps(value, separators=(",", ":"), sort_keys=True))
 
 
 def render(strategy):
@@ -588,17 +612,13 @@ def render(strategy):
     return (
         '<div data-report-region="adoption-strategy" data-adoption-strategy-json="%s">'
         '<div class="stage-line"><code>%s</code> — %s</div>'
+        '<details class="chapter-fold"><summary>Open the full plan</summary>'
+        '<div class="details-body">'
         '<p class="p-soft">%s</p>'
-        '<div class="grid2 stack-16"><div class="panel"><h3>Why this model</h3>'
-        '<dl class="meta"><dt>profiles</dt><dd><span class="chips">%s</span></dd>'
-        '<dt>adapters</dt><dd><span class="chips">%s</span></dd>'
-        '<dt>production roots</dt><dd>%d total · %d owned</dd>'
-        '<dt>token inventory</dt><dd>%s concepts · %d sources</dd>'
-        '<dt>component adoption</dt><dd>%s · %s</dd>'
-        '<dt>modes</dt><dd>%d declared · %d resolved bundle pairs</dd>'
-        '<dt>unresolved imports</dt><dd>%d</dd></dl></div>'
-        '<div class="panel"><h3>Guardrails</h3><ul>%s</ul>'
-        '<div class="note"><b>Component boundary:</b> %s</div></div></div>'
+        '<p class="quiet">The counts this rests on are in '
+        '<a class="runfact" href="#about-run">About this run</a>.</p>'
+        '<div class="panel stack-16"><h3>Guardrails</h3><ul>%s</ul>'
+        '<div class="note"><b>Component boundary:</b> %s</div></div>'
         '<h3 class="stack-26">Why component-first unification is risky</h3>'
         '<div class="grid2 stack-16">%s</div>'
         '<h3 class="stack-26">Target architecture</h3><div class="grid2 stack-16">%s</div>'
@@ -608,23 +628,13 @@ def render(strategy):
         '</tr></thead><tbody>%s</tbody></table></div>'
         '<h3 class="stack-26">Success measures</h3>'
         '<div class="tbl-scroll stack-16"><table><thead><tr><th>Measure</th><th>Baseline</th>'
-        '<th>Target</th></tr></thead><tbody>%s</tbody></table></div></div>'
+        '<th>Target</th></tr></thead><tbody>%s</tbody></table></div>'
+        '</div></details></div>'
         % (
             _json_attr(strategy),
             _esc(strategy["model"]),
             _esc(strategy["headline"]),
-            _esc(strategy["rationale"]),
-            profiles or '<span class="state" data-m="not-visible">unmeasured</span>',
-            adapters or '<span class="state" data-m="not-visible">unmeasured</span>',
-            evidence["production_roots"],
-            evidence["owned_roots"],
-            _esc(concept_count if concept_count is not None else "not-visible"),
-            evidence["confirmed_token_definition_sources"],
-            _esc(component_count if component_count is not None else "not-visible"),
-            _esc(evidence["component_usage_state"]),
-            len(evidence["declared_modes"]),
-            evidence["resolved_mode_pairs"],
-            evidence["unresolved_imports"],
+            _esc(_reasoning(strategy["rationale"])),
             guardrails,
             _esc(strategy["component_replacement_limit"]),
             constraints,

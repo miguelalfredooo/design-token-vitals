@@ -116,9 +116,29 @@ def confidence_split(doc):
     said, and fall back rather than refusing to compare.
     """
     stored = get(doc, "confidence", "split")
-    if isinstance(stored, dict):
-        return stored
-    return build_confidence(doc, {})["split"]
+    if not isinstance(stored, dict):
+        stored = build_confidence(doc, {})["split"]
+    return comparable_split(stored)
+
+
+def comparable_split(split):
+    """A split in the one shape two runs can be compared in.
+
+    A run now records the five states apart. A baseline written before that
+    put Watch and Fix in one bucket, and a baseline is exactly the file this
+    tool has to keep reading. Both become: healthy, in your code, blocked,
+    not needed.
+    """
+    if "your_code" in split or "not_visible" in split:
+        return {key: int(split.get(key, 0) or 0) for key in (
+            "healthy", "your_code", "not_visible", "not_needed")}
+    return {
+        "healthy": int(split.get("healthy", 0) or 0),
+        "your_code": int(split.get("watch", 0) or 0) + int(
+            split.get("needs-work", 0) or 0),
+        "not_visible": int(split.get("not-visible", 0) or 0),
+        "not_needed": int(split.get("not-needed", 0) or 0),
+    }
 
 
 def diff(base, cur):
@@ -240,11 +260,12 @@ def main(argv):
                  "up from" if verified_now > verified_before else "down from",
                  verified_before, verified_now))
     else:
-        print("%s. Still %d healthy check(s)." % (headline, verified_now))
-    print("  the audit cannot see yet: %+d (now %d)"
+        print("%s. Still %d healthy %s." % (
+            headline, verified_now, "check" if verified_now == 1 else "checks"))
+    print("  blocked, we couldn't see:  %+d (now %d)"
           % (confidence["not_visible_delta"],
              confidence["current"]["not_visible"]))
-    print("  to fix in your code:      %+d (now %d)"
+    print("  watch or fix, in your code: %+d (now %d)"
           % (confidence["your_code_delta"],
              confidence["current"]["your_code"]))
     print("baseline %d finding(s) -> current %d" % (result["baseline_total"], result["current_total"]))

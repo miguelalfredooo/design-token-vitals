@@ -1,4 +1,4 @@
-"""Browser-level checks for the report view controller."""
+"""Browser-level checks for the report controller: disclosures, hash links, tabs, copy and print."""
 import json
 import os
 import shutil
@@ -25,63 +25,55 @@ def playwright_module():
     return result.stdout.strip() if result.returncode == 0 else None
 
 
-class TestReportViewsBrowser(unittest.TestCase):
-    def test_switching_hash_promotion_and_print_restoration(self):
+class TestReportControllerBrowser(unittest.TestCase):
+    def test_disclosures_hash_links_tabs_copy_and_print(self):
         playwright = playwright_module()
         if not playwright:
             self.skipTest("Node Playwright is not installed in this environment")
-        switcher = render_discovery.render_report_view_switcher("snapshot")
         disclosure = render_discovery.prepare_progressive_disclosures(
-            '<details id="evidence-detail"><summary>Evidence</summary>'
-            '<p>Complete finding</p></details>'
+            '<details id="fold"><summary>Open the inventory</summary>'
+            '<div data-token-inventory-tabs><div role="tablist">'
+            '<button role="tab" aria-selected="true" aria-controls="inventory-panel-color"></button>'
+            '<button role="tab" aria-selected="false" aria-controls="inventory-panel-typography"></button>'
+            '</div><div role="tabpanel" id="inventory-panel-color"></div>'
+            '<div role="tabpanel" id="inventory-panel-typography"></div></div>'
+            '</details>'
         )
         probe = """<script>
           const results = {};
-          const action = document.getElementById("summary");
-          const evidence = document.getElementById("inventory");
-          const detail = document.getElementById("evidence-detail");
-          results.initial = document.body.dataset.reportView === "snapshot" &&
-            getComputedStyle(action).display === "none" &&
-            getComputedStyle(evidence).display === "none" && !detail.open &&
-            getComputedStyle(document.querySelector(".report-view-switcher")).display === "block";
-          document.querySelector('[data-report-view-button="action"]').click();
-          results.action = document.body.dataset.reportView === "action" &&
-            getComputedStyle(action).display !== "none" &&
-            getComputedStyle(evidence).display === "none";
+          const fold = document.getElementById("fold");
+          const copy = document.querySelector("[data-copy]");
+          results.initial = !fold.open &&
+            document.documentElement.classList.contains("report--ready") &&
+            getComputedStyle(copy).display !== "none";
           window.location.hash = "#inventory-panel-typography";
           window.setTimeout(() => {
-            results.hash = document.body.dataset.reportView === "evidence" &&
+            results.hash = fold.open &&
               !document.getElementById("inventory-panel-typography").hidden &&
               document.getElementById("inventory-panel-color").hidden;
+            fold.open = false;
             window.dispatchEvent(new Event("beforeprint"));
-            results.beforeprint = detail.open;
+            results.beforeprint = fold.open;
             window.dispatchEvent(new Event("afterprint"));
-            results.afterprint = !detail.open;
+            results.afterprint = !fold.open;
             document.body.dataset.browserResults = encodeURIComponent(JSON.stringify(results));
           }, 25);
         </script>"""
         document = """<!doctype html><html><head><style>
-          .report-view-switcher { display: none; }
-          .report-views--ready .report-view-switcher { display: block; }
-          .report-views--ready body[data-report-view="snapshot"] section[data-report-views]:not([data-report-views~="snapshot"]),
-          .report-views--ready body[data-report-view="action"] section[data-report-views]:not([data-report-views~="action"]) { display: none; }
-        </style></head><body data-report-view="snapshot">%s
-          <section id="glance" data-report-views="snapshot action evidence"></section>
-          <section id="summary" data-report-views="action evidence"></section>
-          <section id="inventory" data-report-views="evidence">
-            <div data-token-inventory-tabs><div role="tablist">
-              <button role="tab" aria-selected="true" aria-controls="inventory-panel-color"></button>
-              <button role="tab" aria-selected="false" aria-controls="inventory-panel-typography"></button>
-            </div><div role="tabpanel" id="inventory-panel-color"></div>
-            <div role="tabpanel" id="inventory-panel-typography"></div></div>%s
-          </section>%s%s</body></html>""" % (
-            switcher, disclosure, render_discovery.INVENTORY_TABS_SCRIPT, probe
+          .copy { display: none; }
+          .report--ready .copy { display: inline-block; }
+        </style></head><body>
+          <section id="inventory">%s</section>
+          <div class="cmd-row"><code data-copy-source>python3 tools/x.py .</code>
+          <button type="button" class="copy" data-copy>Copy</button></div>
+          %s%s</body></html>""" % (
+            disclosure, render_discovery.INVENTORY_TABS_SCRIPT, probe
         )
         with tempfile.TemporaryDirectory() as root:
-            path = os.path.join(root, "report-view-test.html")
+            path = os.path.join(root, "report-controller-test.html")
             with open(path, "w", encoding="utf-8") as handle:
                 handle.write(document)
-            runner = os.path.join(root, "run-report-view-test.js")
+            runner = os.path.join(root, "run-report-controller-test.js")
             with open(runner, "w", encoding="utf-8") as handle:
                 handle.write("""
                   const { chromium } = require(process.argv[3]);
@@ -108,7 +100,7 @@ class TestReportViewsBrowser(unittest.TestCase):
         results = json.loads(urllib.parse.unquote(result.stdout.strip()))
         self.assertEqual(
             results,
-            {"initial": True, "action": True, "hash": True,
+            {"initial": True, "hash": True,
              "beforeprint": True, "afterprint": True},
         )
 

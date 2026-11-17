@@ -46,27 +46,26 @@ def usage():
 class TestComponentUsageRendering(unittest.TestCase):
     def test_section_contains_component_token_and_evidence(self):
         section = render_component_usage.render_section(usage())
-        self.assertIn(
-            '<section id="component-usage" data-report-views="action evidence">',
-            section,
-        )
+        self.assertIn('<section id="component-usage">', section)
         self.assertIn("a" * 12, section)
         self.assertIn("--brand", section)
         self.assertIn("app/button.scss:4", section)
         self.assertIn('<table class="component-token-table">', section)
         self.assertIn('data-component-roadmap-json=', section)
-        self.assertIn('data-roadmap-band="assess-first"', section)
-        self.assertIn("Plan by token footprint", section)
-        self.assertIn("100.0% of the ranked view", section)
+        self.assertIn('data-component-roadmap-band="assess-first"', section)
+        self.assertIn('<table class="component-table"', section)
+        self.assertEqual(section.count("<thead>"), 1 + len(usage()["top_20"]))
+        # No order to act in: a count of token uses says nothing about what
+        # is safe to change, so the table has no "suggested order".
+        for retired in ("Assess first", "Plan next", "Suggested order",
+                        "Plan by token footprint"):
+            self.assertNotIn(">%s<" % retired, section)
         self.assertIn('data-component-path="app/button.scss"', section)
         self.assertIn('role="region" tabindex="0"', section)
         self.assertEqual(section.count('role="region" tabindex="0"'), 1)
-        self.assertIn('<div class="component-roadmap-grid">', section)
+        self.assertNotIn('component-roadmap-grid', section)
         self.assertNotIn('<div class="component-roadmap-grid" role=', section)
-        self.assertIn(
-            'aria-labelledby="component-roadmap-band-assess-first-title"',
-            section,
-        )
+        self.assertIn('aria-labelledby="component-table-title"', section)
         self.assertIn(
             'href="#component-detail-%s"' % ("a" * 12), section
         )
@@ -139,7 +138,7 @@ class TestComponentUsageRendering(unittest.TestCase):
                        "provenance": {"generated_at": "old-time", "skill_version": "old-version"}}, handle)
         with open(page, "w", encoding="utf-8") as handle:
             handle.write(
-                '<html><!-- SLOT:at-a-glance --><!-- /SLOT:at-a-glance -->'
+                '<html><!-- SLOT:sub-components --><!-- /SLOT:sub-components -->'
                 '<section><div class="eyebrow">Leakage</div></section>'
                 '<section id="strategy"><!-- SLOT:adoption-strategy -->'
                 '<!-- /SLOT:adoption-strategy --></section></html>'
@@ -161,7 +160,7 @@ class TestComponentUsageRendering(unittest.TestCase):
             html.index('<div class="eyebrow">Leakage</div>'),
         )
         self.assertIn('data-report-region="adoption-strategy"', html)
-        self.assertIn('data-dashboard-component-roadmap-json=', html)
+        self.assertIn("1 component · top 1 carry", html)
 
     def test_invalid_html_does_not_partially_update_report_json(self):
         root = tempfile.mkdtemp()

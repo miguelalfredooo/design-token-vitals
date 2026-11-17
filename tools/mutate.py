@@ -44,9 +44,16 @@ for m in MUTATIONS:
         continue
     open(path, "w", encoding="utf-8").write(mutated)
     try:
+        # No bytecode is written while a mutation is in the tree. A mutation
+        # that keeps the file's length, restored within the same second,
+        # leaves a cached .pyc that still matches the file's size and time:
+        # the next run of the suite then executes the bug the harness had
+        # already put back. It did, with "an unlock outranks a confirmed
+        # defect", and five tests went red against correct source.
         proc = subprocess.run(
             [sys.executable, "-m", "unittest"] + m["tests"],
-            cwd=os.path.join(root, "tools"), capture_output=True, text=True)
+            cwd=os.path.join(root, "tools"), capture_output=True, text=True,
+            env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
         went_red = proc.returncode != 0
         # A control entry is a change that must NOT matter. If one goes red
         # the harness is reporting its own noise as a guard biting, and the

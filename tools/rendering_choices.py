@@ -8,8 +8,9 @@ already deterministic and already written down — `references/report.md` — an
 both are functions of a count the run already has. Nobody should be typing
 them, and two runs of the same repository should never present differently.
 
-The one axis left as a choice is `rendering.view`, because it encodes what
-the run is FOR rather than how much data came back.
+Nothing here is a choice any more. The report used to offer three "views"
+of the same findings; it is now one page read from the top, so there is no
+depth left to pick.
 """
 import argparse
 import json

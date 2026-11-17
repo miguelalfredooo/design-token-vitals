@@ -47,8 +47,8 @@ from discover_tokens import (  # noqa: E402
 )
 from render_discovery import (  # noqa: E402
     INVENTORY_TABS_SCRIPT,
-    REPORT_VIEWS,
-    REPORT_VIEW_SECTIONS,
+    ANCHOR_IDS,
+    CHAPTERS,
     confirmed_definition_count,
     enrich,
     next_step_items,
@@ -58,7 +58,10 @@ from render_discovery import (  # noqa: E402
 from render_component_usage import (  # noqa: E402
     LOCATION_PREVIEW_LIMIT,
     grouped_locations,
+    share_label,
 )
+import moves  # noqa: E402
+from vocab import CHECK_ORDER, GRADES, grade_counts  # noqa: E402
 
 from taxonomy import FAMILIES  # noqa: E402
 from version import describe  # noqa: E402
@@ -93,6 +96,8 @@ def file_sha256(path):
 
 VALIDATION_BANNER_SLOT = re.compile(
     r'(<!-- SLOT:validation-banner -->).*?(<!-- /SLOT:validation-banner -->)', re.S)
+VALIDATION_NOTE_SLOT = re.compile(
+    r'(<!-- SLOT:validation-note -->).*?(<!-- /SLOT:validation-note -->)', re.S)
 
 
 def stamp_pass(report_json_path, doc, report_html_path, report_html_text):
@@ -118,13 +123,20 @@ def stamp_pass(report_json_path, doc, report_html_path, report_html_text):
         # literal here said 18 while nineteen rules ran, and the number a
         # reader sees on a finished report is the last place that should
         # drift.
+        # A pass is a fact about the run, so it is written where every other
+        # fact about the run lives: About this run. The banner is a warning,
+        # and a report that passed has nothing to warn about, so the banner
+        # is cleared and never replaced with a second, green one.
         ok_note = (
-            '<div class="validation-ok">&#10003; Validated &mdash; '
-            'all %d rules passed %s</div>'
-            % (rule_count(), html_tools.escape(checked_at))
+            '<p class="about-validation" data-validated="true">&#10003; '
+            'Checked: all %d rules passed %s.</p>'
+            % (rule_count(), html_tools.escape(
+                checked_at.replace("T", " ").replace("Z", " UTC")))
         )
         stamped = VALIDATION_BANNER_SLOT.sub(
-            lambda m: m.group(1) + ok_note + m.group(2), report_html_text, count=1)
+            lambda m: m.group(1) + m.group(2), report_html_text, count=1)
+        stamped = VALIDATION_NOTE_SLOT.sub(
+            lambda m: m.group(1) + ok_note + m.group(2), stamped, count=1)
         if stamped != report_html_text:
             with open(report_html_path, "w", encoding="utf-8") as fh:
                 fh.write(stamped)
@@ -440,8 +452,8 @@ def rule_13_component_usage(doc, html=None):
                     bad.append("%s: HTML visible roadmap counts do not match JSON" % label)
                 for visible in (
                     '<code>%s</code>' % html_tools.escape(str(label)),
-                    '<span class="component-share-label">%.1f%%</span>' % row.get(
-                        "share_of_ranked_references", 0.0),
+                    '<span class="component-share-label">%s</span>' % share_label(
+                        row, usage),
                     'href="#component-detail-%s"' % html_tools.escape(
                         str(component_id), quote=True),
                 ):
@@ -1112,64 +1124,107 @@ def rule_5_family_coverage(doc):
     return None
 
 
-def report_view_contract_problems(doc, html):
-    """Validate the progressive report shell for every finished HTML document."""
+# Words a reader must never meet. Each had a plainer way to say it, and each
+# kept coming back one string at a time, so the gate reads the page for them.
+BANNED_WORDS = (
+    ("unmeasured", "say what we couldn't see"),
+    ("not-visible", "the reader's word is Blocked"),
+    ("needs-work", "the reader's word is Fix"),
+    ("check(s)", "write the real plural"),
+    ("vital(s)", "write the real plural"),
+    ("blast radius", "say how far the fix reaches"),
+)
+VISIBLE_STRIP = re.compile(
+    r"<script\b.*?</script>|<style\b.*?</style>|<!--.*?-->|<[^>]*>", re.S | re.I)
+
+
+def visible_text(html):
+    """What a reader sees: tags, attributes, scripts and comments removed."""
+    return html_tools.unescape(VISIBLE_STRIP.sub(" ", html))
+
+
+def report_shape_problems(doc, html):
+    """The shape every finished report keeps: one list, one vocabulary, one first move."""
     if not re.search(r'<(?:!doctype|html|body)\b', html, re.I):
         return []
     bad = []
-    selected_view = get(doc, "rendering", "view")
-    available_views = get(doc, "rendering", "available_views", default=[])
-    if selected_view not in REPORT_VIEWS:
-        bad.append("rendering.view is missing or invalid")
-    if available_views != list(REPORT_VIEWS):
-        bad.append("rendering.available_views does not declare the three report views")
-    body_tag = re.search(r'<body\b[^>]*>', html)
-    if not body_tag or html_attribute(
-            "data-report-view", selected_view or "") not in body_tag.group(0):
-        bad.append("HTML initial report view disagrees with JSON")
-    switcher = re.search(r'<nav\b[^>]*class="report-view-switcher"[^>]*>', html)
-    if not switcher:
-        bad.append("HTML has no report-view switcher")
+    if "report-view-switcher" in html or "data-report-view" in html:
+        bad.append("the report still carries a depth switcher; there is one "
+                   "page and one contents list")
+    navs = re.findall(r'<nav\b[^>]*class="contents"[^>]*>(.*?)</nav>', html, re.S)
+    if len(navs) != 1:
+        bad.append("the report has %d contents lists; it has exactly one" % len(navs))
     else:
-        switcher_tag = switcher.group(0)
-        if html_attribute("data-report-view-default", selected_view or "") not in switcher_tag:
-            bad.append("report-view switcher default disagrees with JSON")
-        if json_html_attribute(
-                "data-report-views-json", list(REPORT_VIEWS)) not in switcher_tag:
-            bad.append("report-view switcher does not declare all three views")
-    view_buttons = re.findall(r'<button\b[^>]*data-report-view-button="[^"]+"[^>]*>', html)
-    button_views = [
-        re.search(r'data-report-view-button="([^"]+)"', tag).group(1)
-        for tag in view_buttons
-    ]
-    if button_views != list(REPORT_VIEWS):
-        bad.append("report-view buttons are missing, duplicated, or out of order")
-    selected_buttons = [
-        tag for tag in view_buttons if html_attribute("aria-pressed", "true") in tag
-    ]
-    if (len(selected_buttons) != 1 or selected_view is None or
-            html_attribute("data-report-view-button", selected_view) not in
-            selected_buttons[0]):
-        bad.append("report-view button selection disagrees with JSON")
-    section_tags = re.findall(r'<section\b[^>]*\bid="([^"]+)"[^>]*>', html)
-    for section_id in section_tags:
-        expected_views = REPORT_VIEW_SECTIONS.get(section_id)
-        if expected_views is None:
-            bad.append("%s section has no report-view contract" % section_id)
-            continue
-        tag = re.search(
-            r'<section\b[^>]*\bid="%s"[^>]*>' % re.escape(section_id), html
-        ).group(0)
-        if html_attribute(
-                "data-report-views", " ".join(expected_views)) not in tag:
-            bad.append("%s section has the wrong report-view visibility" % section_id)
-    for marker, label in (
-            (".report-view-switcher { display: none; }",
-             "no-script report-view control hiding"),
-            (".report-views--ready .report-view-switcher { display: block; }",
-             "script-ready report-view control display")):
-        if marker not in html:
-            bad.append("report views lack %s" % label)
+        links = re.findall(r'href="#([^"]+)"', navs[0])
+        expected = [chapter_id for _number, chapter_id, _name in CHAPTERS]
+        if links != expected:
+            bad.append("the contents list does not name the fourteen chapters "
+                       "in order")
+    for number, chapter_id, _name in CHAPTERS:
+        if not re.search(
+                r'<div class="chapter[^"]*" id="%s" data-chapter="%s"'
+                % (re.escape(chapter_id), number), html):
+            bad.append("chapter %s (%s) is missing" % (number, chapter_id))
+    for anchor in ANCHOR_IDS:
+        if 'id="%s"' % anchor not in html:
+            bad.append("#%s no longer resolves; a section may move but never "
+                       "disappear" % anchor)
+
+    text = visible_text(html).lower()
+    for word, instead in BANNED_WORDS:
+        if word in text:
+            bad.append("the page says %r to a reader; %s" % (word, instead))
+    root = get(doc, "discovery", "repository", "root")
+    if root and len(str(root)) > 1 and str(root) in html:
+        bad.append("the page holds the absolute path of the machine it ran on; "
+                   "paths are written from the top of the repository")
+
+    # One breakdown of the eight, and it sums.
+    counts = grade_counts(doc) if doc.get("vitals") else None
+    strip = re.search(r'<div class="verdict-strip"[^>]*>', html)
+    if counts is not None:
+        if not strip:
+            bad.append("the verdict has no strip of the eight checks")
+        else:
+            shown = {}
+            for grade in GRADES:
+                match = re.search(r'data-count-%s="(\d+)"' % grade, strip.group(0))
+                shown[grade] = int(match.group(1)) if match else None
+            if shown != counts:
+                bad.append("the strip's counts disagree with the grades")
+            total = re.search(r'data-check-total="(\d+)"', strip.group(0))
+            if (not total or int(total.group(1)) != len(CHECK_ORDER) or
+                    sum(value or 0 for value in shown.values()) != len(CHECK_ORDER)):
+                bad.append("the breakdown of the checks does not sum to %d"
+                           % len(CHECK_ORDER))
+        stated = re.findall(r'class="mk-strip-cell" data-grade="([^"]+)" '
+                            r'data-check="([^"]+)"', html)
+        if [name for _grade, name in stated] != list(CHECK_ORDER):
+            bad.append("each grade is stated once, in the strip: found %d cells"
+                       % len(stated))
+
+    # One source for the first move.
+    if doc.get("vitals"):
+        first = moves.first(doc)
+        match = re.search(r'data-first-move="([^"]*)"', html)
+        if not match:
+            bad.append("the verdict names no first move")
+        elif match.group(1) != (first["id"] if first else ""):
+            bad.append("the first move on the page is not the first of the "
+                       "ranked list")
+        ranked = [move["id"] for move in moves.rank(doc)]
+        listed = re.search(
+            r'<!-- SLOT:next-steps -->(.*?)<!-- /SLOT:next-steps -->', html, re.S)
+        if listed and re.findall(r'data-move="([^"]+)"', listed.group(1)) != ranked:
+            bad.append("the closing list of moves is not the ranked list")
+
+    # The prompt for an agent is the ranked list again, and never a fourth
+    # opinion about what to do first.
+    prompted = re.search(r'data-agent-prompt-moves="([^"]*)"', html)
+    if prompted and doc.get("vitals"):
+        if prompted.group(1).split() != [move["id"] for move in moves.rank(doc)]:
+            bad.append("the prompt for an agent is not the ranked list of moves")
+
     disclosure_tags = re.findall(r'<details\b[^>]*>', html, re.I)
     for tag in disclosure_tags:
         if not re.search(r'\sopen(?:\s|=|>)', tag, re.I):
@@ -1183,6 +1238,12 @@ def report_view_contract_problems(doc, html):
             "disclosure.dataset.reportDefaultOpen" not in html or
             "disclosure.open = disclosure.dataset.reportDefaultOpen" not in html):
         bad.append("the report controller does not restore disclosure defaults")
+    for folded in ("inventory", "lineage"):
+        section = re.search(
+            r'<section id="%s"[^>]*>.*?</section>' % folded, html, re.S)
+        if section and not re.search(
+                r'<details\b[^>]*data-report-default-open="false"', section.group(0)):
+            bad.append("#%s is not inside a closed disclosure" % folded)
     return bad
 
 
@@ -1190,7 +1251,7 @@ def rule_6_html_matches_json(doc, html):
     """The HTML truncated something the JSON still holds, without saying so."""
     if html is None:
         return None
-    view_bad = report_view_contract_problems(doc, html)
+    view_bad = report_shape_problems(doc, html)
     if get(doc, "discovery", "engine", "name") == "universal-profile-engine":
         required = (
             "at-a-glance", "exec-summary", "decisions", "fix-queue",
@@ -1244,77 +1305,8 @@ def rule_6_html_matches_json(doc, html):
         if html.count(INVENTORY_TABS_SCRIPT) != 1:
             bad.append("inventory tabs lack exactly one verified controller")
 
-        if "at-a-glance" in regions and json_html_attribute(
-                "data-stage-json", doc.get("stage", {})) not in regions["at-a-glance"]:
-            bad.append("at-a-glance stage disagrees with JSON")
-        component_usage = doc.get("component_usage", {}) or {}
-        component_roadmap = component_usage.get("roadmap", {}) or {}
-        if ("at-a-glance" in regions and
-                component_usage.get("state") == "counted" and
-                component_usage.get("top_20") and
-                json_html_attribute(
-                    "data-dashboard-component-roadmap-json",
-                    component_roadmap,
-                ) not in regions["at-a-glance"]):
-            bad.append("at-a-glance component roadmap disagrees with JSON")
-        if ("at-a-glance" in regions and
-                component_usage.get("state") == "counted" and
-                component_usage.get("top_20")):
-            dashboard_region = regions["at-a-glance"]
-            dashboard_rows = component_usage.get("top_20", [])[:5]
-            if dashboard_region.count('data-dashboard-component="') != len(
-                    dashboard_rows):
-                bad.append("at-a-glance component row count disagrees with JSON")
-            band_labels = {
-                item.get("id"): item.get("label")
-                for item in component_roadmap.get("bands", [])
-                if isinstance(item, dict)
-            }
-            for row in dashboard_rows:
-                if not isinstance(row, dict):
-                    continue
-                label = row.get("name") or row.get("id") or "?"
-                marker = html_attribute(
-                    "data-dashboard-component", row.get("id", ""))
-                rendered = re.search(
-                    r'<tr\b[^>]*%s[^>]*>(.*?)</tr>' % re.escape(marker),
-                    dashboard_region, re.S,
-                )
-                if not rendered:
-                    bad.append("%s: dashboard row is missing" % label)
-                    continue
-                tag = rendered.group(0).split(">", 1)[0] + ">"
-                body = rendered.group(1)
-                for name, value in (
-                    ("data-roadmap-band", row.get("roadmap_band")),
-                    ("data-component-references", row.get("references")),
-                    ("data-component-distinct-tokens", row.get("distinct_tokens")),
-                    ("data-component-paths", len(row.get("paths", []) or [])),
-                    ("data-component-share", "%.1f" % row.get(
-                        "share_of_ranked_references", 0.0)),
-                ):
-                    if html_attribute(name, value) not in tag:
-                        bad.append("%s: dashboard %s disagrees with JSON" % (
-                            label, name))
-                visible_numbers = re.findall(
-                    r'<td class="num">\s*([^<]+?)\s*</td>', body)
-                expected_numbers = [str(value) for value in (
-                    row.get("rank", 0), row.get("references", 0),
-                    row.get("distinct_tokens", 0),
-                    len(row.get("paths", []) or []),
-                )]
-                if visible_numbers != expected_numbers:
-                    bad.append("%s: dashboard visible counts disagree with JSON" % label)
-                for visible in (
-                    '<code>%s</code>' % html_tools.escape(str(label)),
-                    '<span class="component-share-label">%.1f%%</span>' % row.get(
-                        "share_of_ranked_references", 0.0),
-                    '<span class="component-roadmap-state">%s</span>' %
-                    html_tools.escape(str(band_labels.get(
-                        row.get("roadmap_band"), "Review"))),
-                ):
-                    if visible not in body:
-                        bad.append("%s: dashboard visible value disagrees with JSON" % label)
+        if json_html_attribute("data-stage-json", doc.get("stage", {})) not in html:
+            bad.append("the stage on the page disagrees with JSON")
         if "exec-summary" in regions and json_html_attribute(
                 "data-executive-summary-json",
                 doc.get("executive_summary", {})) not in regions["exec-summary"]:
@@ -1374,7 +1366,7 @@ def rule_6_html_matches_json(doc, html):
     elif view_bad:
         return Failure(
             "6-html-json-parity",
-            "%d report-view contract problem(s)" % len(view_bad),
+            "%d report-shape problem(s)" % len(view_bad),
             view_bad[:12],
         )
     declared = get(doc, "rendering", "truncated", default=[]) or []
@@ -2128,36 +2120,39 @@ def validate(doc, html=None, current_skill=False, artifacts=None):
             if check is not None]
 
 
-GAP_KINDS = ("healthy", "your-code", "not-visible", "not-needed")
-
-
 def rule_19_confidence_split(doc, html=None):
-    """The two kinds of gap, kept apart, and every boundary explained.
+    """What we couldn't see, kept apart from what is wrong, and every boundary explained.
 
-    `not-visible` says two unrelated things — your system has a problem, and
-    this audit cannot see far enough yet — and a report that merges them
-    teaches a reader the wrong thing about their own codebase. So: the
-    evidence has to be present, the counts have to be rendered as separate
-    marks that agree with the JSON, and no vital may be switched off with
-    `not-needed` and no reason on record.
+    Blocked means we couldn't see it. A report that lets it read as a
+    problem in the code teaches a reader the wrong thing about their own
+    codebase. So: the evidence has to be present, the breakdown of the checks
+    has to sum to all of them, and no check may be switched off as not needed
+    with no reason on record.
     """
     bad = []
     confidence = get(doc, "confidence", default=None)
     if not isinstance(confidence, dict):
         return Failure("19-confidence-split",
                        "the report carries no confidence evidence",
-                       ["no `confidence` block: the two kinds of gap cannot "
-                        "be told apart"])
+                       ["no `confidence` block: what we couldn't see cannot "
+                        "be told apart from what is wrong"])
     split = confidence.get("split")
     if not isinstance(split, dict):
         bad.append("`confidence.split` is missing, so nothing states how "
-                   "many gaps are audit gaps and how many are system gaps")
-        split = {}
+                   "many checks stand in each state")
+    else:
+        if set(split) != set(GRADES):
+            bad.append("`confidence.split` does not count the five states")
+        elif sum(split.values()) != len(CHECK_ORDER):
+            bad.append("`confidence.split` sums to %d and there are %d checks"
+                       % (sum(split.values()), len(CHECK_ORDER)))
+        elif doc.get("vitals") and split != grade_counts(doc):
+            bad.append("`confidence.split` disagrees with the grades")
     if not confidence.get("headline"):
-        bad.append("no headline: the report opens on a grid rather than on "
+        bad.append("no headline: the report opens on a grid and never on "
                    "a sentence")
     for name in confidence.get("decisions_owed") or []:
-        bad.append("%s: not_applicable with no rationale on record — an "
+        bad.append("%s: not needed with no rationale on record — an "
                    "unexplained N/A is how a check gets switched off "
                    "quietly" % name)
 
@@ -2166,18 +2161,13 @@ def rule_19_confidence_split(doc, html=None):
             if 'data-report-region="%s"' % region not in html:
                 bad.append("the %s region is in the JSON and not in the HTML"
                            % region)
-        if 'data-gap-kind="total"' in html:
-            bad.append("the HTML renders a merged `total` gap count; the two "
-                       "kinds are different work and are never summed")
-        for kind, key in zip(GAP_KINDS, ("healthy", "your_code",
-                                         "not_visible", "not_needed")):
-            match = re.search(
-                r'data-gap-kind="%s"\s+data-gap-count="(\d+)"' % kind, html)
-            if match is None:
-                bad.append("the HTML does not render the %s count" % kind)
-            elif int(match.group(1)) != split.get(key, 0):
-                bad.append("%s renders as %s and the JSON says %s"
-                           % (kind, match.group(1), split.get(key, 0)))
+        blocked = moves.blocked_checks(doc) if doc.get("vitals") else []
+        listed = re.findall(r'data-blocked-check="([^"]+)"', html)
+        if listed != blocked:
+            bad.append("each blocked check appears once in Unlock: the page "
+                       "lists %s and the grades say %s"
+                       % (", ".join(listed) or "none",
+                          ", ".join(blocked) or "none"))
     if bad:
         return Failure("19-confidence-split",
                        "%d confidence-evidence problem(s)" % len(bad), bad[:8])

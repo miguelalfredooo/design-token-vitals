@@ -44,8 +44,10 @@ def good_doc():
         "rendering": {"truncated": []},
         "confidence": {
             "headline": "8 of 8 vitals verified against evidence.",
-            "split": {"healthy": 8, "your_code": 0, "not_visible": 0,
-                      "not_needed": 0},
+            # One check is graded in this fixture. The other seven have no
+            # grade, which counts as blocked: the conservative reading.
+            "split": {"healthy": 1, "watch": 0, "needs-work": 0,
+                      "not-visible": 7, "not-needed": 0},
             "unlock_path": [],
             "wins": [{"claim": "Import graph verified",
                       "evidence": ["2 file(s) reached"]}],
@@ -183,39 +185,56 @@ class TestRule5FamilyCoverage(unittest.TestCase):
             self.assertIn(name, FAMILIES)
 
 
-class TestRule6HtmlJsonParity(unittest.TestCase):
-    def inventory_tabs_shell(self):
-        tabs = []
-        panels = []
-        for index, family in enumerate(("color", "typography", "foundation")):
-            tabs.append(
-                '<button role="tab" id="inventory-tab-%s" aria-controls="inventory-panel-%s" '
-                'aria-selected="%s"></button>' % (
-                    family, family, "true" if index == 0 else "false"))
-            panels.append(
-                '<div role="tabpanel" id="inventory-panel-%s" '
-                'aria-labelledby="inventory-tab-%s"></div>' % (family, family))
-        return (
-            '<body data-report-view="snapshot">'
-            '<style>.token-tabs__list { display: none; gap: 4px; }'
-            '.token-tabs--ready .token-tabs__list { display: flex; }'
-            '.report-view-switcher { display: none; }'
-            '.report-views--ready .report-view-switcher { display: block; }'
-            '@media print { .token-tabs__list { display: none !important; }'
-            '.token-tabs__panel { display: block !important; padding-top: 12px; } }</style>'
-            '<div data-token-inventory-tabs><div role="tablist">%s</div>%s</div>'
-            '<!-- SLOT:report-view-switcher --><!-- /SLOT:report-view-switcher -->'
-            '<!-- SLOT:inventory-tabs-script --><!-- /SLOT:inventory-tabs-script -->' % (
-                "".join(tabs), "".join(panels))
-        )
+REGION_SLOTS = (
+    "at-a-glance", "exec-summary", "decisions", "fix-queue",
+    "groups", "lineage", "coverage-matrix", "next-steps",
+    "modes-coverage", "modes-gaps", "orphans", "enforcement",
+)
 
+
+def report_shell(slots=REGION_SLOTS):
+    """The least HTML that has a finished report's shape, with empty regions."""
+    tabs = []
+    panels = []
+    for index, family in enumerate(("color", "typography", "foundation")):
+        tabs.append(
+            '<button role="tab" id="inventory-tab-%s" aria-controls="inventory-panel-%s" '
+            'aria-selected="%s"></button>' % (
+                family, family, "true" if index == 0 else "false"))
+        panels.append(
+            '<div role="tabpanel" id="inventory-panel-%s" '
+            'aria-labelledby="inventory-tab-%s"></div>' % (family, family))
+    contents = '<nav class="contents" aria-label="Contents"><ol>%s</ol></nav>' % "".join(
+        '<li><a href="#%s">%s</a></li>' % (chapter_id, name)
+        for _number, chapter_id, name in render_discovery.CHAPTERS)
+    chapters = "".join(
+        '<div class="chapter" id="%s" data-chapter="%s"></div>' % (chapter_id, number)
+        for number, chapter_id, _name in render_discovery.CHAPTERS)
+    folded = "".join(
+        '<section id="%s"><details open data-report-default-open="false">'
+        '<summary>Open</summary></details></section>' % name
+        for name in ("inventory", "lineage"))
+    anchors = "".join(
+        '<span id="%s"></span>' % name for name in render_discovery.ANCHOR_IDS
+        if name not in ("inventory", "lineage", "verdict", "confidence", "summary"))
+    return (
+        '<body>'
+        '<style>.token-tabs__list { display: none; gap: 4px; }'
+        '.token-tabs--ready .token-tabs__list { display: flex; }'
+        '@media print { .token-tabs__list { display: none !important; }'
+        '.token-tabs__panel { display: block !important; padding-top: 12px; } }</style>'
+        '%s%s%s%s<div data-token-inventory-tabs><div role="tablist">%s</div>%s</div>'
+        '<!-- SLOT:inventory-tabs-script --><!-- /SLOT:inventory-tabs-script -->%s' % (
+            contents, chapters, folded, anchors, "".join(tabs), "".join(panels),
+            "".join("<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name)
+                    for name in slots))
+    )
+
+
+class TestRule6HtmlJsonParity(unittest.TestCase):
     def universal_doc(self):
         d = good_doc()
         d["discovery"]["engine"] = {"name": "universal-profile-engine"}
-        d["rendering"].update({
-            "view": "snapshot",
-            "available_views": list(render_discovery.REPORT_VIEWS),
-        })
         d.update({
             "stage": {"current": "declared", "next": "adopted"},
             "executive_summary": {}, "decisions": [], "fix_queue": [],
@@ -227,112 +246,40 @@ class TestRule6HtmlJsonParity(unittest.TestCase):
         })
         return d
 
+    def rendered(self, doc=None):
+        doc = doc or self.universal_doc()
+        html = render_discovery.render_report_slots(
+            report_shell(REGION_SLOTS + ("stage",)), doc, None,
+            {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
+        )
+        return doc, render_discovery.prepare_progressive_disclosures(html)
+
+    def problems(self, doc, html):
+        failure = validate_run.rule_6_html_matches_json(doc, html)
+        return " | ".join(failure.detail) if failure else ""
+
     def test_universal_report_requires_stakeholder_regions(self):
         failure = validate_run.rule_6_html_matches_json(
-            self.universal_doc(), "<html></html>")
+            self.universal_doc(), report_shell(()))
         self.assertIsNotNone(failure)
         self.assertIn("required HTML region is absent", " ".join(failure.detail))
 
-    def test_finished_legacy_report_cannot_skip_the_three_view_contract(self):
+    def test_a_finished_report_cannot_skip_the_shape(self):
         failure = validate_run.rule_6_html_matches_json(
             good_doc(), "<!doctype html><html><body></body></html>"
         )
 
         self.assertIsNotNone(failure)
-        self.assertIn("rendering.view is missing or invalid", failure.detail)
-        self.assertIn("HTML has no report-view switcher", failure.detail)
+        detail = " | ".join(failure.detail)
+        self.assertIn("it has exactly one", detail)
+        self.assertIn("chapter 00 (verdict) is missing", detail)
 
     def test_universal_report_regions_preserve_json_records(self):
-        d = self.universal_doc()
-        slots = (
-            "at-a-glance", "exec-summary", "decisions", "fix-queue",
-            "groups", "lineage", "coverage-matrix", "next-steps",
-            "modes-coverage", "modes-gaps", "orphans", "enforcement",
-        )
-        html = self.inventory_tabs_shell() + "".join(
-            "<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name)
-            for name in slots
-        )
-        rendered = render_discovery.render_report_slots(
-            html, d, None,
-            {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
-        )
-        self.assertIsNone(validate_run.rule_6_html_matches_json(d, rendered))
-
-    def test_dashboard_component_values_must_match_json(self):
-        d = self.universal_doc()
-        row = {
-            "id": "c" * 12, "rank": 1, "name": "app / button",
-            "key": "app::button", "kind": "component",
-            "paths": ["app/button.scss"], "references": 80,
-            "distinct_tokens": 26,
-        }
-        roadmap_row = {
-            "id": row["id"], "rank": row["rank"],
-            "references": row["references"],
-        }
-        roadmap = validate_run.build_roadmap([roadmap_row])
-        for field in (
-                "roadmap_band", "share_of_ranked_references",
-                "cumulative_share_of_ranked_references"):
-            row[field] = roadmap_row[field]
-        d["component_usage"] = {
-            "state": "counted", "shown": 1, "fallback_surfaces": 0,
-            "roadmap": roadmap, "top_20": [row],
-        }
-        slots = (
-            "at-a-glance", "exec-summary", "decisions", "fix-queue",
-            "groups", "lineage", "coverage-matrix", "next-steps",
-            "modes-coverage", "modes-gaps", "orphans", "enforcement",
-        )
-        html = self.inventory_tabs_shell() + "".join(
-            "<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name)
-            for name in slots
-        )
-        rendered = render_discovery.render_report_slots(
-            html, d, None,
-            {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
-        )
-
-        tampered = rendered.replace(
-            'data-component-references="80"',
-            'data-component-references="999"',
-            1,
-        )
-
-        failure = validate_run.rule_6_html_matches_json(d, tampered)
-        self.assertIsNotNone(failure)
-        self.assertIn(
-            "dashboard data-component-references disagrees with JSON",
-            " ".join(failure.detail),
-        )
-        visible_tamper = rendered.replace(
-            '<td class="num">80</td>', '<td class="num">999</td>', 1
-        )
-        visible_failure = validate_run.rule_6_html_matches_json(
-            d, visible_tamper
-        )
-        self.assertIsNotNone(visible_failure)
-        self.assertIn(
-            "dashboard visible counts disagree with JSON",
-            " ".join(visible_failure.detail),
-        )
+        d, rendered = self.rendered()
+        self.assertEqual(self.problems(d, rendered), "")
 
     def test_each_supplementary_region_is_required(self):
-        d = self.universal_doc()
-        slots = (
-            "at-a-glance", "exec-summary", "decisions", "fix-queue",
-            "groups", "lineage", "coverage-matrix", "next-steps",
-            "modes-coverage", "modes-gaps", "orphans", "enforcement",
-        )
-        html = self.inventory_tabs_shell() + "".join(
-            "<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name)
-            for name in slots
-        )
-        rendered = render_discovery.render_report_slots(
-            html, d, None,
-            {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
-        )
+        d, rendered = self.rendered()
         for name in (
                 "next-steps", "modes-coverage", "modes-gaps",
                 "orphans", "enforcement"):
@@ -350,20 +297,8 @@ class TestRule6HtmlJsonParity(unittest.TestCase):
                 )
 
     def test_inventory_tab_controller_is_required(self):
-        d = self.universal_doc()
-        slots = (
-            "at-a-glance", "exec-summary", "decisions", "fix-queue",
-            "groups", "lineage", "coverage-matrix", "next-steps",
-            "modes-coverage", "modes-gaps", "orphans", "enforcement",
-        )
-        html = self.inventory_tabs_shell() + "".join(
-            "<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name)
-            for name in slots
-        )
-        rendered = render_discovery.render_report_slots(
-            html, d, None,
-            {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
-        ).replace(render_discovery.INVENTORY_TABS_SCRIPT, "")
+        d, rendered = self.rendered()
+        rendered = rendered.replace(render_discovery.INVENTORY_TABS_SCRIPT, "")
         failure = validate_run.rule_6_html_matches_json(d, rendered)
         self.assertIsNotNone(failure)
         self.assertIn(
@@ -371,51 +306,72 @@ class TestRule6HtmlJsonParity(unittest.TestCase):
             failure.detail,
         )
 
-    def test_report_view_selection_must_match_json(self):
-        d = self.universal_doc()
-        slots = (
-            "at-a-glance", "exec-summary", "decisions", "fix-queue",
-            "groups", "lineage", "coverage-matrix", "next-steps",
-            "modes-coverage", "modes-gaps", "orphans", "enforcement",
-        )
-        html = self.inventory_tabs_shell() + "".join(
-            "<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name)
-            for name in slots
-        )
-        rendered = render_discovery.render_report_slots(
-            html, d, None,
-            {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
-        )
+    def test_a_depth_switcher_fails(self):
+        """One page, one contents list. A second way to slice it is a second nav."""
+        d, rendered = self.rendered()
         tampered = rendered.replace(
-            '<body data-report-view="snapshot">',
-            '<body data-report-view="evidence">',
-        )
-        failure = validate_run.rule_6_html_matches_json(d, tampered)
-        self.assertIsNotNone(failure)
-        self.assertIn("HTML initial report view disagrees with JSON", failure.detail)
+            "<body>", '<body data-report-view="snapshot">', 1)
+        self.assertIn("depth switcher", self.problems(d, tampered))
 
-    def test_report_sections_must_keep_their_view_contract(self):
-        d = self.universal_doc()
-        slots = (
-            "at-a-glance", "exec-summary", "decisions", "fix-queue",
-            "groups", "lineage", "coverage-matrix", "next-steps",
-            "modes-coverage", "modes-gaps", "orphans", "enforcement",
-        )
-        html = self.inventory_tabs_shell() + "".join(
-            "<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name)
-            for name in slots
-        )
-        rendered = render_discovery.render_report_slots(
-            html, d, None,
-            {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
-        )
-        rendered += '<section id="inventory" data-report-views="action evidence"></section>'
-        failure = validate_run.rule_6_html_matches_json(d, rendered)
-        self.assertIsNotNone(failure)
-        self.assertIn(
-            "inventory section has the wrong report-view visibility",
-            failure.detail,
-        )
+    def test_a_second_contents_list_fails(self):
+        d, rendered = self.rendered()
+        tampered = rendered + '<nav class="contents"><a href="#glance">Overview</a></nav>'
+        self.assertIn("2 contents lists", self.problems(d, tampered))
+
+    def test_a_section_may_move_and_never_disappear(self):
+        d, rendered = self.rendered()
+        for anchor in ("ownership", "working-set", "confidence", "summary"):
+            with self.subTest(anchor=anchor):
+                tampered = rendered.replace('id="%s"' % anchor, 'id="gone"')
+                self.assertIn("#%s no longer resolves" % anchor,
+                              self.problems(d, tampered))
+
+    def test_the_old_words_fail_when_a_reader_can_see_them(self):
+        d, rendered = self.rendered()
+        for word in ("unmeasured", "not-visible", "check(s)", "vital(s)",
+                     "blast radius"):
+            with self.subTest(word=word):
+                tampered = rendered + "<p>Two are %s.</p>" % word
+                self.assertIn(repr(word), self.problems(d, tampered))
+
+    def test_the_raw_grade_names_may_stay_in_attributes(self):
+        """`not-visible` is the machine's name. A script reads it; a reader never does."""
+        d, rendered = self.rendered()
+        self.assertIn('data-grade="not-visible"', rendered)
+        self.assertEqual(self.problems(d, rendered), "")
+
+    def test_an_absolute_path_to_the_audited_machine_fails(self):
+        d, rendered = self.rendered()
+        d["discovery"]["repository"] = {"root": "/home/someone/code/app"}
+        tampered = rendered + '<span class="path">/home/someone/code/app/src/a.css:4</span>'
+        self.assertIn("absolute path", self.problems(d, tampered))
+
+    def test_the_breakdown_of_the_checks_has_to_sum(self):
+        """`5 · 3 · 3` for eight checks was on the page for a release."""
+        d, rendered = self.rendered()
+        match = re.search(r'data-count-not-visible="(\d+)"', rendered)
+        tampered = rendered.replace(
+            match.group(0),
+            'data-count-not-visible="%d"' % (int(match.group(1)) + 3), 1)
+        detail = self.problems(d, tampered)
+        self.assertIn("the strip's counts disagree with the grades", detail)
+        self.assertIn("does not sum to 8", detail)
+
+    def test_the_first_move_has_one_source(self):
+        d, rendered = self.rendered()
+        match = re.search(r'data-first-move="([^"]*)"', rendered)
+        tampered = rendered.replace(
+            match.group(0), 'data-first-move="unlock:something-else"', 1)
+        self.assertIn("not the first of the ranked list",
+                      self.problems(d, tampered))
+
+    def test_the_inventory_and_the_lineage_stay_folded(self):
+        d, rendered = self.rendered()
+        tampered = rendered.replace(
+            '<section id="inventory"><details open data-report-default-open="false">',
+            '<section id="inventory"><details open data-report-default-open="true">')
+        self.assertIn("#inventory is not inside a closed disclosure",
+                      self.problems(d, tampered))
 
     def test_html_truncation_not_declared_in_json_fails(self):
         html = '<div class="trunc">Showing the 12 largest groups.</div>'
@@ -881,9 +837,9 @@ class TestRule14ProfileEngine(unittest.TestCase):
         html = "".join([
             render_discovery.render_section(d["discovery"]),
             render_discovery.concept_rows(d["inventory"]["concepts"]),
-            render_discovery.render_measurement(
-                d["discovery"], tokens, d, "local-test",
-                "2026-09-03T00:00:00Z",
+            render_discovery.chapters.about_run(
+                d, render_discovery.run_summary(d["discovery"], tokens, d),
+                "local-test",
             ),
             render_discovery.render_runhead(
                 d["discovery"], tokens, d, "local-test"
@@ -924,7 +880,7 @@ class TestRule14ProfileEngine(unittest.TestCase):
     def test_runhead_confirmed_source_drift_fails_html_parity(self):
         d, html = self.profile_inventory_doc()
         runhead = re.search(
-            r'<dl class="meta" data-runhead-summary-json="[^"]+">', html
+            r'<span data-runhead-summary-json="[^"]+">', html
         ).group(0)
         stale_runhead = runhead.replace(
             "&quot;token_sources&quot;:2", "&quot;token_sources&quot;:99"
@@ -1568,10 +1524,6 @@ class TestTemplateSampleContentIsItsOwnRule(unittest.TestCase):
 
 
 class TestStampOnlyMarksAPassingRun(unittest.TestCase):
-    # Borrow the shell builder rather than subclassing the parity case —
-    # inheriting a TestCase re-runs every one of its tests under this name.
-    inventory_tabs_shell = TestRule6HtmlJsonParity.inventory_tabs_shell
-
     """provenance.validation_gate is the one field a report must not set
     itself — only a passing tools/validate_run.py --stamp run may write it.
     A report that skips the gate must keep showing the un-gated banner."""
@@ -1591,32 +1543,24 @@ class TestStampOnlyMarksAPassingRun(unittest.TestCase):
         nothing about the banner.
         """
         doc = good_doc()
-        doc.setdefault("rendering", {}).update({
-            "view": "snapshot",
-            "available_views": list(render_discovery.REPORT_VIEWS),
-        })
-        slots = (
-            "at-a-glance", "exec-summary", "decisions", "fix-queue",
-            "groups", "lineage", "coverage-matrix", "next-steps",
-            "modes-coverage", "modes-gaps", "orphans", "enforcement",
-            "headline", "unlock-path", "wins", "blast-radius",
-        )
-        shell = self.inventory_tabs_shell() + "".join(
-            "<!-- SLOT:%s --><!-- /SLOT:%s -->" % (name, name) for name in slots
-        )
+        shell = report_shell(REGION_SLOTS + (
+            "stage", "headline", "unlock-path", "wins", "blast-radius"))
         banner = (
             '<!-- SLOT:validation-banner -->'
             '<div class="validation-banner" role="alert">'
             '<strong>\u26a0 Not validated.</strong> placeholder</div>'
             '<!-- /SLOT:validation-banner -->'
+            '<!-- SLOT:validation-note --><p class="about-validation" '
+            'data-validated="false">Not validated yet.</p>'
+            '<!-- /SLOT:validation-note -->'
         )
         rendered = render_discovery.render_report_slots(
             shell, doc, None,
             {"repository": {"root": "/tmp/repo", "ref": "abc123"}},
         )
-        rendered = render_discovery.render_confidence_slots(
-            rendered, doc.get("confidence"), None, None)
-        return doc, banner + rendered
+        rendered = render_discovery.render_confidence_slots(rendered, doc, None)
+        return doc, render_discovery.prepare_progressive_disclosures(
+            banner + rendered)
 
     def test_stamp_writes_passed_true_into_the_json(self):
         with tempfile.TemporaryDirectory() as root:
@@ -1643,8 +1587,11 @@ class TestStampOnlyMarksAPassingRun(unittest.TestCase):
             with open(html_path, encoding="utf-8") as fh:
                 stamped_html = fh.read()
             self.assertNotIn("Not validated", stamped_html)
-            self.assertIn("validation-ok", stamped_html)
-            self.assertIn("Validated", stamped_html)
+            # The warning is cleared, and never replaced by a second, green
+            # banner: a pass is a fact about the run, written with the others.
+            self.assertNotIn('class="validation-banner"', stamped_html)
+            self.assertIn('data-validated="true"', stamped_html)
+            self.assertIn("rules passed", stamped_html)
 
     def test_a_failing_run_is_never_stamped(self):
         with tempfile.TemporaryDirectory() as root:
@@ -1696,25 +1643,29 @@ class TestRule19ConfidenceSplit(unittest.TestCase):
     def doc(self, **over):
         base = {
             "confidence": {
-                "headline": "5 of 8 vitals verified against evidence.",
-                "split": {"healthy": 5, "your_code": 1, "not_visible": 2,
-                          "not_needed": 0},
+                "headline": "6 of 8 checks measured · 2 blocked until imports resolve",
+                "split": {"healthy": 5, "watch": 0, "needs-work": 1,
+                          "not-visible": 2, "not-needed": 0},
                 "unlock_path": [],
             "wins": [{"claim": "Import graph verified",
-                      "evidence": ["2 file(s) reached"]}],
+                      "evidence": ["2 files reached"]}],
                 "decisions_owed": [],
             },
-            "vitals": {"leakage": {"grade": "needs-work"}},
+            "vitals": dict(
+                {name: {"grade": "healthy"} for name in (
+                    "tier-integrity", "coverage", "naming-coherence",
+                    "single-source", "enforcement")},
+                **{"leakage": {"grade": "needs-work"},
+                   "mode-completeness": {"grade": "not-visible"},
+                   "orphans": {"grade": "not-visible"}}),
         }
         base.update(over)
         return base
 
     HTML = ('<p data-report-region="headline">x</p>'
-            '<div data-report-region="unlock-path">'
-            '<div data-gap-kind="healthy" data-gap-count="5"></div>'
-            '<div data-gap-kind="your-code" data-gap-count="1"></div>'
-            '<div data-gap-kind="not-visible" data-gap-count="2"></div>'
-            '<div data-gap-kind="not-needed" data-gap-count="0"></div></div>'
+            '<div data-report-region="unlock-path"><ul>'
+            '<li data-blocked-check="mode-completeness"></li>'
+            '<li data-blocked-check="orphans"></li></ul></div>'
             '<div data-report-region="wins"></div>')
 
     def test_a_complete_split_passes(self):
@@ -1725,15 +1676,33 @@ class TestRule19ConfidenceSplit(unittest.TestCase):
         failure = validate_run.rule_19_confidence_split({"vitals": {}}, self.HTML)
         self.assertIsNotNone(failure)
 
-    def test_a_merged_total_in_the_html_fails(self):
-        failure = validate_run.rule_19_confidence_split(
-            self.doc(), self.HTML + '<div data-gap-kind="total"></div>')
+    def test_a_split_that_does_not_sum_to_the_checks_fails(self):
+        """The bug this replaces a rule for: `5 · 3 · 3` across eight checks."""
+        doc = self.doc()
+        doc["confidence"]["split"]["not-visible"] = 5
+        failure = validate_run.rule_19_confidence_split(doc, self.HTML)
         self.assertIsNotNone(failure)
-        self.assertTrue(any("total" in str(d) for d in failure.detail))
+        self.assertTrue(any("sums to 11" in str(d) for d in failure.detail))
 
-    def test_a_gap_count_that_disagrees_with_the_json_fails(self):
-        html = self.HTML.replace('data-gap-kind="not-visible" data-gap-count="2"',
-                                 'data-gap-kind="not-visible" data-gap-count="0"')
+    def test_the_old_four_way_split_fails(self):
+        """Watch and Fix in one bucket is how two sections came to disagree."""
+        doc = self.doc()
+        doc["confidence"]["split"] = {"healthy": 5, "your_code": 1,
+                                      "not_visible": 2, "not_needed": 0}
+        failure = validate_run.rule_19_confidence_split(doc, self.HTML)
+        self.assertIsNotNone(failure)
+        self.assertTrue(any("five states" in str(d) for d in failure.detail))
+
+    def test_a_blocked_check_missing_from_unlock_fails(self):
+        html = self.HTML.replace('<li data-blocked-check="orphans"></li>', "")
+        failure = validate_run.rule_19_confidence_split(self.doc(), html)
+        self.assertIsNotNone(failure)
+
+    def test_a_blocked_check_listed_twice_fails(self):
+        html = self.HTML.replace(
+            '<li data-blocked-check="orphans"></li>',
+            '<li data-blocked-check="orphans"></li>'
+            '<li data-blocked-check="orphans"></li>')
         self.assertIsNotNone(
             validate_run.rule_19_confidence_split(self.doc(), html))
 

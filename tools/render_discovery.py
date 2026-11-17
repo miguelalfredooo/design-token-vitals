@@ -25,11 +25,15 @@ from discover_tokens import (  # noqa: E402
     verified_font_file,
 )
 from version import describe  # noqa: E402
+import chapters  # noqa: E402
+import draw  # noqa: E402
+import moves  # noqa: E402
+from vocab import fmt, plain, plural  # noqa: E402
 
 
 SECTION = re.compile(r'\n\s*<section id="discovery-engine"[^>]*>.*?</section>\n', re.S)
 LEAKAGE_SECTION = re.compile(
-    r'\n\s*<section(?: id="leakage"[^>]*)?>\s*<div class="eyebrow">Leakage</div>.*?</section>\n', re.S)
+    r'\n\s*<section id="leakage"[^>]*>.*?</section>\n', re.S)
 MEASUREMENT_MARKER = '<section id="measurement"'
 LEGACY_MEASUREMENT_MARKER = '<section>\n    <div class="eyebrow">Measurement</div>'
 SLOT = r'(<!-- SLOT:%s -->).*?(<!-- /SLOT:%s -->)'
@@ -45,55 +49,35 @@ VITAL_ORDER = [
     "tier-integrity", "leakage", "coverage", "mode-completeness",
     "naming-coherence", "single-source", "orphans", "enforcement",
 ]
-REPORT_VIEWS = ("snapshot", "action", "evidence")
-REPORT_VIEW_COPY = {
-    "snapshot": ("Snapshot", "What matters now", "Showing the short overview."),
-    "action": ("Action Plan", "What to do next", "Showing priorities, owners, and rollout guidance."),
-    "evidence": ("Evidence", "How we know", "Showing every finding and measurement detail."),
-}
-REPORT_VIEW_SECTIONS = {
-    # The confidence section leads every view: a reader who cannot tell "we
-    # could not see this" from "you have a problem here" learns the wrong
-    # thing about their own codebase, and that is the first thing the page
-    # has to settle.
-    "confidence": ("snapshot", "action", "evidence"),
-    "glance": ("snapshot", "action", "evidence"),
-    "summary": ("action", "evidence"),
-    "decisions": ("action", "evidence"),
-    "trend": ("action", "evidence"),
-    "vitals": ("action", "evidence"),
-    "start": ("action", "evidence"),
-    "architecture": ("action", "evidence"),
-    "fix-queue": ("action", "evidence"),
-    "ownership": ("action", "evidence"),
-    "component-usage": ("action", "evidence"),
-    "lineage": ("evidence",),
-    "inventory": ("evidence",),
-    "coverage": ("action", "evidence"),
-    "leakage": ("action", "evidence"),
-    "modes": ("action", "evidence"),
-    "orphans": ("action", "evidence"),
-    "working-set": ("evidence",),
-    "discovery-engine": ("evidence",),
-    "measurement": ("evidence",),
-    "strategy": ("action", "evidence"),
-}
+# Every id a reader may have linked to. A report keeps all of them: sections
+# were merged into chapters and moved, and none was deleted, so a link saved
+# from an earlier report still lands. `confidence` and `summary` used to be
+# sections and are now blocks of the verdict; an id resolves either way.
+SECTION_IDS = (
+    "glance", "fix-queue", "ownership", "leakage", "decisions", "unlock",
+    "component-usage", "vitals", "architecture", "inventory", "lineage",
+    "coverage", "modes", "orphans", "measurement", "discovery-engine",
+    "start", "strategy", "trend", "working-set",
+)
+ANCHOR_IDS = SECTION_IDS + ("confidence", "summary", "about-run", "verdict")
+# The chapters, in reading order: number, id, name.
+CHAPTERS = (
+    ("00", "verdict", "Verdict"), ("01", "fix-now", "Fix now"),
+    ("02", "decide", "Decide"), ("03", "unlock-chapter", "Unlock"),
+    ("04", "components", "Components"), ("05", "checks", "Checks"),
+    ("06", "architecture-chapter", "Architecture"),
+    ("07", "inventory-chapter", "Inventory"),
+    ("08", "sources", "Sources"),
+    ("09", "coverage-chapter", "Coverage"), ("10", "themes", "Themes"),
+    ("11", "unused", "Unused"), ("12", "method", "Method"),
+    ("13", "next", "Next"),
+)
 
 DETAILS_TAG = re.compile(r"<details\b([^>]*)>", re.I)
 
 
 INVENTORY_TABS_SCRIPT = """<script data-token-vitals-ui="report-controller">
 (() => {
-  const viewIds = ["snapshot", "action", "evidence"];
-  const viewMessages = {
-    snapshot: "Showing the short overview.",
-    action: "Showing priorities, owners, and rollout guidance.",
-    evidence: "Showing every finding and measurement detail."
-  };
-  const body = document.body;
-  const viewButtons = Array.from(document.querySelectorAll("[data-report-view-button]"));
-  const viewStatus = document.querySelector("[data-report-view-status]");
-  const contents = document.querySelector(".contents");
   const disclosures = Array.from(
     document.querySelectorAll("details[data-report-default-open]")
   );
@@ -102,63 +86,40 @@ INVENTORY_TABS_SCRIPT = """<script data-token-vitals-ui="report-controller">
     disclosure.open = disclosure.dataset.reportDefaultOpen === "true";
   });
 
-  const sectionViews = (section) => (
-    section ? (section.dataset.reportViews || "evidence").split(/\\s+/).filter(Boolean) : []
-  );
-
-  const setReportView = (view) => {
-    if (!viewIds.includes(view)) {
-      return;
-    }
-    body.dataset.reportView = view;
-    viewButtons.forEach((button) => {
-      button.setAttribute("aria-pressed", String(button.dataset.reportViewButton === view));
-    });
-    if (viewStatus) {
-      viewStatus.textContent = viewMessages[view];
-    }
-    if (contents) {
-      const links = Array.from(contents.querySelectorAll('a[href^="#"]'));
-      links.forEach((link) => {
-        const target = document.getElementById(link.getAttribute("href").slice(1));
-        const section = target && target.closest("section[data-report-views]");
-        link.hidden = Boolean(section) && !sectionViews(section).includes(view);
-      });
-      contents.querySelectorAll(".contents-more").forEach((more) => {
-        const links = Array.from(more.querySelectorAll('a[href^="#"]'));
-        more.hidden = links.length > 0 && links.every((link) => link.hidden);
-      });
-    }
-  };
-
+  // A link into a closed disclosure opens every disclosure around its target.
   const revealHashTarget = () => {
     const id = decodeURIComponent(window.location.hash.slice(1));
-    const target = id && document.getElementById(id);
-    const section = target && target.closest("section[data-report-views]");
-    if (!section) {
+    let node = id && document.getElementById(id);
+    if (!node) {
       return;
     }
-    const allowed = sectionViews(section);
-    if (!allowed.includes(body.dataset.reportView)) {
-      const nextView = viewIds.find((view) => allowed.includes(view)) || "evidence";
-      setReportView(nextView);
+    const target = node;
+    let opened = false;
+    while (node) {
+      if (node.tagName === "DETAILS" && !node.open) {
+        node.open = true;
+        opened = true;
+      }
+      node = node.parentElement;
+    }
+    if (opened) {
       window.requestAnimationFrame(() => target.scrollIntoView({ block: "start" }));
     }
   };
 
-  const initialView = viewIds.includes(body.dataset.reportView) ? body.dataset.reportView : "snapshot";
-  setReportView(initialView);
-  document.documentElement.classList.add("report-views--ready");
-  viewButtons.forEach((button) => {
+  document.documentElement.classList.add("report--ready");
+
+  document.querySelectorAll("[data-copy]").forEach((button) => {
     button.addEventListener("click", () => {
-      setReportView(button.dataset.reportViewButton);
-      const overview = document.getElementById("glance");
-      if (window.location.hash !== "#glance") {
-        window.history.replaceState(null, "", "#glance");
+      const source = button.parentElement.querySelector("[data-copy-source]");
+      if (!source || !navigator.clipboard) {
+        return;
       }
-      if (overview) {
-        overview.scrollIntoView({ block: "start" });
-      }
+      navigator.clipboard.writeText(source.textContent).then(() => {
+        const label = button.textContent;
+        button.textContent = "Copied";
+        window.setTimeout(() => { button.textContent = label; }, 1600);
+      });
     });
   });
 
@@ -267,50 +228,6 @@ INVENTORY_TABS_SCRIPT = """<script data-token-vitals-ui="report-controller">
   });
 })();
 </script>"""
-
-
-def resolve_report_view(requested=None):
-    selected = requested or "snapshot"
-    if selected not in REPORT_VIEWS:
-        raise ValueError(
-            "report view must be one of %s; got %r" %
-            (", ".join(REPORT_VIEWS), selected)
-        )
-    return selected
-
-
-def render_report_view_switcher(selected):
-    buttons = []
-    for view in REPORT_VIEWS:
-        label, helper, _status = REPORT_VIEW_COPY[view]
-        buttons.append(
-            '<button type="button" data-report-view-button="%s" aria-pressed="%s">'
-            '<strong>%s</strong><span>%s</span></button>' % (
-                esc(view), str(view == selected).lower(), esc(label), esc(helper),
-            )
-        )
-    return (
-        '<nav class="report-view-switcher" aria-label="Choose report depth" '
-        'data-report-view-default="%s" data-report-views-json="%s">'
-        '<div class="report-view-switcher__head">'
-        '<strong>Choose how much detail you need</strong>'
-        '<p class="report-view-switcher__status" data-report-view-status aria-live="polite">%s</p>'
-        '</div><div class="report-view-switcher__choices" role="group" '
-        'aria-label="Report views">%s</div></nav>' % (
-            esc(selected), json_attr(list(REPORT_VIEWS)),
-            esc(REPORT_VIEW_COPY[selected][2]), "".join(buttons),
-        )
-    )
-
-
-def set_document_report_view(document, selected):
-    marker = 'data-report-view="%s"' % esc(selected)
-    if re.search(r'<body\b[^>]*\bdata-report-view="[^"]*"', document):
-        return re.sub(
-            r'(<body\b[^>]*\bdata-report-view=")[^"]*(")',
-            r'\g<1>%s\2' % esc(selected), document, count=1,
-        )
-    return re.sub(r'<body\b', '<body %s' % marker, document, count=1)
 
 
 def prepare_progressive_disclosures(document):
@@ -509,11 +426,20 @@ def registry_rows(discovery):
         '<tr data-registry-source="%s" data-registry-sha256="%s">'
         '<td><code>%s</code></td><td><code>%s</code></td></tr>' % (
             esc(item.get("path")), esc(item.get("sha256")),
-            esc(item.get("path")), esc(item.get("sha256")),
+            # A profile passed from outside the repository is named by its
+            # file, never by where it sat on the machine that ran the audit.
+            esc(os.path.basename(str(item.get("path")))
+                if os.path.isabs(str(item.get("path"))) else item.get("path")),
+            esc(item.get("sha256")),
         )
         for item in discovery.get("profile_composition", {}).get(
             "registry_sources", [])
     )
+
+
+# A capability is something the run could or couldn't see. The raw state
+# stays in the row's data attribute for the gate.
+CAPABILITY_STATE = {"verified": "We could see it", "not-visible": "Blocked"}
 
 
 def capability_rows(discovery):
@@ -531,7 +457,9 @@ def capability_rows(discovery):
                 json_attr(step.get("contributors", [])),
                 json_attr(step.get("evidence", [])),
                 esc(step.get("limitation") or ""), esc(step.get("next_step")),
-                esc(step.get("capability")), esc(step.get("state")), contributors,
+                esc(step.get("capability")),
+                esc(CAPABILITY_STATE.get(step.get("state"), step.get("state"))),
+                contributors,
                 evidence, limitation + " Next: " + esc(step.get("next_step")),
             )
         )
@@ -670,8 +598,8 @@ def concept_rows(concepts):
 
 def concept_inventory_table(concepts, initial=20):
     headings = (
-        '<thead><tr><th>Concept</th><th>Family</th><th>Representations</th>'
-        '<th>Values</th><th>Canonical sites</th></tr></thead>'
+        '<thead><tr><th>Token</th><th>Family</th><th>Written as</th>'
+        '<th>Values</th><th>Declared at</th></tr></thead>'
     )
     visible = concepts[:initial]
     remainder = concepts[initial:]
@@ -871,7 +799,7 @@ def typography_block(concepts, identity, repository_root=None):
         'data-typography-specimen-state="%s" data-typography-font-asset="%s" '
         'data-typography-font-sha256="%s">'
         '<h3>Typography identity</h3>'
-        '<p class="sub">%d canonical concepts · %s</p>%s%s'
+        '<p class="sub">%d tokens · %s</p>%s%s'
         '<div class="stack-16">%s</div></div>' % (
             esc(identity.get("state", "not-visible")), esc(family or ""),
             esc(family_source or ""), esc(confidence), json_attr(identity_evidence),
@@ -987,7 +915,7 @@ def color_block(concepts, identity):
         'data-brand-subject-namespaces-json="%s">'
         '<h3>Brand identity colors</h3>%s</div>'
         '<div class="panel stack-26"><h3>Full color inventory</h3>'
-        '<p class="sub">%d canonical concepts · repository values</p>'
+        '<p class="sub">%d tokens · repository values</p>'
         '%s</div>' % (
             esc(state), esc(confidence), json_attr(subject_namespaces), brand_content,
             len(concepts), concept_inventory_table(concepts),
@@ -1014,13 +942,21 @@ def family_block(tokens, report):
     states = family_states(tokens)
     concepts = normalized_concepts(tokens)
     existing = report.get("inventory", {}).get("families", {}) or {}
+    total_concepts = len(concepts)
     rows = []
-    for family in sorted(states):
+    # Largest first: the bars then read as a ranking, top to bottom.
+    for family in sorted(states, key=lambda name: (
+            -(states[name].get("count") or 0), name)):
         state = states[family]["state"]
         count = states[family].get("count")
         # `none-used` is the one state that has earned the number 0. An
         # `not-visible` family shows the word, never a figure it cannot back.
-        shown = "0" if state == "none-used" else (count if count else state)
+        if state == "none-used":
+            shown = "0"
+        elif count:
+            shown = draw.share(count, total_concepts or count, fmt(count))
+        else:
+            shown = draw.hatch()
         sources = sorted({site.rsplit(":", 1)[0]
                           for concept in concepts if concept.get("family") == family
                           for site in concept.get("sites", [])})
@@ -1032,24 +968,25 @@ def family_block(tokens, report):
         if len(source_tags) > 4:
             note = (
                 "<br>".join(source_tags[:4]) +
-                '<details><summary>Show %d more sources</summary><div>%s</div></details>' % (
-                    len(source_tags) - 4, "<br>".join(source_tags[4:]))
+                '<details><summary>Show %s</summary><div>%s</div></details>' % (
+                    plural(len(source_tags) - 4, "more file"),
+                    "<br>".join(source_tags[4:]))
             )
         elif source_tags:
             note = "<br>".join(source_tags)
         else:
             note = esc(
                 existing.get(family, {}).get("note") or
-                "No canonical concept was confirmed."
+                "We found no token of this family."
             )
         rows.append(
             '<tr data-family="%s" data-family-state="%s" data-family-count="%s" '
             'data-family-sources-json="%s">'
-            '<td>%s</td><td>%s</td><td class="num">%s</td><td>%s</td></tr>' % (
+            '<td>%s</td><td>%s</td><td>%s</td></tr>' % (
                 esc(family), esc(state),
                 esc("" if count is None else count),
                 json_attr(sources),
-                esc(family), esc(state), esc(shown),
+                esc(family), shown,
                 note,
             )
         )
@@ -1057,13 +994,15 @@ def family_block(tokens, report):
                         if item.get("family") == "unclassified"])
     rows.append(
         '<tr data-family="unclassified" data-family-state="counted" '
-        'data-family-count="%d"><td>unclassified</td><td>measured</td>'
-        '<td class="num">%d</td><td>Listed in the foundational inventory for review</td></tr>' %
-        (unclassified, unclassified)
+        'data-family-count="%d"><td>unclassified</td><td>%s</td>'
+        '<td>Tokens we could not place in a family. They are listed in the '
+        'inventory.</td></tr>' %
+        (unclassified, draw.share(unclassified, total_concepts or 1,
+                                  fmt(unclassified)))
     )
     return (
         '<div class="tbl-scroll"><table class="fam"><thead><tr><th>Family</th>'
-        '<th>State</th><th class="num">Concepts</th><th>Sources</th></tr></thead>'
+        '<th>Tokens, as a share of all of them</th><th>Declared in</th></tr></thead>'
         '<tbody>%s</tbody></table></div>' % "".join(rows)
     )
 
@@ -1159,13 +1098,13 @@ def sync_leakage(report, leakage):
     if scanned and semantic_settled:
         near = state_of("near_miss")
         note = (
-            "%d owned reachable consumer styles scanned. No exact-value "
-            "candidate was found, so no replacement's semantic role is in "
-            "question and the redundant tier is measured at zero. %d uncovered "
-            "candidate group(s) remain, and near misses are %s."
-        ) % (scanned, uncovered,
-             "measured with none found" if near == "counted"
-             else "not computed")
+            "No hardcoded color has the same value as a token, so there is "
+            "nothing to replace. %s no token at all, and colors that "
+            "are only close to a token were %s."
+        ) % ("One hardcoded color matches" if uncovered == 1
+             else "%s match" % plural(uncovered, "hardcoded color"),
+             "checked, with none found" if near == "counted"
+             else "not checked")
         tiers = {
             "redundant": 0,
             "exact-value candidate": exact,
@@ -1179,10 +1118,12 @@ def sync_leakage(report, leakage):
         return
     if scanned:
         note = (
-            "%d exact-value candidate groups and %d uncovered candidate groups "
-            "were measured across %d owned reachable consumer styles, but "
-            "semantic equivalence and near misses remain unmeasured."
-        ) % (exact, uncovered, scanned)
+            "%s the same value as a token, and %s no token at all. We can't "
+            "say whether a match is the same decision, and we did not check "
+            "for colors that are only close to a token."
+        ) % ("One hardcoded color has" if exact == 1
+             else "%s have" % plural(exact, "hardcoded color"),
+             "one matches" if uncovered == 1 else "%s match" % fmt(uncovered))
         tiers = {
             "redundant": None,
             "exact-value candidate": exact,
@@ -1196,11 +1137,10 @@ def sync_leakage(report, leakage):
         # established. Reporting 0 here put "exact-value candidate 0" beside
         # "redundant unmeasured" in one sentence of the strategy section.
         note = (
-            "This run found no owned reachable consumer styles to classify, so "
-            "every leakage tier is unmeasured rather than zero. A repository "
-            "whose only stylesheet is itself a token source reaches this state "
-            "legitimately; a literal in a template or component is not yet "
-            "measured here."
+            "We found no stylesheet of yours that uses the tokens, so we "
+            "couldn't look for hardcoded colors. That is not the same as "
+            "finding none: a color written straight into a template or a "
+            "component is not checked here."
         )
         tiers = {
             "redundant": None,
@@ -1214,901 +1154,42 @@ def sync_leakage(report, leakage):
     })
 
 
-def render_vitals(report):
-    cards = []
-    vitals = report.get("vitals", {}) or {}
-    for name in VITAL_ORDER:
-        vital = vitals.get(name, {}) or {}
-        grade = vital.get("grade", "not-visible")
-        note = vital.get("note") or "No current evidence was recorded."
-        evidence = vital.get("evidence") or []
-        evidence_text = (
-            ' <code>%s</code>' % esc(evidence[0]) if evidence else ""
-        )
-        cards.append(
-            '<article class="vital" id="vital-%s" data-vital="%s" data-grade="%s">'
-            '<span class="grade" data-g="%s">%s</span><h3>%s</h3>'
-            '<p>%s%s</p></article>' % (
-                esc(name), esc(name), esc(grade), esc(grade), esc(grade),
-                esc(name.replace("-", " ")), esc(note), evidence_text,
-            )
-        )
-    return '<div class="vitals">%s</div>' % "".join(cards)
-
-
-def stage_summary(report):
-    stage = report.get("stage", {}) or {}
-    current = stage.get("current") or "unresolved"
-    next_stage = stage.get("next")
-    threshold = stage.get("threshold") or "No next threshold was recorded."
-    if next_stage:
-        return (
-            '<p class="stage-line"><code>%s</code> — current maturity stage. '
-            '<b>Next:</b> %s. <b>Then:</b> <code>%s</code>.</p>' % (
-                esc(current), esc(threshold.rstrip().rstrip(".!?")), esc(next_stage))
-        )
-    return '<p class="stage-line"><code>%s</code> — %s</p>' % (
-        esc(current), esc(threshold))
-
-
-def render_dashboard_component_roadmap(report):
-    usage = report.get("component_usage", {}) or {}
-    roadmap = usage.get("roadmap", {}) or {}
-    components = usage.get("top_20", []) or []
-    if usage.get("state") != "counted" or not components or not roadmap.get("bands"):
-        return ""
-    band_labels = {
-        item.get("id"): item.get("label")
-        for item in roadmap.get("bands", []) if isinstance(item, dict)
-    }
-    shown = components[:5]
-    has_fallback_surfaces = int(usage.get("fallback_surfaces", 0) or 0) > 0
-    entry_plural = "entries" if has_fallback_surfaces else "components"
-    entry_singular = "component or surface" if has_fallback_surfaces else "component"
-    shown_subject = (
-        "This %s" % entry_singular if len(shown) == 1
-        else "These %d %s" % (len(shown), entry_plural)
-    )
-    account_verb = "accounts" if len(shown) == 1 else "account"
-    all_entries_noun = (
-        "entry" if has_fallback_surfaces and len(components) == 1
-        else "entries" if has_fallback_surfaces
-        else "component" if len(components) == 1
-        else "components"
-    )
-    heading = (
-        "Where component and surface token work has the widest footprint"
-        if has_fallback_surfaces
-        else "Where component token work has the widest footprint"
-    )
-    total = int(roadmap.get("ranked_references", 0) or 0)
-    shown_references = sum(int(item.get("references", 0) or 0) for item in shown)
-    shown_share = round(100.0 * shown_references / total, 1) if total else 0.0
-    rows = []
-    for component in shown:
-        share = float(component.get("share_of_ranked_references", 0.0) or 0.0)
-        rows.append(
-            '<tr data-dashboard-component="%s" data-roadmap-band="%s" '
-            'data-component-references="%d" data-component-distinct-tokens="%d" '
-            'data-component-paths="%d" data-component-share="%.1f"><td class="num">%d</td>'
-            '<td><a class="component-roadmap-link" href="#component-detail-%s">'
-            '<code>%s</code></a></td><td class="num">%d</td><td class="num">%d</td>'
-            '<td class="num">%d</td><td><span class="component-share-label">%.1f%%</span></td>'
-            '<td><span class="component-roadmap-state">%s</span></td></tr>' % (
-                esc(component.get("id")), esc(component.get("roadmap_band")),
-                int(component.get("references", 0) or 0),
-                int(component.get("distinct_tokens", 0) or 0),
-                len(component.get("paths", []) or []), share,
-                int(component.get("rank", 0) or 0), esc(component.get("id")),
-                esc(component.get("name") or "Unnamed component"),
-                int(component.get("references", 0) or 0),
-                int(component.get("distinct_tokens", 0) or 0),
-                len(component.get("paths", []) or []), share,
-                esc(band_labels.get(component.get("roadmap_band"), "Review")),
-            )
-        )
-    return (
-        '<div class="dashboard-roadmap" data-dashboard-component-roadmap-json="%s">'
-        '<div class="dashboard-roadmap-head"><div><h4 id="dashboard-component-roadmap-title">%s</h4>'
-        '<p>%s %s for %.1f%% of confirmed token use in the ranked view. '
-        'This measures token references inside code, not runtime impressions or screen frequency. '
-        'Check modes, leakage, and product usage before scheduling a migration.</p>'
-        '</div><a class="dashboard-link" href="#component-usage">Explore all %d %s</a></div>'
-        '<div class="tbl-scroll" role="region" tabindex="0" '
-        'aria-labelledby="dashboard-component-roadmap-title">'
-        '<table class="dashboard-roadmap-table" aria-labelledby="dashboard-component-roadmap-title"><thead><tr>'
-        '<th class="num">#</th><th>Component or surface</th><th class="num">Token refs</th>'
-        '<th class="num">Tokens</th><th class="num">Paths</th><th>Share</th><th>Suggested order</th>'
-        '</tr></thead><tbody>%s</tbody></table></div></div>' % (
-            json_attr(roadmap), esc(heading), esc(shown_subject),
-            esc(account_verb), shown_share, len(components),
-            esc(all_entries_noun), "".join(rows),
-        )
-    )
-
-
-def render_at_a_glance(report):
-    stage = report.get("stage", {}) or {}
-    vitals = report.get("vitals", {}) or {}
-    grades = {}
-    for vital in vitals.values():
-        grade = vital.get("grade", "not-visible")
-        grades[grade] = grades.get(grade, 0) + 1
-    confidence = report.get("executive_summary", {}).get(
-        "confidence_split", {}) or {}
-    leakage = report.get("leakage_analysis", {}) or {}
-    run = report.get("run", {}) or {}
-    families = report.get("inventory", {}).get("families", {}) or {}
-    measured_families = len([
-        item for item in families.values() if item.get("state") == "counted"
-    ])
-    unmeasured_families = len([
-        item for item in families.values()
-        if item.get("state") == "not-visible"
-    ])
-    absent_families = len([
-        item for item in families.values() if item.get("state") == "none-used"
-    ])
-    measured_family_text = "%d measured %s" % (
-        measured_families, "family" if measured_families == 1 else "families")
-    unmeasured_family_text = "%d %s %s evidence" % (
-        unmeasured_families,
-        "family" if unmeasured_families == 1 else "families",
-        "needs" if unmeasured_families == 1 else "need",
-    )
-    family_status = [measured_family_text]
-    if unmeasured_families:
-        family_status.append(unmeasured_family_text)
-    if absent_families:
-        family_status.append("%d absent %s" % (
-            absent_families, "family" if absent_families == 1 else "families"))
-    grade_text = " · ".join(
-        "%d %s" % (grades.get(name, 0), name)
-        for name in ("healthy", "watch", "needs-work", "not-visible", "not-needed")
-        if grades.get(name, 0)
-    ) or "No vitals graded"
-    stage_order = ("scattered", "declared", "adopted", "layered", "complete", "held")
-    current_stage = stage.get("current") or "unresolved"
-    current_index = stage_order.index(current_stage) if current_stage in stage_order else -1
-    ladder = "".join(
-        '<i class="%s"></i>' % (
-            "now" if index == current_index else "done" if index < current_index else "")
-        for index in range(len(stage_order))
-    )
-    vital_total = max(sum(grades.values()), 1)
-    grade_segments = "".join(
-        '<i data-g="%s" style="width:%.3f%%"></i>' % (
-            esc(name), 100.0 * grades.get(name, 0) / vital_total)
-        for name in ("needs-work", "watch", "healthy", "not-visible", "not-needed")
-        if grades.get(name, 0)
-    )
-    confidence_keys = ("confirmed", "not-visible")
-    confidence_total = max(sum(int(confidence.get(name, 0) or 0)
-                               for name in confidence_keys), 1)
-    confidence_segments = "".join(
-        '<i data-k="%s" style="width:%.3f%%"></i>' % (
-            name, 100.0 * int(confidence.get(name, 0) or 0) / confidence_total)
-        for name in confidence_keys if confidence.get(name, 0)
-    )
-    exact_count = len(leakage.get("exact_value_candidates", []) or [])
-    uncovered_count = len(leakage.get("uncovered_candidates", []) or [])
-    match_label = "match" if exact_count == 1 else "matches"
-    match_verb = "means" if exact_count == 1 else "mean"
-    uncovered_label = "candidate" if uncovered_count == 1 else "candidates"
-    leakage_total = max(exact_count + uncovered_count, 1)
-    leakage_segments = (
-        '<i data-t="candidate" style="width:%.3f%%"></i>'
-        '<i data-t="uncovered" style="width:%.3f%%"></i>' % (
-            100.0 * exact_count / leakage_total,
-            100.0 * uncovered_count / leakage_total,
-        )
-    )
-    queue = report.get("fix_queue", []) or []
-    verified = len([item for item in queue if item.get("safe_to_automate")])
-    verified_percent = 100.0 * verified / len(queue) if queue else 0
-    fix_readiness = "%d of %d automatic fixes verified" % (verified, len(queue)) \
-        if queue else "No automatic changes are queued yet"
-
-    if current_stage in ("declared", "adopted", "layered", "complete"):
-        headline = "Your token foundation is in place. Here’s what will make it stronger."
-    elif current_stage == "scattered":
-        headline = "You have useful token signals. Here’s how to turn them into a shared foundation."
-    elif current_stage == "held":
-        headline = "Your token system is holding steady. Here’s what deserves a closer look."
-    else:
-        headline = (
-            "We found design decisions, and we need more evidence before calling "
-            "them a token system."
-        )
-    if exact_count:
-        supporting = (
-            "We found %d shared token concepts across %s. Next, confirm "
-            "what the %d candidate %s between hardcoded values and tokens "
-            "mean, so the team can replace them safely and build with more consistency."
-        ) % (
-            run.get("token_count", 0), measured_family_text,
-            exact_count, match_label,
-        )
-    else:
-        supporting = (
-            "We found %d shared token concepts across %s. The next step is "
-            "following the evidence gaps below before making automated changes."
-        ) % (run.get("token_count", 0), measured_family_text)
-
-    graded_total = sum(grades.values())
-    if not graded_total:
-        health = "Not yet graded"
-    elif grades.get("needs-work", 0):
-        health = "Needs focus"
-    elif grades.get("not-visible", 0):
-        health = "More evidence needed"
-    elif grades.get("watch", 0):
-        health = "Moving forward"
-    else:
-        health = "Well supported"
-
-    identity = report.get("inventory", {}).get("identity", {}) or {}
-    typography = identity.get("typography", {}) or {}
-    type_family = typography.get("family")
-    if type_family and typography.get("state") == "verified":
-        type_label = type_family
-        type_note = "Verified typography family"
-        type_font_verified = (
-            typography.get("specimen", {}).get("state") == "verified" and
-            typography.get("specimen", {}).get("asset", {}).get("state") == "verified"
-        )
-    else:
-        candidates = typography.get("candidates", []) or []
-        candidate_families = " or ".join(
-            item.get("family", "") for item in candidates[:2] if item.get("family")
-        )
-        type_label = "Candidates: %s" % candidate_families \
-            if candidate_families else "Typography needs source evidence"
-        type_note = "A family is not yet verified"
-        type_font_verified = False
-
-    brand = identity.get("brand_colors", {}) or {}
-    brand_colors = brand.get("colors", []) or [] \
-        if brand.get("state") == "verified" else []
-    brand_rows = []
-    for item in brand_colors[:6]:
-        value = item.get("value") or "transparent"
-        brand_rows.append(
-            '<div class="dashboard-brand-color" title="%s: %s">'
-            '<i data-color-value="%s" style="background:%s" aria-hidden="true"></i>'
-            '<code>%s</code><span>%s</span></div>' % (
-                esc(item.get("token") or "brand color"), esc(value), esc(value), esc(value),
-                esc(item.get("token") or "brand color"), esc(value),
-            )
-        )
-    if brand_rows and len(brand_colors) > 6:
-        brand_rows.append(
-            '<a class="dashboard-link" href="#inventory">See %d more verified brand colors</a>' %
-            (len(brand_colors) - 6)
-        )
-    if not brand_rows:
-        brand_rows.append(
-            '<span class="dashboard-type-meta">Brand colors need stronger source evidence.</span>'
-        )
-
-    component_usage = report.get("component_usage", {}) or {}
-    components = component_usage.get("top_20", []) or []
-    has_component_fallbacks = int(
-        component_usage.get("fallback_surfaces", 0) or 0
-    ) > 0
-    top_component_heading = (
-        "Most connected component or surface"
-        if has_component_fallbacks else "Most connected component"
-    )
-    component_link_noun = (
-        "entry" if has_component_fallbacks and len(components) == 1
-        else "entries" if has_component_fallbacks
-        else
-        "component" if len(components) == 1 else "components"
-    )
-    top_component = components[0] if components else {}
-    if top_component:
-        component_name = top_component.get("name") or "Unnamed component"
-        component_note = "Uses %d distinct tokens across %d references" % (
-            int(top_component.get("distinct_tokens", 0) or 0),
-            int(top_component.get("references", 0) or 0),
-        )
-    else:
-        component_name = "Component usage was not measured"
-        component_note = "Run the component inventory before choosing a migration pilot"
-
-    roots = report.get("discovery", {}).get("roots", []) or []
-    unknown_roots = [item for item in roots if item.get("ownership") == "unknown"]
-    root_label = "root" if len(roots) == 1 else "roots"
-    unknown_root_label = "root" if len(unknown_roots) == 1 else "roots"
-    profiles = report.get("discovery", {}).get("environment", []) or sorted({
-        profile for root in roots for profile in (
-            root.get("profiles", []) or [root.get("profile")])
-        if profile and profile != "convention"
-    })
-    profile_text = " + ".join(
-        item.replace("-", " ").title() for item in profiles
-    ) or "No framework profile confirmed"
-
-    first = report.get("executive_summary", {}).get("fix_first", {}) or {}
-    first_detail = first.get("action") or (
-        "Review candidate matches by design role before choosing a replacement."
-    )
-    mode_grade = vitals.get("mode-completeness", {}).get("grade", "not-visible")
-    if mode_grade in ("not-visible", "needs-work"):
-        mode_title = "Prove every theme before migration"
-        mode_detail = (
-            "Generate resolved output for each registered mode and product surface "
-            "before comparing color decisions."
-        )
-    else:
-        mode_title = "Keep every theme visible during migration"
-        mode_detail = "Use the coverage matrix to protect the modes already supported."
-    if unknown_roots:
-        ownership_title = "Give %d style %s a clear owner" % (
-            len(unknown_roots), unknown_root_label)
-        ownership_detail = (
-            "Settle those boundaries first, then add token-aware checks that prevent new drift."
-        )
-        ownership_href = "#measurement"
-        ownership_cta = "Review ownership"
-    else:
-        ownership_title = "Add token-aware checks to the delivery path"
-        ownership_detail = (
-            "The ownership boundary is clear enough to prevent new drift in lint and CI."
-        )
-        ownership_href = "#enforcement"
-        ownership_cta = "Plan guardrails"
-
-    friendly_grade = {
-        "healthy": "Well supported",
-        "watch": "Worth a look",
-        "needs-work": "Needs action",
-        "not-visible": "Needs evidence",
-        "not-needed": "Not needed here",
-    }
-    vital_cards = []
-    for name in VITAL_ORDER:
-        vital = vitals.get(name, {}) or {}
-        grade = vital.get("grade", "not-visible")
-        vital_cards.append(
-            '<a class="dashboard-vital" data-grade="%s" href="#vital-%s">'
-            '<span class="dashboard-vital-name">%s</span>'
-            '<span class="dashboard-vital-state">%s '
-            '<span class="dashboard-official">%s</span></span></a>' % (
-                esc(grade), esc(name), esc(name.replace("-", " ").capitalize()),
-                esc(friendly_grade.get(grade, "Needs review")), esc(grade),
-            )
-        )
-
-    confirmed = int(confidence.get("confirmed", 0) or 0)
-    blocked = int(confidence.get("not-visible", 0) or 0)
-    unmeasured = int(confidence.get("not-visible", 0) or 0)
-    blocked_text = "%d %s %s evidence" % (
-        blocked, "item" if blocked == 1 else "items",
-        "needs" if blocked == 1 else "need",
-    )
-    unmeasured_text = "%d %s unmeasured" % (
-        unmeasured, "item" if unmeasured == 1 else "items")
-    stage_position = "%d of %d" % (current_index + 1, len(stage_order)) \
-        if current_index >= 0 else "not resolved"
-    component_roadmap = render_dashboard_component_roadmap(report)
-    return (
-        '<div class="dashboard" data-report-region="at-a-glance" data-stage-json="%s">'
-        '<div class="dashboard-hero"><h3>%s</h3><p>%s</p></div>'
-        '<div class="dashboard-ribbon">'
-        '<div class="dashboard-metric"><span class="dashboard-label">You’re here</span>'
-        '<span class="dashboard-value"><code>%s</code></span>'
-        '<span class="dashboard-helper">Stage %s · next: %s</span>'
-        '<div class="ladder" data-glance-mark="stage" aria-label="Current maturity stage: %s">%s</div></div>'
-        '<div class="dashboard-metric"><span class="dashboard-label">How the system is doing</span>'
-        '<span class="dashboard-value">%s</span><span class="dashboard-helper">%s</span>'
-        '<div class="seg" data-glance-mark="vitals" aria-label="Vital grades: %s">%s</div></div>'
-        '<div class="dashboard-metric"><span class="dashboard-label">What we could verify</span>'
-        '<span class="dashboard-value">%d confirmed</span>'
-        '<span class="dashboard-helper">%s · %s</span>'
-        '<div class="seg" data-glance-mark="confidence" aria-label="%d confirmed, %d blocked, %d unmeasured">%s</div></div>'
-        '<div class="dashboard-metric" data-glance-mark="counted"><span class="dashboard-label">Token inventory</span>'
-        '<span class="dashboard-value">%d concepts</span><span class="dashboard-helper">'
-        '%s · %d files scanned</span></div>'
-        '</div>'
-        '<div class="dashboard-main"><div class="dashboard-actions">'
-        '<div class="dashboard-section-head"><h4>Start here</h4><a href="#start">See all next steps</a></div>'
-        '<div class="dashboard-action-list">'
-        '<a class="dashboard-action" href="#leakage"><span class="dashboard-action-number">1</span><span>'
-        '<strong>Confirm what %d candidate %s %s</strong><p>%s</p>'
-        '<div class="seg" data-glance-mark="leakage" aria-label="%d candidate %s and %d uncovered %s">%s</div>'
-        '</span><span class="dashboard-action-cta">Review matches</span></a>'
-        '<a class="dashboard-action" href="#modes"><span class="dashboard-action-number">2</span><span>'
-        '<strong>%s</strong><p>%s</p></span><span class="dashboard-action-cta">Check themes</span></a>'
-        '<a class="dashboard-action" href="%s"><span class="dashboard-action-number">3</span><span>'
-        '<strong>%s</strong><p>%s</p></span><span class="dashboard-action-cta">%s</span></a>'
-        '</div><a class="dashboard-readiness" href="#fix-queue"><span><strong>Automation readiness</strong>'
-        '<span class="dashboard-helper">%s</span></span>'
-        '<div class="dashboard-progress" data-glance-mark="fix-queue" data-fix-total="%d" data-fix-verified="%d" '
-        'aria-label="%s"><i style="width:%.3f%%"></i></div>'
-        '</a></div>'
-        '<aside class="dashboard-side">'
-        '<div class="dashboard-side-block"><h4>Your design language</h4>'
-        '<div class="dashboard-type" data-font-verified="%s">%s</div><div class="dashboard-type-meta">%s</div>'
-        '<div class="dashboard-brand-colors">%s</div></div>'
-        '<div class="dashboard-side-block"><h4>%s</h4>'
-        '<div class="dashboard-component-name">%s</div><div class="dashboard-component-meta">%s</div>'
-        '<a class="dashboard-link" href="#component-usage">See the top %d %s</a></div>'
-        '<div class="dashboard-side-block"><h4>What this run followed</h4>'
-        '<div class="dashboard-component-name">%s</div><div class="dashboard-component-meta">'
-        '%d registered style %s · %d owned · %d need ownership</div>'
-        '<a class="dashboard-link" href="#measurement">See discovery evidence</a></div>'
-        '</aside></div>%s'
-        '<div class="dashboard-vitals"><div class="dashboard-section-head"><h4>Your eight system checks</h4>'
-        '<a href="#vitals">See the full evidence</a></div><div class="dashboard-vital-grid">%s</div></div>'
-        '</div>' % (
-            json_attr(stage), esc(headline), esc(supporting), esc(current_stage), esc(stage_position),
-            esc(stage.get("next") or "no next stage recorded"), esc(current_stage), ladder,
-            esc(health), esc(grade_text), esc(grade_text), grade_segments,
-            confirmed, esc(blocked_text), esc(unmeasured_text),
-            confirmed, blocked, unmeasured,
-            confidence_segments, run.get("token_count", 0),
-            esc(" · ".join(family_status)), run.get("files_scanned", 0),
-            exact_count, esc(match_label), esc(match_verb), esc(first_detail),
-            exact_count, esc(match_label),
-            uncovered_count, esc(uncovered_label), leakage_segments,
-            esc(mode_title), esc(mode_detail), esc(ownership_href), esc(ownership_title),
-            esc(ownership_detail), esc(ownership_cta), esc(fix_readiness),
-            len(queue), verified, esc(fix_readiness), verified_percent,
-            "true" if type_font_verified else "false", esc(type_label), esc(type_note),
-            "".join(brand_rows), esc(top_component_heading),
-            esc(component_name), esc(component_note), len(components),
-            esc(component_link_noun),
-            esc(profile_text), len(roots), esc(root_label),
-            len(roots) - len(unknown_roots), len(unknown_roots),
-            component_roadmap,
-            "".join(vital_cards),
-        )
-    )
-
-
-def render_exec_summary(report):
-    summary = report.get("executive_summary", {}) or {}
-    highest = summary.get("highest_impact", {}) or {}
-    affected = summary.get("affected", {}) or {}
-    first = summary.get("fix_first", {}) or {}
-    confidence = summary.get("confidence_split", {}) or {}
-    waiting = confidence.get("waiting_on", []) or []
-    return (
-        '<div data-report-region="exec-summary" data-executive-summary-json="%s">%s'
-        '<div class="exec"><div><dt>Highest impact</dt><dd><b>%s</b><br>'
-        '<span class="p-mute">Finding %s · blast radius %s</span></dd></div>'
-        '<div><dt>Affected</dt><dd><span class="big">%s</span> owned files<br>'
-        '<span class="big">%s</span> components</dd></div>'
-        '<div><dt>Fix first</dt><dd>%s<br><span class="path">%s</span></dd></div>'
-        '<div><dt>Confidence of these results</dt><dd>%s confirmed · %s blocked · '
-        '%s unmeasured<div class="p-mute">Waiting on: %s</div></dd></div></div></div>' % (
-            json_attr(summary), stage_summary(report),
-            esc(highest.get("statement") or "No highest-impact finding recorded."),
-            esc(highest.get("finding_id") or "—"), esc(highest.get("blast_radius") or "—"),
-            esc(affected.get("owned_files", 0)), esc(affected.get("components", 0)),
-            esc(first.get("action") or "No semantically verified replacement is ready."),
-            esc(first.get("file_line") or "—"),
-            esc(confidence.get("confirmed", 0)), esc(confidence.get("not-visible", 0)),
-            esc(confidence.get("not-visible", 0)),
-            esc(" · ".join(waiting) or "nothing recorded"),
-        )
-    )
-
-
-def render_decisions(report):
-    decisions = report.get("decisions", []) or []
-    if not decisions:
-        body = '<div class="note">No close-call decisions were recorded.</div>'
-    else:
-        rows = []
-        for index, item in enumerate(decisions):
-            rows.append(
-                '<div class="dec-row" data-decision-index="%d" data-decision-json="%s">'
-                '<div><div class="what">%s</div><div class="moved">%s</div></div>'
-                '<span class="vitals">%s</span><div class="other">%s</div></div>' % (
-                    index, json_attr(item), esc(item.get("decision")),
-                    esc(item.get("moved")),
-                    esc(" · ".join(item.get("vitals", []) or []) or "report"),
-                    esc(item.get("other_reading")),
-                )
-            )
-        body = '<div class="dec">%s</div>' % "".join(rows)
-    return '<div data-report-region="decisions">%s</div>' % body
-
-
 def next_step_items(report):
-    summary = report.get("executive_summary", {}) or {}
-    first = summary.get("fix_first", {}) or {}
-    discovery = report.get("discovery", {}) or {}
-    roots = discovery.get("roots", []) or []
-    unknown = [item for item in roots if item.get("ownership") == "unknown"]
-    held_out = report.get("inventory", {}).get(
-        "candidate_or_local_override_sources", []) or []
-    mode_evidence = report.get("vitals", {}).get(
-        "mode-completeness", {}).get("evidence", []) or []
-    enforcement_evidence = report.get("vitals", {}).get(
-        "enforcement", {}).get("evidence", []) or []
-    unknown_start = "—"
-    if unknown:
-        evidence = unknown[0].get("evidence") or []
-        unknown_start = evidence[0] if evidence else unknown[0].get("path", "—")
-    held_start = held_out[0].get("path", "—") if held_out else "—"
-    return [
-        (first.get("action") or "Review the highest-impact candidate by semantic role.",
-         first.get("file_line") or "—"),
-        ("Produce compiled light and dark theme output for the registered bundle set.",
-         mode_evidence[0] if mode_evidence else "—"),
-        ("Resolve ownership for %d registered roots." % len(unknown), unknown_start),
-        ("Classify %d held-out declaration sources as reusable tokens or local overrides." % len(held_out), held_start),
-        ("Add token-aware lint enforcement after semantic replacement policy is defined.",
-         enforcement_evidence[0] if enforcement_evidence else "package.json"),
-    ]
+    """The ranked moves as `[title, where]` rows: the JSON twin of the list."""
+    return moves.as_rows(report)
 
 
-def render_next_steps(report):
-    items = next_step_items(report)
-    rows = [
-        '<tr><td>%s</td><td><span class="path">%s</span></td></tr>' % (
-            esc(action), esc(location))
-        for action, location in items
-    ]
-    return (
-        '<div data-report-region="next-steps" data-next-steps-json="%s">'
-        '<div class="tbl-scroll"><table>'
-        '<thead><tr><th>Action</th><th>Evidence</th></tr></thead><tbody>%s</tbody>'
-        '</table></div><div class="note stack-16"><b>The list stops at five.</b> '
-        'Blocked measurements lead; reviewed replacements follow only when semantic intent is proven.'
-        '</div></div>' % (json_attr(items), "".join(rows))
-    )
-
-
-def render_fix_queue(report):
-    queue = report.get("fix_queue", []) or []
-    if not queue:
-        body = (
-            '<div class="note"><b>No automatic fixes are ready.</b> Exact value equality '
-            'does not prove semantic equivalence, so this run keeps every candidate out of the queue.</div>'
-        )
-    else:
-        rows = []
-        for index, item in enumerate(queue):
-            location = (item.get("locations") or ["—"])[0]
-            rows.append(
-                '<tr data-finding="%s" data-fix-queue-index="%d" data-fix-queue-json="%s">'
-                '<td><code>%s</code></td><td><span class="lit">%s</span></td>'
-                '<td><span class="tok">%s</span></td><td>%s</td><td>%s</td>'
-                '<td>%s</td><td><span class="path">%s</span></td></tr>' % (
-                    esc(item.get("id")), index, json_attr(item), esc(item.get("id")),
-                    esc(item.get("literal")), esc(item.get("replacement")),
-                    esc(item.get("confidence")), esc(item.get("effort", "—")),
-                    "automatable" if item.get("safe_to_automate") else "needs a person",
-                    esc(location),
-                )
-            )
-        body = (
-            '<div class="tbl-scroll"><table><thead><tr><th>Finding</th><th>Literal</th>'
-            '<th>Replacement</th><th>Confidence</th><th>Effort</th><th>Automation</th>'
-            '<th>First location</th></tr></thead><tbody>%s</tbody></table></div>' % "".join(rows)
-        )
-    return '<div data-report-region="fix-queue">%s</div>' % body
-
-
-def render_groups(report):
-    groups = report.get("groups", {}) or {}
-    rows = []
-    index = 0
-    for kind, items in groups.items():
-        for item in items or []:
-            name = item.get("name") or item.get("owner") or item.get("id") or "unnamed"
-            findings = item.get("findings", []) or []
-            rows.append(
-                '<tr data-group-index="%d" data-group-kind="%s" data-group-json="%s">'
-                '<td><code>%s</code></td><td>%s</td><td class="num">%d</td></tr>' % (
-                    index, esc(kind), json_attr(item), esc(name), esc(kind), len(findings))
-            )
-            index += 1
-    if rows:
-        body = (
-            '<div class="tbl-scroll"><table><thead><tr><th>Owner</th><th>Group</th>'
-            '<th>Findings</th></tr></thead><tbody>%s</tbody></table></div>' % "".join(rows)
-        )
-    else:
-        body = (
-            '<div class="note">No ownership groups are claimed because no finding has a '
-            'semantically verified replacement in the fix queue.</div>'
-        )
-    return '<div data-report-region="groups">%s</div>' % body
-
-
-def lineage_rows(items, start=0):
-    rows = []
-    for index, item in enumerate(items, start=start):
-        consumers = item.get("consumers", []) or []
-        rows.append(
-            '<tr data-lineage-index="%d" data-lineage-token="%s" data-lineage-json="%s">'
-            '<td><code>%s</code></td><td>%s</td><td>%s</td><td>%s</td>'
-            '<td class="num">%d</td><td>%s</td><td>%s</td></tr>' % (
-                index, esc(item.get("token")), json_attr(item), esc(item.get("token")),
-                esc(item.get("primitive") or "untraced"),
-                esc(item.get("semantic") or "untraced"),
-                esc(item.get("projection") or "untraced"), len(consumers),
-                "complete" if item.get("complete") else "untraced",
-                esc(item.get("note") or "—"),
-            )
-        )
-    return "".join(rows)
-
-
-def render_lineage(report, initial=20):
-    lineage = report.get("lineage", []) or []
-    headings = (
-        '<thead><tr><th>Token</th><th>Primitive</th><th>Semantic</th><th>Projection</th>'
-        '<th>Consumers</th><th>State</th><th>Note</th></tr></thead>'
-    )
-    body = '<div class="tbl-scroll"><table>%s<tbody>%s</tbody></table></div>' % (
-        headings, lineage_rows(lineage[:initial]))
-    if len(lineage) > initial:
-        tail = lineage[initial:]
-        body += (
-            '<details class="stack-16"><summary>See %d more lineage records</summary>'
-            '<div class="details-body"><div class="tbl-scroll"><table>%s<tbody>%s</tbody>'
-            '</table></div></div></details>' % (
-                len(tail), headings, lineage_rows(tail, start=initial))
-        )
-    if not lineage:
-        body = '<div class="note">No lineage records were produced.</div>'
-    return '<div data-report-region="lineage">%s</div>' % body
-
-
-def render_coverage_matrix(report):
-    matrix = report.get("coverage_matrix", {}) or {}
-    bundles = matrix.get("bundles", []) or []
-    modes = matrix.get("modes", []) or []
-    families = matrix.get("families", []) or []
-    cells = matrix.get("cells", []) or []
-    keyed = {
-        (item.get("bundle"), item.get("mode"), item.get("family")): item
-        for item in cells
-    }
-    headers = "".join('<th class="fam">%s</th>' % esc(family) for family in families)
-    rows = []
-    for bundle in bundles:
-        for mode in modes:
-            columns = []
-            for family in families:
-                item = keyed.get((bundle, mode, family), {
-                    "bundle": bundle, "mode": mode, "family": family,
-                    "state": "not-visible", "evidence": [],
-                    "note": "No coverage cell was recorded.",
-                })
-                state = item.get("state", "not-visible")
-                label = {
-                    "counted": "ok", "not-visible": "?",
-                    "not-visible": "blk", "not-needed": "n/a",
-                }.get(state, "?")
-                cell_id = "%s|%s|%s" % (bundle, mode, family)
-                columns.append(
-                    '<td class="cell" data-coverage-cell="%s" data-coverage-json="%s">'
-                    '<span class="c" data-s="%s">%s</span></td>' % (
-                        esc(cell_id), json_attr(item), esc(state), esc(label))
-                )
-            rows.append('<tr><td>%s · %s</td>%s</tr>' % (
-                esc(bundle), esc(mode), "".join(columns)))
-    return (
-        '<div data-report-region="coverage-matrix"><div class="tbl-scroll"><table class="cm">'
-        '<thead><tr><th>Bundle · mode</th>%s</tr></thead><tbody>%s</tbody></table></div>'
-        '<div class="split stack-12"><span class="ok">measured</span>'
-        '<span class="unk">unmeasured</span><span class="block">blocked</span></div></div>' % (
-            headers, "".join(rows))
-    )
-
-
-def render_modes(report):
-    matrix = report.get("coverage_matrix", {}) or {}
-    cells = matrix.get("cells", []) or []
-    states = {}
-    for item in cells:
-        state = item.get("state", "not-visible")
-        states[state] = states.get(state, 0) + 1
-    coverage = (
-        '<div data-report-region="modes-coverage" data-modes-json="%s" class="note">'
-        '<b>Mode coverage is source-limited.</b> '
-        '%d bundle × mode × family cells are recorded: %s. No source-only declaration is promoted '
-        'to compiled runtime proof.</div>' % (
-            json_attr(matrix), len(cells),
-            esc(" · ".join("%d %s" % (count, state)
-                           for state, count in sorted(states.items()))))
-    )
-    gaps = (
-        '<div data-report-region="modes-gaps" data-modes-json="%s" class="note">'
-        '<b>No mode gaps are claimed.</b> Provide compiled output for every registered bundle '
-        'and scheme before individual missing values are graded.</div>' % json_attr(matrix)
-    )
-    return coverage, gaps
-
-
-def render_orphans_and_enforcement(report):
-    vitals = report.get("vitals", {}) or {}
-    orphans = vitals.get("orphans", {}) or {}
-    enforcement = vitals.get("enforcement", {}) or {}
-    orphan_html = (
-        '<div class="panel" data-report-region="orphans" data-vital-json="%s">'
-        '<h3>Orphan measurement</h3>'
-        '<p class="sub">%s</p><div class="note">%s</div></div>' % (
-            json_attr(orphans), esc(orphans.get("grade", "not-visible")),
-            esc(orphans.get("note") or "No orphan evidence was recorded."))
-    )
-    enforcement_html = (
-        '<div class="panel" data-report-region="enforcement" data-vital-json="%s">'
-        '<h3>What protects this today</h3>'
-        '<p class="sub">%s</p><div class="note">%s</div></div>' % (
-            json_attr(enforcement), esc(enforcement.get("grade", "not-visible")),
-            esc(enforcement.get("note") or "No enforcement evidence was recorded."))
-    )
-    return orphan_html, enforcement_html
-
-
-UNSET = ('<div class="panel"><p class="sub">This run did not produce this '
-         'evidence, so nothing is claimed here.</p></div>')
-
-GAP_KINDS = (
-    ("healthy", "healthy", "Healthy"),
-    ("your-code", "your_code", "To fix in your code"),
-    ("not-visible", "not_visible", "The audit cannot see these yet"),
-    ("not-needed", "not_needed", "You decided you do not need these"),
-)
-
-
-def render_headline(unlock, freshness):
-    """One sentence, and the age of the evidence behind it."""
-    line = (unlock or {}).get("headline")
-    if not line:
-        return ('<p class="lede">A confidence headline was not produced by '
-                'this run, so nothing is claimed here.</p>')
-    stamp = ""
-    if freshness:
-        stamp = ('<p class="sub" data-freshness="%s" data-freshness-ref="%s">'
-                 '%s</p>' % (esc(freshness.get("state", "unknown")),
-                             esc(freshness.get("ref") or ""),
-                             esc(freshness.get("note") or "")))
-    return '<p class="lede" data-report-region="headline">%s</p>%s' % (
-        esc(line), stamp)
-
-
-def render_unlock_path(unlock):
-    """The two gap counts, the ordered steps, and the one card that leads.
-
-    The counts are rendered as separate marks on purpose. There is no total,
-    and nothing here computes one: a reader who cannot tell "we could not
-    see this" from "you have a problem here" learns the wrong thing about
-    their own codebase, and a single number is exactly that confusion in
-    numeric form.
-    """
-    if not unlock:
-        return UNSET
-    split = unlock.get("split") or {}
-    marks = "".join(
-        '<div class="dashboard-metric" data-gap-kind="%s" data-gap-count="%d">'
-        '<span class="dashboard-value">%d</span>'
-        '<span class="dashboard-label">%s</span></div>'
-        % (kind, split.get(key, 0), split.get(key, 0), esc(label))
-        for kind, key, label in GAP_KINDS)
-
-    steps = unlock.get("unlock_path") or []
-    if steps:
-        rows = "".join(
-            '<li data-unlock-capability="%s" data-unlocks="%d">'
-            '<strong>%s</strong>'
-            '<p class="sub">Unlocks %d vital(s): %s</p>'
-            '<code class="path">%s</code></li>'
-            % (esc(step.get("capability", "")), step.get("unlocks_count", 0),
-               esc(step.get("action", "")), step.get("unlocks_count", 0),
-               esc(", ".join(step.get("unlocks", []))),
-               esc(step.get("verify") or ""))
-            for step in steps)
-        path_html = '<ol class="unlock-path">%s</ol>' % rows
-    else:
-        path_html = ('<p class="sub">No capability gap is holding a vital '
-                     'back.</p>')
-
-    card = unlock.get("next_15_minutes")
-    card_html = ""
-    if card:
-        card_html = (
-            '<div class="note" data-card="next-15-minutes" data-card-kind="%s">'
-            '<strong>Next best 15 minutes</strong>'
-            '<p>%s</p><p class="sub">%s</p><code class="path">%s</code></div>'
-            % (esc(card.get("kind", "")), esc(card.get("action", "")),
-               esc(card.get("payoff", "")), esc(card.get("verify") or "")))
-
-    owed = unlock.get("decisions_owed") or []
-    owed_html = ""
-    if owed:
-        owed_html = (
-            '<p class="sub" data-decisions-owed="%d">%s declared not '
-            'applicable with no reason on record. An unexplained N/A is how '
-            'a check gets switched off quietly.</p>'
-            % (len(owed), esc(", ".join(owed))))
-
-    return ('<div class="panel" data-report-region="unlock-path" '
-            'data-split-json="%s"><div class="dashboard-ribbon">%s</div>'
-            '%s%s%s</div>'
-            % (json_attr(split), marks, card_html, path_html, owed_html))
-
-
-def render_wins(unlock, lineage):
-    """Ground gained. A report that only lists holes is not a status."""
-    wins = [dict(win) for win in ((unlock or {}).get("wins") or [])
-            if isinstance(win, dict)]
-    families = (lineage or {}).get("fully_traceable_families") or []
-    if families:
-        wins.append({
-            "claim": "%d token %s traceable end to end"
-                     % (len(families),
-                        "families are" if len(families) != 1 else "family is"),
-            "evidence": [", ".join(families)]})
-    summary = (lineage or {}).get("summary") or {}
-    if summary.get("traced_to_a_primitive"):
-        wins.append({
-            "claim": "Tokens that trace to a primitive definition",
-            "evidence": ["%d of %d"
-                         % (summary["traced_to_a_primitive"],
-                            summary["traced_to_a_primitive"] +
-                            summary.get("stops_before_a_primitive", 0))]})
-    if not wins:
-        return UNSET
-    # The measurement renders beside the claim. A win a reader cannot check
-    # is a congratulation, and this report has no business issuing one.
-    rows = "".join(
-        '<li><strong>%s</strong> <span class="sub">%s</span></li>'
-        % (esc(win.get("claim", "")), esc(" · ".join(win.get("evidence") or [])))
-        for win in wins)
-    return ('<div class="panel" data-report-region="wins" data-win-count="%d">'
-            '<h3>What is trustworthy now</h3><ul>%s</ul></div>'
-            % (len(wins), rows))
-
-
-def render_blast_radius(lineage):
-    """What moves if this token changes — the question designers arrive with."""
-    rows = (lineage or {}).get("blast_radius") or []
-    reaching = [row for row in rows if row.get("component_count")]
-    if not reaching:
-        return UNSET
-    body = "".join(
-        '<tr data-token="%s" data-component-count="%d">'
-        '<td><code class="path">%s</code></td><td>%s</td>'
-        '<td class="num">%d</td><td class="num">%d</td><td>%s</td></tr>'
-        % (esc(row["token"]), row["component_count"], esc(row["token"]),
-           esc(row.get("tier") or ""), row["component_count"],
-           len(row.get("dependent_tokens") or []),
-           esc(", ".join(row.get("components") or [])))
-        for row in reaching[:20])
-    tail = ""
-    if len(reaching) > 20:
-        tail = ('<details><summary>See %d more tokens with a measured '
-                'reach</summary><div>%s</div></details>'
-                % (len(reaching) - 20,
-                   "<br>".join(esc("%s — %d component(s)"
-                                   % (row["token"], row["component_count"]))
-                               for row in reaching[20:])))
-    return ('<div class="panel" data-report-region="blast-radius" '
-            'data-radius-rows="%d"><h3>What moves if this changes</h3>'
-            '<table><thead><tr><th>Token</th><th>Tier</th>'
-            '<th class="num">Components</th><th class="num">Dependent tokens</th>'
-            '<th>Which components</th></tr></thead><tbody>%s</tbody></table>'
-            '%s</div>' % (len(reaching), body, tail))
-
-
-def render_confidence_slots(document, unlock, lineage, freshness=None):
-    document = replace_slot(document, "headline",
-                            render_headline(unlock, freshness))
-    document = replace_slot(document, "unlock-path", render_unlock_path(unlock))
-    document = replace_slot(document, "wins", render_wins(unlock, lineage))
-    document = replace_slot(document, "blast-radius",
-                            render_blast_radius(lineage))
+def render_confidence_slots(document, report, lineage):
+    """The verdict's sentence, the blocked checks, what we verified, and reach."""
+    document = replace_slot(document, "headline", chapters.render_headline(report))
+    document = replace_slot(document, "unlock-path", chapters.render_unlock(report))
+    document = replace_slot(document, "sub-unlock", esc(chapters.sub_unlock(report)))
+    document = replace_slot(document, "wins", chapters.render_wins(report))
+    document = replace_slot(document, "blast-radius", chapters.render_reach(lineage))
+    document = replace_slot(
+        document, "lineage-lead", chapters.render_lineage_lead(report, set()))
+    document = replace_slot(document, "sub-lineage", esc(chapters.sub_lineage(report)))
     return document
+
+
+def family_subtitle(tokens):
+    states = family_states(tokens)
+    counted = sorted(((item.get("count") or 0, name)
+                      for name, item in states.items()), reverse=True)
+    line = plural(len(states), "family", "families")
+    if counted and counted[0][0]:
+        line += " · %s is the largest" % counted[0][1]
+    return line
+
+
+def inventory_subtitle(tokens):
+    concepts = normalized_concepts(tokens)
+    color = len([item for item in concepts if item.get("family") == "color"])
+    typography = len([item for item in concepts
+                      if item.get("family") == "typography"])
+    return "%s · %s · %s, drawn as what they are" % (
+        plural(color, "color"), plural(typography, "type token"),
+        plural(len(concepts) - color - typography, "other"))
 
 
 def render_report_slots(document, report, tokens, discovery):
@@ -2120,27 +1201,33 @@ def render_report_slots(document, report, tokens, discovery):
         str(repository.get("ref") or "unknown")[:10],
     )
     document = replace_slot(document, "doc-title", '<title>%s</title>' % esc(title))
+    document = replace_slot(document, "at-a-glance", chapters.render_glance(report))
     document = replace_slot(
-        document, "report-view-switcher",
-        render_report_view_switcher(
-            report.get("rendering", {}).get("view") or "snapshot"
-        ),
-    )
-    document = replace_slot(document, "at-a-glance", render_at_a_glance(report))
-    document = replace_slot(document, "exec-summary", render_exec_summary(report))
-    document = replace_slot(document, "decisions", render_decisions(report))
+        document, "exec-summary", chapters.render_first_move(report))
+    document = replace_slot(document, "sub-fix-now", esc(chapters.sub_fix_now(report)))
+    document = replace_slot(document, "fix-queue", chapters.render_fix_now(report))
+    document = replace_slot(document, "groups", chapters.render_groups(report))
+    document = replace_slot(document, "sub-decide", esc(chapters.sub_decide(report)))
+    document = replace_slot(
+        document, "decide-calls", chapters.render_decide_calls(report))
+    document = replace_slot(document, "decisions", chapters.render_decisions(report))
     document = replace_slot(
         document, "adoption-strategy", render_adoption_strategy(strategy))
-    document = replace_slot(document, "next-steps", render_next_steps(report))
-    document = replace_slot(document, "fix-queue", render_fix_queue(report))
-    document = replace_slot(document, "groups", render_groups(report))
-    document = replace_slot(document, "lineage", render_lineage(report))
+    document = replace_slot(document, "sub-next", esc(chapters.sub_next(report)))
+    document = replace_slot(document, "next-steps", chapters.render_next_steps(report))
+    document = replace_slot(document, "stage", chapters.render_stage(report))
     document = replace_slot(
-        document, "coverage-matrix", render_coverage_matrix(report))
-    modes_coverage, modes_gaps = render_modes(report)
+        document, "agent-prompt", chapters.render_agent_prompt(report))
+    document = replace_slot(document, "lineage", chapters.render_lineage(report))
+    document = replace_slot(document, "sub-coverage", esc(chapters.sub_coverage(report)))
+    document = replace_slot(
+        document, "coverage-matrix", chapters.render_coverage_matrix(report))
+    modes_coverage, modes_gaps = chapters.render_modes(report)
+    document = replace_slot(document, "sub-modes", esc(chapters.sub_modes(report)))
     document = replace_slot(document, "modes-coverage", modes_coverage)
     document = replace_slot(document, "modes-gaps", modes_gaps)
-    orphan_html, enforcement_html = render_orphans_and_enforcement(report)
+    orphan_html, enforcement_html = chapters.render_orphans_and_enforcement(report)
+    document = replace_slot(document, "sub-orphans", esc(chapters.sub_orphans(report)))
     document = replace_slot(document, "orphans", orphan_html)
     document = replace_slot(document, "enforcement", enforcement_html)
     document = replace_slot(
@@ -2148,6 +1235,10 @@ def render_report_slots(document, report, tokens, discovery):
     if tokens:
         document = replace_slot(
             document, "family-coverage", family_block(tokens, report))
+        document = replace_slot(
+            document, "sub-architecture", esc(family_subtitle(tokens)))
+        document = replace_slot(
+            document, "sub-inventory", esc(inventory_subtitle(tokens)))
     document = strip_trend_without_a_baseline(document, report)
     return document
 
@@ -2172,72 +1263,16 @@ def strip_trend_without_a_baseline(document, report):
         has_baseline = bool(trend)
     if has_baseline:
         return document
-    document = re.sub(
-        r'\n\s*<section id="trend"[^>]*>.*?</section>\n',
-        "\n", document, count=1, flags=re.S)
-    return re.sub(r'\s*<a href="#trend"[^>]*>.*?</a>', "", document, count=1)
-
-
-def render_leakage(leakage):
-    exact = leakage.get("exact_value_candidates", [])
-    uncovered = leakage.get("uncovered_candidates", [])
-    rows = []
-    for item in exact + uncovered:
-        candidates = " ".join(
-            '<span class="tok">%s</span>' % esc(token)
-            for token in item.get("token_candidates", [])
-        ) or "—"
-        locations = item.get("locations", [])
-        location_tags = [
-            '<span class="path" data-finding-location="%s">%s</span>' % (
-                esc(location), esc(location))
-            for location in locations
-        ]
-        if len(location_tags) > 1:
-            location_html = (
-                location_tags[0] +
-                '<details><summary>Show %d more locations</summary><div>%s</div></details>' % (
-                    len(location_tags) - 1, "<br>".join(location_tags[1:]))
-            )
-        else:
-            location_html = location_tags[0] if location_tags else "—"
-        rows.append(
-            '<tr data-finding="%s" data-finding-tier="%s" '
-            'data-finding-locations-json="%s" '
-            'data-finding-token-candidates-json="%s" '
-            'data-finding-properties-json="%s">'
-            '<td><code>%s</code></td><td>%s</td><td>%s</td>'
-            '<td class="num">%d</td><td class="num">%d</td>'
-            '<td>%s</td><td>%s</td><td>%s</td></tr>' % (
-                esc(item.get("id")), esc(item.get("tier")),
-                json_attr(locations),
-                json_attr(item.get("token_candidates", [])),
-                json_attr(item.get("properties", [])),
-                esc(item.get("literal")), esc(item.get("tier")), candidates,
-                item.get("occurrences", 0), item.get("files", 0),
-                esc(", ".join(item.get("properties", [])) or "unknown"),
-                location_html,
-                esc(item.get("note") or "Manual semantic review required."),
-            )
-        )
-    return (
-        '\n  <section id="leakage" data-report-views="action evidence"><div class="eyebrow">Leakage</div>'
-        '<h2>Hardcoded values, separated by what this run can prove</h2>'
-        '<p class="lede">The fresh scan covers %d owned, graph-reachable consumer '
-        'styles. It found %d exact-value candidate groups and %d groups with no '
-        'exact reachable custom-property value. Semantic equivalence and near '
-        'misses remain unmeasured.</p>'
-        '<div class="note"><b>No automatic replacements are proposed.</b> '
-        'Value equality is evidence for review, not proof of design intent.</div>'
-        '<details open><summary>All %d measured leakage candidates</summary>'
-        '<div class="details-body"><div class="tbl-scroll"><table><thead><tr>'
-        '<th>Literal</th><th>Tier</th><th>Possible tokens</th><th>Uses</th>'
-        '<th>Files</th><th>Properties</th><th>Locations</th><th>Interpretation</th>'
-        '</tr></thead><tbody>%s</tbody></table></div></div></details></section>\n' % (
-            leakage.get("consumer_files_scanned", 0), len(exact), len(uncovered),
-            len(exact) + len(uncovered), "".join(rows),
-        )
-    )
+    # The section stays, emptied: `#trend` still resolves, and a link saved
+    # from a report that had a comparison lands where the next one will be.
+    return re.sub(
+        r'(\n\s*<section id="trend"[^>]*>).*?(</section>\n)',
+        lambda match: match.group(1) +
+        '\n      <h3 class="part">What moved since the last run</h3>'
+        '\n      <p class="quiet">This is the first run we have for this '
+        'repository, so there is nothing to compare it to yet.</p>\n    ' +
+        match.group(2),
+        document, count=1, flags=re.S)
 
 
 def render_token_slots(document, tokens, report):
@@ -2267,130 +1302,59 @@ def render_token_slots(document, tokens, report):
     return document
 
 
-def sync_count_narratives(document, tokens):
-    if not tokens:
-        return document
-    held_out = len(tokens.get("candidate_or_local_override_sources", []))
-    return re.sub(
-        r"Classify \d+ held-out declaration sources",
-        "Classify %d held-out declaration sources" % held_out,
-        document,
-    )
-
-
-def render_measurement(discovery, tokens, report, skill_version, generated):
+def run_summary(discovery, tokens, report):
+    """The counts About this run shows, and the gate checks it against."""
     roots = discovery.get("roots", [])
-    owned_roots = [item for item in roots if item.get("ownership") == "owned"]
-    unknown_roots = [item for item in roots if item.get("ownership") == "unknown"]
-    full_reachable = len(discovery.get("import_graph", {}).get("reachable", {}))
-    owned_reachable = len(discovery.get("owned_import_graph", {}).get("reachable", {}))
     unresolved = unresolved_import_summary(discovery)
-    concept_count = (tokens or {}).get(
-        "concept_count", report.get("run", {}).get("token_count"))
-    source_count = confirmed_definition_count((tokens or {}).get("sources", []))
-    held_out = len((tokens or {}).get("candidate_or_local_override_sources", []))
-    adapters = report.get("provenance", {}).get("adapter_versions", {})
-    rendering = report.get("rendering", {})
-    rendering_summary = "%s view · %s list" % (
-        rendering.get("view") or "unrecorded",
-        rendering.get("tier") or "unrecorded",
-    )
-    summary = {
-        "profiles": discovery.get("environment", []),
-        "roots": len(roots), "owned_roots": len(owned_roots),
-        "unknown_roots": len(unknown_roots),
-        "reachable": full_reachable, "owned_reachable": owned_reachable,
-        "unresolved_total": unresolved["total"],
-        "unresolved_actionable": unresolved["actionable"],
-        "unresolved_by_reason": unresolved["by_reason"],
-        "concepts": concept_count,
-        "token_sources": source_count, "held_out_sources": held_out,
-    }
-    return (
-        '<div class="panel" data-measurement-summary-json="%s"><h3>Measured scope</h3>'
-        '<p>%d profiles proved %d product roots: %d owned and %d unresolved in '
-        'ownership. The full graph reaches %d files; the owned graph reaches %d. '
-        '%d actionable imports remain unresolved. All %d classified import misses '
-        'remain visible by reason: %s. %s canonical concepts came from %d confirmed '
-        'definition sources, and %d candidate or override sources were held out.</p>'
-        '</div><div class="panel" style="margin-top:18px" '
-        'data-adapter-versions-json="%s"><h3>Provenance</h3>'
-        '<dl class="meta"><dt>schema</dt><dd>%s</dd><dt>skill</dt><dd>%s</dd>'
-        '<dt>adapters</dt><dd>%s</dd><dt>repo</dt><dd>%s</dd>'
-        '<dt>generated</dt><dd>%s</dd><dt>rendering</dt><dd>%s</dd></dl></div>' % (
-            json_attr(summary), len(discovery.get("environment", [])), len(roots),
-            len(owned_roots), len(unknown_roots), full_reachable, owned_reachable,
-            unresolved["actionable"], unresolved["total"],
-            esc("; ".join(
-                "%d %s" % (count, reason)
-                for reason, count in unresolved["by_reason"].items()
-            ) or "none"),
-            esc(concept_count if concept_count is not None else "not-visible"),
-            source_count, held_out,
-            json_attr(adapters),
-            esc(report.get("schema_version")), esc(skill_version),
-            esc(" · ".join(sorted(adapters)) or "none"),
-            esc(report.get("provenance", {}).get("repo_ref") or "unrecorded"),
-            esc(generated), esc(rendering_summary),
-        )
-    )
-
-
-def render_runhead(discovery, tokens, report, skill_version):
-    roots = discovery.get("roots", [])
-    summary = {
+    return {
         "profiles": discovery.get("environment", []),
         "roots": len(roots),
         "owned_roots": len([item for item in roots
                             if item.get("ownership") == "owned"]),
+        "unknown_roots": len([item for item in roots
+                              if item.get("ownership") == "unknown"]),
         "reachable": len(discovery.get("import_graph", {}).get("reachable", {})),
         "owned_reachable": len(discovery.get("owned_import_graph", {}).get(
             "reachable", {})),
-        "token_sources": confirmed_definition_count(
-            (tokens or {}).get("sources", [])
-        ),
+        "unresolved_total": unresolved["total"],
+        "unresolved_actionable": unresolved["actionable"],
+        "unresolved_by_reason": unresolved["by_reason"],
         "concepts": (tokens or {}).get(
             "concept_count", report.get("run", {}).get("token_count")),
+        "token_sources": confirmed_definition_count(
+            (tokens or {}).get("sources", [])),
+        "held_out_sources": len((tokens or {}).get(
+            "candidate_or_local_override_sources", [])),
     }
-    return (
-        '<dl class="meta" data-runhead-summary-json="%s">'
-        '<dt>profiles</dt><dd>%s</dd><dt>product roots</dt><dd>%d total · %d owned</dd>'
-        '<dt>reachable source files</dt><dd>%d total · %d owned</dd>'
-        '<dt>token inventory</dt><dd>%s concepts · %d confirmed definition sources</dd>'
-        '<dt>repository</dt><dd>%s</dd><dt>skill</dt><dd>%s</dd></dl>' % (
-            json_attr(summary), esc(" · ".join(summary["profiles"])),
-            summary["roots"], summary["owned_roots"], summary["reachable"],
-            summary["owned_reachable"],
-            esc(summary["concepts"] if summary["concepts"] is not None else "not-visible"),
-            summary["token_sources"],
-            esc(report.get("provenance", {}).get("repo_ref") or "unrecorded"),
-            esc(skill_version),
-        )
-    )
+
+
+def render_runhead(discovery, tokens, report, skill_version):
+    """The one fact line under the title."""
+    full = run_summary(discovery, tokens, report)
+    summary = {key: full[key] for key in (
+        "profiles", "roots", "owned_roots", "reachable", "owned_reachable",
+        "token_sources", "concepts")}
+    return '<span data-runhead-summary-json="%s">%s</span>' % (
+        json_attr(summary), chapters.factline(report))
 
 
 def render_footer(discovery, tokens, skill_version):
-    owned_roots = len([item for item in discovery.get("roots", [])
-                       if item.get("ownership") == "owned"])
-    concept_count = (tokens or {}).get("concept_count", "not-visible")
+    """Nothing a reader needs: the counts live in About this run.
+
+    The summary stays as a data attribute, because the gate compares it with
+    the JSON and a script may read it.
+    """
     summary = {
         "profiles": discovery.get("environment", []),
-        "concepts": concept_count,
+        "concepts": (tokens or {}).get("concept_count", "not-visible"),
         "owned_reachable": len(discovery.get("owned_import_graph", {}).get(
             "reachable", {})),
-        "owned_roots": owned_roots,
+        "owned_roots": len([item for item in discovery.get("roots", [])
+                            if item.get("ownership") == "owned"]),
         "skill_version": skill_version,
     }
-    return (
-        '<span data-footer-summary-json="%s">profiles: %s</span>'
-        '<span>%s concepts · %d owned reachable files · '
-        '%d owned roots</span><span>%s</span>' % (
-            json_attr(summary),
-            esc(" · ".join(discovery.get("environment", []))), esc(concept_count),
-            len(discovery.get("owned_import_graph", {}).get("reachable", {})),
-            owned_roots, esc(skill_version),
-        )
-    )
+    return '<span data-footer-summary-json="%s">design-token-vitals</span>' % (
+        json_attr(summary))
 
 
 def render_section(discovery):
@@ -2409,11 +1373,10 @@ def render_section(discovery):
     conflicts = composition.get("conflicts", [])
     registry_sources = composition.get("registry_sources", [])
     return """
-  <section id="discovery-engine" data-report-views="evidence">
-    <div class="eyebrow">Universal discovery</div>
-    <h2>How the audit found the application</h2>
-    <p class="lede">%d framework profiles composed into one evidence model. They proved %d product roots and %d owned component roots, while retaining %d disconnected root candidates, %d missing registered roots, and %d component-location candidates instead of silently promoting or discarding them. The report also keeps %d route, template, or demo surfaces outside production reachability.</p>
-    <div class="note"><b>Application selection:</b> %s%s</div>
+  <section id="discovery-engine">
+    <details class="chapter-fold"><summary>How we found your app</summary><div class="details-body">
+    <p class="quiet">%d framework profiles agreed on %d entry files and %d component folders you own. We kept %d possible entries we could not reach, %d registered entries missing from disk and %d possible component folders as leads, and we left %d demo or template surfaces out.</p>
+    <div class="note"><b>Which app we audited:</b> %s%s</div>
     <div class="grid-2 stack-16">%s</div>
     <details><summary>All %d framework-profile inputs</summary><div class="details-body"><div class="tbl-scroll"><table><thead><tr><th>Registry source</th><th>SHA-256</th></tr></thead><tbody>%s</tbody></table></div></div></details>
     <details><summary>All %d partial profile candidates retained as leads</summary><div class="details-body"><div class="tbl-scroll"><table><thead><tr><th>Profile</th><th>Kind</th><th>Signal score</th><th>Evidence found</th><th>Evidence still missing</th></tr></thead><tbody>%s</tbody></table></div></div></details>
@@ -2428,6 +1391,7 @@ def render_section(discovery):
     <details><summary>All %d supplemental and demo surfaces</summary><div class="details-body"><div class="tbl-scroll"><table><thead><tr><th>Path</th><th>Scope</th><th>Ownership</th><th>Confidence</th><th>Profiles</th><th>Evidence</th></tr></thead><tbody>%s</tbody></table></div></div></details>
     <details><summary>All %d classified unresolved imports</summary><div class="details-body"><div class="tbl-scroll"><table><thead><tr><th>From</th><th>Spec</th><th>Reason</th></tr></thead><tbody>%s</tbody></table></div></div></details>
     <div class="stack-16">%s</div>
+    </div></details>
   </section>
 """ % (
         len(active), len(roots), len(component_roots), len(root_candidates),
@@ -2480,8 +1444,59 @@ def sync_document_metadata(document, old_generated, generated,
     return document
 
 
+def fill_document(document, report, discovery, tokens=None, leakage=None,
+                  skill_version="unrecorded"):
+    """Every region of the page, filled from one report.
+
+    Split from `augment` so the page can be rendered without files on disk:
+    the tests hold a whole rendered report to its rules this way.
+    """
+    section = render_section(discovery)
+    if SECTION.search(document):
+        document = SECTION.sub("\n" + section, document, count=1)
+    elif MEASUREMENT_MARKER in document:
+        document = document.replace(MEASUREMENT_MARKER, section + "\n  " + MEASUREMENT_MARKER, 1)
+    elif LEGACY_MEASUREMENT_MARKER in document:
+        document = document.replace(
+            LEGACY_MEASUREMENT_MARKER,
+            section + "\n  " + LEGACY_MEASUREMENT_MARKER,
+            1,
+        )
+    else:
+        raise ValueError("report has no discovery-engine or measurement insertion point")
+    document = render_report_slots(document, report, tokens, discovery)
+    document = render_confidence_slots(
+        document, report, report.get("token_chains"))
+    document = render_token_slots(document, tokens, report)
+    document = replace_slot(
+        document, "vitals-grid", chapters.render_checks(report))
+    if leakage:
+        leakage_section = chapters.render_leakage(report, leakage)
+        if LEAKAGE_SECTION.search(document):
+            document = LEAKAGE_SECTION.sub(leakage_section, document, count=1)
+        else:
+            document += leakage_section
+    document = replace_slot(document, "runhead-tag", "")
+    document = replace_slot(
+        document, "runhead-meta",
+        render_runhead(discovery, tokens, report, skill_version),
+    )
+    document = replace_slot(
+        document, "about-run",
+        chapters.about_run(
+            report, run_summary(discovery, tokens, report), skill_version),
+    )
+    document = replace_slot(
+        document, "measurement", chapters.render_method(report))
+    document = replace_slot(
+        document, "footer-meta",
+        render_footer(discovery, tokens, skill_version),
+    )
+    return document
+
+
 def augment(discovery_path, report_path, html_path, tokens_path=None,
-            leakage_path=None, refresh_template=False, report_view=None,
+            leakage_path=None, refresh_template=False,
             unlock_path_file=None, lineage_path=None):
     with open(discovery_path, encoding="utf-8") as handle:
         discovery = json.load(handle)
@@ -2504,10 +1519,11 @@ def augment(discovery_path, report_path, html_path, tokens_path=None,
     discovery = enrich(discovery, tokens)
     with open(report_path, encoding="utf-8") as handle:
         report = json.load(handle)
-    selected_view = resolve_report_view(report_view)
+    # The page is one document read top to bottom. An older report's choice
+    # of "view" has nothing left to choose between.
     rendering = report.setdefault("rendering", {})
-    rendering["view"] = selected_view
-    rendering["available_views"] = list(REPORT_VIEWS)
+    rendering.pop("view", None)
+    rendering.pop("available_views", None)
     old_generated = report.get("run", {}).get("generated_at")
     old_version = report.get("provenance", {}).get("skill_version")
     generated = datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
@@ -2558,49 +1574,8 @@ def augment(discovery_path, report_path, html_path, tokens_path=None,
         document = handle.read()
     if refresh_template:
         document = TEMPLATE_INSTRUCTIONS.sub(r'\1', document, count=1)
-    document = set_document_report_view(document, selected_view)
-    section = render_section(discovery)
-    if SECTION.search(document):
-        document = SECTION.sub("\n" + section, document, count=1)
-    elif MEASUREMENT_MARKER in document:
-        document = document.replace(MEASUREMENT_MARKER, section + "\n  " + MEASUREMENT_MARKER, 1)
-    elif LEGACY_MEASUREMENT_MARKER in document:
-        document = document.replace(
-            LEGACY_MEASUREMENT_MARKER,
-            section + "\n  " + LEGACY_MEASUREMENT_MARKER,
-            1,
-        )
-    else:
-        raise ValueError("report has no discovery-engine or measurement insertion point")
-    document = render_report_slots(document, report, tokens, discovery)
-    document = render_confidence_slots(document, report.get("confidence"),
-                                       report.get("token_chains"),
-                                       report.get("freshness"))
-    document = render_token_slots(document, tokens, report)
-    document = sync_count_narratives(document, tokens)
-    document = replace_slot(document, "vitals-grid", render_vitals(report))
-    if leakage:
-        leakage_section = render_leakage(leakage)
-        if LEAKAGE_SECTION.search(document):
-            document = LEAKAGE_SECTION.sub(leakage_section, document, count=1)
-        else:
-            document += leakage_section
-    document = replace_slot(
-        document, "runhead-tag",
-        '<span class="sampletag">Generated repository audit</span>',
-    )
-    document = replace_slot(
-        document, "runhead-meta",
-        render_runhead(discovery, tokens, report, skill_version),
-    )
-    document = replace_slot(
-        document, "measurement",
-        render_measurement(discovery, tokens, report, skill_version, generated),
-    )
-    document = replace_slot(
-        document, "footer-meta",
-        render_footer(discovery, tokens, skill_version),
-    )
+    document = fill_document(
+        document, report, discovery, tokens, leakage, skill_version)
     document = sync_document_metadata(
         document, old_generated, generated, old_version, skill_version
     )
@@ -2625,13 +1600,9 @@ def main(argv):
         "--refresh-template", action="store_true",
         help="start from the current report template before rendering every region",
     )
-    parser.add_argument(
-        "--report-view", choices=REPORT_VIEWS,
-        help="initial report depth: snapshot, action, or evidence (default: snapshot)",
-    )
     args = parser.parse_args(argv)
     augment(args.discovery, args.report_json, args.html, args.tokens,
-            args.leakage, args.refresh_template, args.report_view,
+            args.leakage, args.refresh_template,
             args.unlock, args.lineage)
     print("rendered universal discovery into %s and %s" % (
         args.report_json, args.html))

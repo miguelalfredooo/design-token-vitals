@@ -14,6 +14,8 @@ from cli import EXIT_OK  # noqa: E402
 from adoption_strategy import derive as derive_adoption_strategy  # noqa: E402
 from adoption_strategy import render as render_adoption_strategy  # noqa: E402
 from version import describe  # noqa: E402
+import draw  # noqa: E402
+from vocab import fmt, pct, plural  # noqa: E402
 
 
 SECTION = re.compile(r"\n\s*<section id=\"component-usage\"[^>]*>.*?</section>\n", re.S)
@@ -24,8 +26,8 @@ ADOPTION_SLOT = re.compile(
     r'(<!-- SLOT:adoption-strategy -->).*?(<!-- /SLOT:adoption-strategy -->)',
     re.S,
 )
-AT_A_GLANCE_SLOT = re.compile(
-    r'(<!-- SLOT:at-a-glance -->).*?(<!-- /SLOT:at-a-glance -->)',
+SUBTITLE_SLOT = re.compile(
+    r'(<!-- SLOT:sub-components -->).*?(<!-- /SLOT:sub-components -->)',
     re.S,
 )
 LOCATION_SITE = re.compile(r"^(.*):(\d+(?::\d+)?)$")
@@ -148,78 +150,137 @@ def render_component_paths(paths):
     )
 
 
+def share_whole(usage):
+    """What a share is a share of, and the words for it.
+
+    Every component's token references, when the run recorded that total.
+    An older run recorded only the rows it ranked, and a share of those is
+    said to be exactly that.
+    """
+    roadmap = usage.get("roadmap", {}) or {}
+    fallback = int(usage.get("fallback_surfaces", 0) or 0) > 0
+    total = usage.get("usage_references_total" if fallback
+                      else "component_references_total")
+    if total:
+        count = usage.get("total_usage_units" if fallback
+                          else "total_components_with_token_usage", 0)
+        noun = "component or surface" if fallback else "component"
+        return int(total), "all %s" % plural(
+            count, noun, "components and surfaces" if fallback else None)
+    return int(roadmap.get("ranked_references", 0) or 0), "the %s shown" % plural(
+        usage.get("shown", 0), "row")
+
+
+def share_label(component, usage):
+    """`7.1%`: this row's share of the whole `share_whole` names."""
+    whole, _words = share_whole(usage)
+    return pct(component.get("references", 0), whole, 1) or "0.0%"
+
+
+def top_share(usage, limit=5):
+    """`(count, share text, whole words)` for the first few rows together."""
+    rows = (usage.get("top_20") or [])[:limit]
+    whole, words = share_whole(usage)
+    carried = sum(int(item.get("references", 0) or 0) for item in rows)
+    return len(rows), pct(carried, whole), words, carried, whole
+
+
+def subtitle(usage):
+    if usage.get("state") != "counted" or not usage.get("top_20"):
+        return "We could not count token use by component"
+    count, share, _words, _carried, _whole = top_share(usage)
+    fallback = int(usage.get("fallback_surfaces", 0) or 0) > 0
+    total = usage.get("total_usage_units" if fallback
+                      else "total_components_with_token_usage", 0)
+    return "%s · top %d carry %s of token use" % (
+        plural(total, "component"), count, share)
+
+
 def render_roadmap(usage):
     roadmap = usage.get("roadmap", {}) or {}
+    whole, whole_words = share_whole(usage)
     components = {
         item.get("id"): item for item in usage.get("top_20", [])
         if isinstance(item, dict) and item.get("id")
     }
-    band_sections = []
-    for band in roadmap.get("bands", []) or []:
-        band_id = esc(band.get("id"))
-        heading_id = "component-roadmap-band-%s-title" % band_id
-        rows = []
-        for component_id in band.get("component_ids", []) or []:
-            component = components.get(component_id)
-            if not component:
-                continue
-            rows.append(
-                '<tr id="component-roadmap-%s" data-component="%s" '
-                'data-component-kind="%s" data-component-references="%d" '
-                'data-component-distinct-tokens="%d" data-component-roadmap-band="%s" '
-                'data-component-share="%.1f">'
-                '<td class="num">%d</td><td><a class="component-roadmap-link" '
-                'href="#component-detail-%s"><code>%s</code></a>'
-                '<br><span class="p-mute">%s · %s</span></td>'
-                '<td class="num">%d</td><td class="num">%d</td><td class="num">%d</td>'
-                '<td><span class="component-share-label">%.1f%%</span></td></tr>' % (
-                    esc(component_id), esc(component_id), esc(component.get("kind")),
-                    component.get("references", 0), component.get("distinct_tokens", 0),
-                    esc(component.get("roadmap_band")),
-                    component.get("share_of_ranked_references", 0.0),
-                    component.get("rank", 0), esc(component_id),
-                    esc(component.get("name")),
-                    esc(component.get("kind")), esc(component.get("confidence")),
-                    component.get("references", 0),
-                    component.get("distinct_tokens", 0),
-                    len(component.get("paths", []) or []),
-                    component.get("share_of_ranked_references", 0.0),
-                )
-            )
-        band_sections.append(
-            '<article class="component-roadmap-band" data-roadmap-band="%s" '
-            'aria-labelledby="%s">'
-            '<header><span class="component-roadmap-kicker">%s</span>'
-            '<h3 id="%s">%s</h3><p>%s</p><strong>%.1f%% of the ranked view</strong></header>'
-            '<div class="tbl-scroll" role="region" tabindex="0" aria-labelledby="%s">'
-            '<table aria-labelledby="%s"><thead><tr><th class="num">#</th>'
-            '<th>Component or surface</th><th class="num">Token refs</th><th class="num">Tokens</th>'
-            '<th class="num">Paths</th><th>Share</th></tr></thead><tbody>%s</tbody></table></div></article>' % (
-                band_id, heading_id,
-                "%d–%d" % (band.get("start_rank", 0), band.get("end_rank", 0)),
-                heading_id, esc(band.get("label")), esc(band.get("description")),
-                band.get("share_of_ranked_references", 0.0),
-                heading_id, heading_id, "".join(rows),
+    rows = []
+    for component in sorted(components.values(), key=lambda item: item.get("rank", 0)):
+        component_id = component.get("id")
+        rows.append(
+            '<tr id="component-roadmap-%s" data-component="%s" '
+            'data-component-kind="%s" data-component-references="%d" '
+            'data-component-distinct-tokens="%d" data-component-roadmap-band="%s" '
+            'data-component-share="%.1f">'
+            '<td class="num">%d</td><td><a class="component-roadmap-link" '
+            'href="#component-detail-%s"><code>%s</code></a></td>'
+            '<td class="num">%d</td><td class="num">%d</td><td class="num">%d</td>'
+            '<td class="share">%s<span class="component-share-label">%s</span></td></tr>' % (
+                esc(component_id), esc(component_id), esc(component.get("kind")),
+                component.get("references", 0), component.get("distinct_tokens", 0),
+                esc(component.get("roadmap_band")),
+                component.get("share_of_ranked_references", 0.0),
+                component.get("rank", 0), esc(component_id),
+                esc(component.get("name")),
+                component.get("references", 0),
+                component.get("distinct_tokens", 0),
+                len(component.get("paths", []) or []),
+                '<span class="mk-share" aria-hidden="true"><i style="width:%.3f%%">'
+                '</i></span>' % (
+                    100.0 * component.get("references", 0) / whole if whole else 0),
+                share_label(component, usage),
             )
         )
+    # ONE table. The rows used to be cut into three bands named "assess
+    # first", "plan next" and "focused follow-up": an order to act in, drawn
+    # from a count of token uses, which says nothing about what is safe to
+    # change. The band each row falls in stays in its data attribute and in
+    # the JSON for anything that reads it.
+    table = (
+        '<div class="tbl-scroll" role="region" tabindex="0" '
+        'aria-labelledby="component-table-title">'
+        '<table class="component-table" aria-labelledby="component-table-title">'
+        '<caption id="component-table-title" class="sr">Components by token use'
+        '</caption><thead><tr><th class="num">#</th><th>Component</th>'
+        '<th class="num">Token uses</th><th class="num">Tokens</th>'
+        '<th class="num">Files</th><th>Share of all token uses</th></tr></thead>'
+        '<tbody>%s</tbody></table></div>' % "".join(rows))
+    count, share, _words, carried, _whole = top_share(usage)
+    lead = draw.figure(
+        draw.stack([("top %d" % count, carried, "ink")], whole),
+        "%s of %s (%s)" % (fmt(carried), fmt(whole), share),
+        "The dark part is the %d components that use tokens most, out of the "
+        "token uses in %s. This counts uses in code, not how often a screen "
+        "is seen." % (count, esc(whole_words)),
+        kind="stack")
     return (
-        '<div class="component-roadmap" data-component-roadmap-json="%s">'
-        '<div class="component-roadmap-intro"><h3>Plan by token footprint</h3>'
-        '<p>%s</p><span>%d confirmed token references in this ranked view</span></div>'
-        '<div class="component-roadmap-grid">%s</div></div>' % (
-            json_attr(roadmap), esc(roadmap.get("basis") or
-                "Confirmed token use orders the review."),
-            roadmap.get("ranked_references", 0), "".join(band_sections),
+        '<div class="component-roadmap" data-component-roadmap-json="%s">%s%s</div>' % (
+            json_attr(roadmap), lead, table,
         )
     )
 
 
+MEASURED_AS = {
+    "css-custom-property": "CSS custom properties",
+    "scss-variable": "Sass variables",
+    "framework-generated-utility": "framework utility classes",
+}
+
+
+def boundary(usage):
+    """What counted as a token use, and what we couldn't see."""
+    counted = [MEASURED_AS.get(item.get("syntax"), item.get("syntax"))
+               for item in usage.get("measurement", [])
+               if item.get("state") == "counted"]
+    unseen = [MEASURED_AS.get(item.get("syntax"), item.get("syntax"))
+              for item in usage.get("measurement", [])
+              if item.get("state") != "counted"]
+    line = "We counted %s." % (" and ".join(counted) or "nothing")
+    if unseen:
+        line += " We couldn’t see %s, so a component styled that way looks smaller here than it is." % " or ".join(unseen)
+    return line
+
+
 def render_section(usage):
-    measured = [item for item in usage.get("measurement", []) if item.get("state") == "counted"]
-    incomplete = [item for item in usage.get("measurement", []) if item.get("state") != "counted"]
-    boundary = "; ".join("%s: %s (%s)" % (
-        esc(item.get("syntax")), esc(item.get("state")), esc(item.get("evidence")))
-        for item in measured + incomplete)
     details = []
     for component in usage.get("top_20", []):
         token_rows = []
@@ -239,36 +300,61 @@ def render_section(usage):
             )
         details.append(
             '<details id="component-detail-%s" data-component-detail="%s">'
-            '<summary>#%d %s — %d references across %d tokens</summary>'
-            '<div class="details-body"><p class="component-detail-paths"><b>Owned paths</b><br>%s</p>'
+            '<summary>#%d %s: %s of %s</summary>'
+            '<div class="details-body"><p class="component-detail-paths"><b>Files</b><br>%s</p>'
             '<p class="component-detail-families"><b>Families</b> · %s</p>'
             '<div class="tbl-scroll"><table class="component-token-table"><thead><tr>'
-            '<th>Token</th><th>Family</th><th class="num">References</th><th>Locations</th>'
+            '<th>Token</th><th>Family</th><th class="num">Uses</th><th>Where</th>'
             '</tr></thead><tbody>%s</tbody></table></div></div></details>' % (
                 esc(component.get("id")), esc(component.get("id")),
                 component.get("rank", 0), esc(component.get("name")),
-                component.get("references", 0), component.get("distinct_tokens", 0),
+                esc(plural(component.get("references", 0), "use")),
+                esc(plural(component.get("distinct_tokens", 0), "token")),
                 render_component_paths(component.get("paths", [])),
                 family_text(component.get("families")), "".join(token_rows),
             )
         )
+    fallback = usage.get("fallback_surfaces")
     return """
-  <section id="component-usage" data-report-views="action evidence">
-    <div class="eyebrow">Component roadmap</div>
-    <h2>Which components carry the largest token footprint</h2>
-    <p class="lede">Found %d identified components with confirmed token usage across %d files in the declared scope, plus %d broader stylesheet surfaces. The roadmap shows %d components; %d lower-volume components sit below this intentionally ranked view. This measures token references inside code rather than runtime impressions or screen frequency.%s</p>
-    <div class="note"><b>Measurement boundary:</b> %s</div>
+    <section id="component-usage">
     %s
-    <div class="stack-16"><h3>Every token and evidence location for the ranked components</h3>%s</div>
-  </section>
+    <p class="quiet">%s%s</p>
+    <div class="stack-16"><h3 class="part">Every token each of these uses, and where</h3>%s</div>
+    </section>
 """ % (
-        usage.get("total_components_with_token_usage", 0), usage.get("files_scanned", 0),
-        usage.get("additional_style_surfaces", 0), usage.get("shown_components", 0),
-        usage.get("not_shown", 0),
-        (" %d fallback stylesheet surface(s) fill the remaining slots because fewer than 20 components were identified." % usage.get("fallback_surfaces", 0)) if usage.get("fallback_surfaces") else "",
-        boundary,
-        render_roadmap(usage), "".join(details),
+        render_roadmap(usage), esc(boundary(usage)),
+        (" %s the list because fewer than 20 components were found." % esc(
+            "One stylesheet fills out" if fallback == 1
+            else "%s fill out" % plural(fallback, "stylesheet"))) if fallback else "",
+        "".join(details),
     )
+
+
+ABOUT_SLOT = re.compile(
+    r'(<!-- SLOT:about-run -->)(.*?)(<!-- /SLOT:about-run -->)', re.S)
+
+
+def refresh_about_run(document, report, skill_version):
+    """Add the files read for component use to About this run.
+
+    This tool runs after the page is first rendered, so the one place that
+    names every count of files was written before this count existed.
+    """
+    match = ABOUT_SLOT.search(document)
+    summary = re.search(r'data-measurement-summary-json="([^"]*)"',
+                        match.group(2)) if match else None
+    if not summary:
+        return document
+    import chapters
+    about = chapters.about_run(
+        report, json.loads(html.unescape(summary.group(1))), skill_version)
+    # Keep whatever the gate has already written about this run's validation.
+    note = re.search(r'<!-- SLOT:validation-note -->.*?<!-- /SLOT:validation-note -->',
+                     match.group(2), re.S)
+    if note:
+        about = re.sub(r'<!-- SLOT:validation-note -->.*?<!-- /SLOT:validation-note -->',
+                       lambda _m: note.group(0), about, count=1, flags=re.S)
+    return ABOUT_SLOT.sub(lambda m: m.group(1) + about + m.group(3), document, count=1)
 
 
 def write_json(path, value):
@@ -322,13 +408,13 @@ def augment(components_path, report_path, html_path):
 
     with open(html_path, encoding="utf-8") as handle:
         document = handle.read()
-    if AT_A_GLANCE_SLOT.search(document):
-        from render_discovery import render_at_a_glance
-        document = AT_A_GLANCE_SLOT.sub(
-            lambda match: match.group(1) + render_at_a_glance(report) + match.group(2),
+    if SUBTITLE_SLOT.search(document):
+        document = SUBTITLE_SLOT.sub(
+            lambda match: match.group(1) + esc(subtitle(usage)) + match.group(2),
             document,
             count=1,
         )
+    document = refresh_about_run(document, report, skill_version)
     section = render_section(usage)
     if SECTION.search(document):
         document = SECTION.sub("\n" + section, document, count=1)

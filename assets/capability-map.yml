@@ -212,14 +212,24 @@ stage:
   already_met: []           # later-stage conditions the system satisfies now
 
 # Every close call the run flagged — the reader is the tiebreak.
-# Each entry: {decision, moved, other_reading, vitals: [...]}
+# Each entry: {decision, moved, other_reading, vitals: [...], other_grade}
+# other_grade is optional: the grade the check would get under the other
+# reading, or {check: grade} when the call moves several. It is what lets
+# the report draw both readings; leave it out and the page says it was not
+# graded that way.
 decisions: []
+
+# Optional. One line the prompt for an agent ends on: this repository's own
+# rules for making a change (branching, review, what never to run). The tool
+# assumes none.
+handoff:
+  house_rules: null
 
 executive_summary:
   highest_impact: null      # {finding_id, statement, blast_radius}
   affected: null            # {owned_files, components}
   fix_first: null           # {action, file_line, finding_id}
-  confidence_split: null    # {confirmed, blocked, unmeasured, waiting_on: [...]}
+  confidence_split: null    # {confirmed, not-visible, waiting_on: [...]}
 
 # Verified fixes and review candidates with a canonical replacement, ordered
 # by priority. Only entries with semantic proof may be automated.
@@ -345,18 +355,23 @@ vitals:
   orphans: { grade: null, evidence: [], note: null }
   enforcement: { grade: null, evidence: [], note: null }
 
-# grade: pass | attention | fail | blocked | not_applicable
+# grade: healthy | watch | needs-work | not-visible | not-needed. A reader
+#           sees Healthy, Watch, Fix, Blocked, Not needed (tools/vocab.py).
 # evidence: a list of "path:line" strings. A grade with an empty
-#           evidence list must be a clean pass or blocked, never fail.
-# note:     why, when the grade is blocked or not_applicable, or when
-#           pass carries no evidence because nothing was found.
+#           evidence list must be healthy or not-visible, never needs-work.
+# note:     why, when the grade is not-visible or not-needed, or when
+#           healthy carries no evidence because nothing was found.
+# Optional, and what lets the report draw a check instead of describing it:
+# measure:  {form: threshold | cells | dots | bar, part, whole, noun,
+#            value, max, unit, lines: [{at, label}], means}. `means` is the
+#            one plain line under the drawing.
+# headline: the finding in one plain sentence, for a check graded needs-work.
+# fix:      what to do about it, as an instruction. where: its "path:line".
+# declarations: [{location, code, wins, note}] when the finding is two places
+#            setting one thing; drawn side by side, the loser struck through.
+# candidates: [{token, family, site}] on orphans, for the list to confirm.
 
 rendering:
-  view: snapshot             # snapshot | action | evidence; initial presentation only
-  available_views:           # fixed order; every view uses this run's complete evidence
-    - snapshot
-    - action
-    - evidence
   tier: null                # full | collapsed | family-only
 
   # The mark each listing section was rendered with, chosen in Stage 5 from

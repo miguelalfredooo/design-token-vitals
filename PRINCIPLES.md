@@ -33,17 +33,18 @@ that lists what the report contains.
 **Checked by:** the executive summary's four questions; a terminal summary
 of five lines or fewer.
 
-### 3. Orient every section: what, why, what to do
+### 3. Open every chapter on what was found
 
-Every section opens by answering three things before showing anything:
-what you are looking at, why it matters, and what to do with it. Then it
-stops orienting and shows the data. A reader who arrives at a section from
-a link gets the same three answers as one who read the whole page.
+A chapter is a number, a name and one line. The line states a finding or a
+figure, and then the evidence starts. How a thing was measured waits in the
+Method chapter or behind an (i). A reader who arrives from a link learns
+the result before anything else, the same as one who read from the top.
 
-**Forbids:** a table with no lede; a lede that explains and never says
-what to do next.
-**Checked by:** `tools/test_template.py` asserts every section carries an
-eyebrow, a heading and a lede.
+**Forbids:** a paragraph about a chapter before its evidence; a heading
+that describes the chapter and never says what is in it; a number written
+into a sentence that the page could have drawn.
+**Checked by:** `tools/test_template.py` asserts every chapter carries its
+number, its name and one line, and no eyebrow or lede.
 
 ### 4. Explain once, at first need, then trust the reader
 
@@ -110,19 +111,19 @@ healthy system with nothing to read.
 beside every fix-queue entry; a next action on every run, including one
 that finds nothing wrong.
 
-## The section pattern
+## The chapter pattern
 
-The three orienting lines, in order, before any data:
+Three things, in order, before any data:
 
-| Line | Answers | In the template |
+| Part | Answers | In the template |
 |---|---|---|
-| Eyebrow | What am I looking at | `.eyebrow` |
-| Heading and lede | Why it matters | `h2` and `.lede` |
-| The move | What to do with it | the lede's last sentence |
+| Number and name | Where am I | `.chapter-n` and `h2` |
+| One line | What was found | `.chapter-sub` |
+| A drawing, with one line under it | What it means | `.mk` and `.mk-means` |
 
-A section that cannot fill the third line is describing something the
-reader has no use for, and that is a reason to cut the section rather
-than to leave the line out.
+What to do about it is the job of one ranked list, shown in the verdict and
+again at the end. A chapter that cannot fill its one line is describing
+something the reader has no use for, and that is a reason to cut it.
 
 ## Adopting these in a new skill
 
