@@ -2393,7 +2393,7 @@
     <section id="start">
       <h3 class="part">Every move, in order</h3>
       <!-- SLOT:next-steps --><div class="moves" data-report-region="next-steps" data-next-steps-json="[[&quot;The button&#x27;s hover color is set twice, so the first value never ships.&quot;,&quot;acme-storefront/src/button.css:118&quot;],[&quot;Decide what the 1 matching color is.&quot;,&quot;acme-storefront/src/Card.css:14&quot;],[&quot;Resolve the imports we couldn&#x27;t follow: an alias your config declares, or a path we couldn&#x27;t reach.&quot;,&quot;python3 tools/import_graph.py . --json .token-vitals/graph.json&quot;],[&quot;Give us the resolved output for each theme: the built CSS, or the step that makes it.&quot;,&quot;python3 tools/discover_environment.py . --json .token-vitals/discovery.json&quot;]]"><div class="move" data-move="fix:single-source" data-move-kind="fix"><span class="move-n">1</span><div class="move-body"><span class="move-verb" data-kind="fix">Fix</span><span class="move-do">Keep one declaration and delete the other.</span><span class="path">acme-storefront/src/button.css:118</span></div></div><div class="move" data-move="decide:matching-colors" data-move-kind="decide"><span class="move-n">2</span><div class="move-body"><span class="move-verb" data-kind="decide">Decide</span><span class="move-do">Decide what the 1 matching color is.</span><span class="move-why">Leakage stays blocked until you do.</span><span class="path">acme-storefront/src/Card.css:14</span></div></div><div class="move" data-move="unlock:import_resolution" data-move-kind="unlock"><span class="move-n">3</span><div class="move-body"><span class="move-verb" data-kind="unlock">Unlock</span><span class="move-do">Resolve the imports we couldn&#x27;t follow: an alias your config declares, or a path we couldn&#x27;t reach.</span><span class="move-why">Unblocks leakage.</span></div></div><div class="move" data-move="unlock:mode_resolution" data-move-kind="unlock"><span class="move-n">4</span><div class="move-body"><span class="move-verb" data-kind="unlock">Unlock</span><span class="move-do">Give us the resolved output for each theme: the built CSS, or the step that makes it.</span><span class="move-why">Unblocks themes.</span></div></div><p class="mk-means">Confirmed defects come first, then calls only you can make, then what we couldn’t see.</p></div><!-- /SLOT:next-steps -->
-      <!-- SLOT:agent-prompt --><div class="agent-prompt" data-report-region="agent-prompt" data-agent-prompt-moves="fix:single-source decide:matching-colors unlock:import_resolution unlock:mode_resolution"><h3 class="part">Hand this to your design system agent</h3><p class="mk-means">The moves above, written as a brief: what to fix, what to ask you, and what to leave alone.</p><details class="cmd"><summary>Show the prompt</summary><div class="details-body"><div class="cmd-row prompt-row"><pre data-copy-source>You are working on this repository&#x27;s design tokens. An audit of them found 1 confirmed defect, 1 call that needs a person and 2 checks it could not see.
+      <!-- SLOT:agent-prompt --><div class="agent-prompt" data-report-region="agent-prompt" data-agent-prompt-moves="fix:single-source decide:matching-colors unlock:import_resolution unlock:mode_resolution"><h3 class="part">Hand this to your design system agent</h3><p class="mk-means">Two briefs. The first is the moves above: what to fix, what to ask you, what to leave alone. The second is the longer road: see what we couldn’t, gather what you need to decide, then move each check to Healthy.</p><details class="cmd" data-agent-prompt="moves"><summary>Show the prompt for the first moves</summary><div class="details-body"><div class="cmd-row prompt-row"><pre data-copy-source>You are working on this repository&#x27;s design tokens. An audit of them found 1 confirmed defect, 1 call that needs a person and 2 checks it could not see.
 
 FIX. Do this, and only this:
 - The button&#x27;s hover color is set twice, so the first value never ships. Keep one declaration and delete the other. At acme-storefront/src/button.css:118.
@@ -2416,7 +2416,42 @@ If the person wants the blocked checks measured, these let the audit see more. T
 
 DONE WHEN:
 - The audit is run again and Single source is no longer graded Fix.
-- Each question above has an answer from a person, written down where the next run can read it.</pre><button type="button" class="copy" data-copy aria-label="Copy the prompt">Copy</button></div></div></details></div><!-- /SLOT:agent-prompt -->
+- Each question above has an answer from a person, written down where the next run can read it.</pre><button type="button" class="copy" data-copy aria-label="Copy the prompt">Copy</button></div></div></details><details class="cmd" data-agent-prompt="healthy"><summary>Show the prompt to get every check to Healthy</summary><div class="details-body"><div class="cmd-row prompt-row"><pre data-copy-source>Goal: all 8 of this repository&#x27;s design token checks Healthy. Work through the steps in order. After each step, stop and tell the person what you found before you go on.
+
+Where things stand. Healthy: Coverage, Naming and Enforcement · Watch: Tier integrity and Unused tokens · Fix: Single source · Blocked: Leakage and Themes.
+
+1. SEE MORE FIRST. The audit could not see these, so nothing about them can be improved yet. Find out why for each, and report it. Change no product code in this step.
+- Leakage is blocked until imports resolve.
+    What we know: Two hardcoded colors match a token; we can&#x27;t yet say they mean the same thing.
+    Try: Resolve the imports we couldn&#x27;t follow: an alias your config declares, or a path we couldn&#x27;t reach.
+    python3 tools/import_graph.py . --json .token-vitals/graph.json
+- Themes is blocked until themes resolve.
+    What we know: Your themes are built at runtime, so there was no output to read.
+    Try: Give us the resolved output for each theme: the built CSS, or the step that makes it.
+    python3 tools/discover_environment.py . --json .token-vitals/discovery.json
+
+2. GATHER CONTEXT FOR THE CALLS. Each of these is a person&#x27;s to make. For each, collect what they need to make it: every place it shows up, with file and line, and what each answer would change. Bring that back as a short note. Do not answer for them.
+- Decide what the 1 matching color is. Start at acme-storefront/src/Card.css:14.
+
+3. FIX WHAT IS CONFIRMED.
+- The button&#x27;s hover color is set twice, so the first value never ships. Keep one declaration and delete the other. At acme-storefront/src/button.css:118.
+
+4. MOVE WATCH TO HEALTHY. For each, find every instance behind the number, then propose the smallest change that crosses the line. Propose first; change after the person agrees.
+- Tier integrity. A few files skip the role and use the raw color. Still under the line. Start at acme-storefront/src/Card.css:14.
+    The lines: Healthy at 0 files, Watch up to 5%, Fix above 5%.
+- Unused tokens. Safe to remove once you confirm the list. Start at northwind-ds/tokens/color.component.json:88.
+    The lines: Healthy under 2%, Watch up to 10%, Fix above 10%.
+
+5. CHECK THE CLOSE CALLS. These grades rest on a judgment that could have gone the other way. Look at the evidence for each and say which reading fits this system, so the next run starts from an answer.
+- Tier integrity reads Watch. Read the other way it is Fix: Counting every raw-value token puts 40 files past the line.
+
+RULES:
+- A check turns Healthy because the system changed, never because the audit was told to look away. Add no exemption, exclusion or ignore to move a number, and change no threshold.
+- Delete no token to shrink a count. A token that looks unused may be used somewhere the audit could not see.
+- One change at a time, each with what it was, what it is now and which check it moves.
+- Blocked means the audit could not see it. It never means the code is wrong.
+
+DONE WHEN: the audit is run again and every check is Healthy, or each one that is not has a reason written down that a person agreed to.</pre><button type="button" class="copy" data-copy aria-label="Copy the prompt">Copy</button></div></div></details></div><!-- /SLOT:agent-prompt -->
       <!-- SLOT:stage --><div class="stage" data-report-region="stage" data-stage-json="{&quot;already_met&quot;:[&quot;tokens live in one place&quot;],&quot;current&quot;:&quot;declared&quot;,&quot;next&quot;:&quot;adopted&quot;,&quot;threshold&quot;:&quot;Decide what the 2 matching colors are&quot;}"><h3 class="part">Where your system stands</h3><ol class="mk-ladder" aria-label="Stage 2 of 6: declared"><li class="done"><i></i><span>scattered</span></li><li class="now"><i></i><span>declared</span></li><li class=""><i></i><span>adopted</span></li><li class=""><i></i><span>layered</span></li><li class=""><i></i><span>complete</span></li><li class=""><i></i><span>held</span></li></ol><p class="mk-means"><b>To reach adopted</b> decide what the 2 matching colors are.</p><details><summary>Already met</summary><div class="details-body"><ul><li>tokens live in one place</li></ul></div></details></div><!-- /SLOT:stage -->
     </section>
 

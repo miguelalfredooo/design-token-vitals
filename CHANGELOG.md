@@ -43,6 +43,13 @@ decision is a question to put to a person, and a blocked check is something
 to leave alone. A run may add one line of its own rules
 (`handoff.house_rules`); the tool assumes none. A clean run gets no prompt.
 
+A second prompt, `moves.healthy_prompt`, is the long road to every check
+Healthy, in the order that road has: see what the audit could not, gather
+what a person needs to make each call, fix what is confirmed, move Watch
+across its line, then test the close calls a grade rests on. Its rules say
+how a grade may move: because the system changed, never because the audit was
+told to look away.
+
 **Counts reconcile.** `confidence.split` counts the five states and sums to
 the number of checks. The old four-way split put Watch and Fix in one bucket.
 `trend.py` still reads a baseline written the old way.

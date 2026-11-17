@@ -194,5 +194,68 @@ class TestThePromptForAnAgent(unittest.TestCase):
         self.assertIn(".token-vitals/graph.json", prompt)
 
 
+class TestThePromptToGetEveryCheckHealthy(unittest.TestCase):
+    """The long road, in the order the road has."""
+
+    def doc(self):
+        doc = with_everything()
+        doc["vitals"]["tier-integrity"] = {
+            "grade": "watch", "evidence": ["src/card.css:14"],
+            "measure": {"means": "Four files use a raw color where a role exists."}}
+        doc["confidence"]["confidence"] = {
+            "leakage": {"blocked_by": ["import_resolution"]},
+            "orphans": {"blocked_by": ["import_resolution"]}}
+        doc["decisions"] = [{"decision": "x", "moved": "y", "vitals": ["coverage"],
+                             "other_reading": "There is no shared z-index scale. More.",
+                             "other_grade": "watch"}]
+        return doc
+
+    def test_the_steps_run_see_gather_fix_improve_recheck(self):
+        prompt = moves.healthy_prompt(self.doc())
+        order = [prompt.index(title) for title in (
+            "SEE MORE FIRST", "GATHER CONTEXT FOR THE CALLS",
+            "FIX WHAT IS CONFIRMED", "MOVE WATCH TO HEALTHY",
+            "CHECK THE CLOSE CALLS")]
+        self.assertEqual(order, sorted(order))
+        self.assertIn("1. SEE MORE FIRST", prompt)
+        self.assertIn("5. CHECK THE CLOSE CALLS", prompt)
+
+    def test_a_blocked_check_is_investigated_before_anything_is_changed(self):
+        prompt = moves.healthy_prompt(self.doc())
+        self.assertIn("Leakage is blocked until imports resolve.", prompt)
+        self.assertIn("Change no product code in this step", prompt)
+        self.assertIn("python3 tools/import_graph.py . --json g.json", prompt)
+
+    def test_a_watch_check_carries_its_evidence_and_its_lines(self):
+        prompt = moves.healthy_prompt(self.doc())
+        self.assertIn("Tier integrity. Four files use a raw color where a role "
+                      "exists. Start at src/card.css:14.", prompt)
+        self.assertIn("The lines: Healthy at 0 files, Watch up to 5%, Fix above 5%.",
+                      prompt)
+
+    def test_a_healthy_grade_that_rests_on_a_close_call_is_named(self):
+        prompt = moves.healthy_prompt(self.doc())
+        self.assertIn("Coverage reads Healthy. Read the other way it is Watch: "
+                      "There is no shared z-index scale.", prompt)
+
+    def test_green_may_not_be_reached_by_hiding_from_the_audit(self):
+        prompt = moves.healthy_prompt(self.doc())
+        self.assertIn("never because the audit was told to look away", prompt)
+        self.assertIn("Add no exemption, exclusion or ignore", prompt)
+        self.assertIn("Delete no token to shrink a count", prompt)
+        self.assertIn("change no threshold", prompt)
+
+    def test_steps_with_nothing_in_them_are_left_out_and_renumbered(self):
+        doc = report()
+        doc["vitals"]["naming-coherence"] = {"grade": "watch", "note": "Two patterns."}
+        prompt = moves.healthy_prompt(doc)
+        self.assertIn("1. MOVE WATCH TO HEALTHY", prompt)
+        for absent in ("SEE MORE FIRST", "GATHER CONTEXT", "FIX WHAT IS CONFIRMED"):
+            self.assertNotIn(absent, prompt)
+
+    def test_a_system_that_is_already_healthy_gets_no_prompt(self):
+        self.assertEqual(moves.healthy_prompt(report()), "")
+
+
 if __name__ == "__main__":
     unittest.main()

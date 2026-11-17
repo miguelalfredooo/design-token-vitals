@@ -1174,27 +1174,43 @@ def render_next_steps(report):
             % (json_attr(moves.as_rows(report)), body))
 
 
-def render_agent_prompt(report):
-    """The ranked moves as a prompt for an agent, behind a button, with copy.
+def _prompt_block(summary, prompt, name):
+    return ('<details class="cmd" data-agent-prompt="%s"><summary>%s</summary>'
+            '<div class="details-body"><div class="cmd-row prompt-row">'
+            '<pre data-copy-source>%s</pre><button type="button" class="copy" '
+            'data-copy aria-label="Copy the prompt">Copy</button></div></div>'
+            '</details>' % (esc(name), esc(summary), esc(prompt)))
 
-    Built by `moves.agent_prompt` from the one ranked list, so it cannot say
-    something the page above it does not.
+
+def render_agent_prompt(report):
+    """Two prompts for an agent, each behind a button, each with copy.
+
+    The first hands over the ranked moves: the one confirmed fix, the
+    questions, what to leave alone. The second is the long road to every
+    check Healthy. Both are written by `moves` from the same report, so
+    neither can say something the page above it does not.
     """
-    prompt = moves.agent_prompt(report, root_of(report))
+    root = root_of(report)
+    first = moves.agent_prompt(report, root)
+    road = moves.healthy_prompt(report, root)
     ids = " ".join(move["id"] for move in moves.rank(report))
-    if not prompt:
+    if not (first or road):
         return ('<div class="agent-prompt" data-report-region="agent-prompt" '
                 'data-agent-prompt-moves=""></div>')
+    blocks = ""
+    if first:
+        blocks += _prompt_block("Show the prompt for the first moves", first, "moves")
+    if road:
+        blocks += _prompt_block(
+            "Show the prompt to get every check to Healthy", road, "healthy")
     return (
         '<div class="agent-prompt" data-report-region="agent-prompt" '
         'data-agent-prompt-moves="%s"><h3 class="part">Hand this to your '
-        'design system agent</h3><p class="mk-means">The moves above, written '
-        'as a brief: what to fix, what to ask you, and what to leave alone.</p>'
-        '<details class="cmd"><summary>Show the prompt</summary>'
-        '<div class="details-body"><div class="cmd-row prompt-row">'
-        '<pre data-copy-source>%s</pre><button type="button" class="copy" '
-        'data-copy aria-label="Copy the prompt">Copy</button></div></div>'
-        '</details></div>' % (esc(ids), esc(prompt)))
+        'design system agent</h3><p class="mk-means">Two briefs. The first is '
+        'the moves above: what to fix, what to ask you, what to leave alone. '
+        'The second is the longer road: see what we couldn’t, gather what you '
+        'need to decide, then move each check to Healthy.</p>%s</div>'
+        % (esc(ids), blocks))
 
 
 def render_stage(report):
