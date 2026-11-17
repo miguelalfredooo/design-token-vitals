@@ -114,11 +114,14 @@ def stamp_pass(report_json_path, doc, report_html_path, report_html_text):
     doc.setdefault("provenance", {})["validation_gate"] = {
         "passed": True, "exit_code": 0, "checked_at": checked_at,
     }
-    with open(report_json_path, "w", encoding="utf-8") as fh:
-        json.dump(doc, fh, indent=2)
-        fh.write("\n")
+    def write_report():
+        with open(report_json_path, "w", encoding="utf-8") as fh:
+            json.dump(doc, fh, indent=2)
+            fh.write("\n")
 
-    if report_html_path and report_html_text is not None:
+    if not (report_html_path and report_html_text is not None):
+        write_report()
+    else:
         # The count is derived for the same reason the summary line's was: a
         # literal here said 18 while nineteen rules ran, and the number a
         # reader sees on a finished report is the last place that should
@@ -137,6 +140,14 @@ def stamp_pass(report_json_path, doc, report_html_path, report_html_text):
             lambda m: m.group(1) + m.group(2), report_html_text, count=1)
         stamped = VALIDATION_NOTE_SLOT.sub(
             lambda m: m.group(1) + ok_note + m.group(2), stamped, count=1)
+        # The page kept in the JSON says what About this run says, so it is
+        # read again from the stamped page: "Not validated yet" must not
+        # outlive the pass in the copy another page draws from.
+        if isinstance(doc.get("page"), dict):
+            import family
+            family.attach(doc, stamped)
+            family.write_beside(report_json_path, doc["page"])
+        write_report()
         if stamped != report_html_text:
             with open(report_html_path, "w", encoding="utf-8") as fh:
                 fh.write(stamped)

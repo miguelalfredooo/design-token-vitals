@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/miguelalfredooo/design-token-vitals/schemas/page/1.0.0",
+  "title": "Design Token Vitals: the report's page as data",
+  "description": "report.json keeps this object under `page`. It is what a reader sees before any evidence, so another page can draw the report without the renderer. Written by tools/family.py from the same functions the HTML is rendered from; tools/family.py --check holds it to these rules and to the ones a schema cannot say (the counters agree with the strip, the moves are in rank order).",
+  "type": "object",
+  "required": ["shape", "id", "title", "factLine", "about", "verdict", "chapters", "verdictText", "askText"],
+  "additionalProperties": false,
+  "properties": {
+    "shape": { "const": 1, "description": "The major version of this shape. A reader refuses a number it does not know." },
+    "id": { "const": "vitals" },
+    "title": { "type": "string", "minLength": 1 },
+    "factLine": { "type": "string", "minLength": 1, "description": "The one line of facts under the title, parts joined by ' · '. Plain text." },
+    "about": {
+      "description": "About this run: every fact true of the whole run, grouped as the page groups it.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["group", "items"],
+        "additionalProperties": false,
+        "properties": {
+          "group": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["value"],
+              "additionalProperties": false,
+              "properties": {
+                "label": { "type": "string" },
+                "value": { "type": "string", "minLength": 1 },
+                "note": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "required": ["sentence", "state", "strip", "counters", "firstMoves"],
+      "additionalProperties": false,
+      "properties": {
+        "sentence": { "type": "string", "minLength": 1 },
+        "state": { "$ref": "#/$defs/state", "description": "The worst state in the strip." },
+        "strip": {
+          "description": "The eight checks in their fixed order.",
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": ["key", "name", "grade", "state"],
+            "additionalProperties": false,
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "name": { "type": "string", "minLength": 1 },
+              "grade": { "enum": ["healthy", "watch", "needs-work", "not-visible", "not-needed"], "description": "The raw name, for code." },
+              "state": { "$ref": "#/$defs/state", "description": "The word a reader sees." }
+            }
+          }
+        },
+        "counters": {
+          "description": "Fix now, Decide, Unlock, in that order.",
+          "type": "array",
+          "prefixItems": [
+            { "$ref": "#/$defs/counter", "properties": { "kind": { "const": "fix" } } },
+            { "$ref": "#/$defs/counter", "properties": { "kind": { "const": "decide" } } },
+            { "$ref": "#/$defs/counter", "properties": { "kind": { "const": "unlock" } } }
+          ],
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "firstMoves": {
+          "description": "The first three of the one ranked list: fixes, then decisions, then unlocks.",
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["kind", "verb", "title"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "enum": ["fix", "decide", "unlock"] },
+              "verb": { "enum": ["Fix", "Decide", "Unlock"] },
+              "title": { "type": "string", "minLength": 1 },
+              "action": { "type": "string" },
+              "where": { "type": "string", "description": "A path relative to the repository, with a line where there is one." },
+              "command": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "chapters": {
+      "description": "Every chapter in order: its number, its id on the page, its name, and the one line under the name.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["n", "id", "name", "stat", "state"],
+        "additionalProperties": false,
+        "properties": {
+          "n": { "type": "string", "pattern": "^[0-9]{2}$" },
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "stat": { "type": "string", "minLength": 1 },
+          "state": {
+            "description": "Set on the verdict and on the three queues (Fix now, Decide, Unlock). Null on an evidence chapter: a grade is stated once.",
+            "anyOf": [{ "$ref": "#/$defs/state" }, { "type": "null" }]
+          }
+        }
+      }
+    },
+    "verdictText": { "type": "string", "minLength": 1, "maxLength": 600, "description": "The page's front as plain text. Also written beside report.json as VERDICT.md." },
+    "askText": { "type": "string", "minLength": 1, "maxLength": 900, "description": "What would make the next report sharper, as a brief for an agent: evidence to gather, never a fix. Also written as ASK.md." }
+  },
+  "$defs": {
+    "state": { "enum": ["Healthy", "Watch", "Fix", "Blocked", "Not needed"] },
+    "counter": {
+      "type": "object",
+      "required": ["kind", "label", "count", "unit"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["fix", "decide", "unlock"] },
+        "label": { "type": "string", "minLength": 1 },
+        "count": { "type": "integer", "minimum": 0 },
+        "unit": { "type": "string" }
+      }
+    }
+  }
+}

@@ -65,7 +65,7 @@
   curly quotes and the Delta character. Without a declared charset a browser
   falls back to a locale default and those render as mojibake.
 -->
-<html lang="en">
+<html lang="en" data-density="comfortable">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1390,6 +1390,37 @@
     .contents a:hover { border-left-color: var(--mark); background: var(--surface); }
   }
 
+  /* ---------- density: the same page, the same order, less or more of it ----------
+     Comfortable is the whole page. Compact is one row a chapter (its number,
+     its name, the one line under it) and a verdict of the strip, the three
+     counters and the first move. Density changes what shows, never the data:
+     every chapter is still in the document, and print is always comfortable. */
+
+  .density { display: inline-flex; gap: 2px; margin: 8px 0 0; }
+  .density button {
+    font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
+    color: var(--ink-soft); background: transparent;
+    border: 1px solid var(--rule); border-radius: 4px;
+  }
+  .density button[aria-pressed="true"] { color: var(--ink); background: var(--surface); border-color: var(--ink-mute); }
+  .density button:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+
+  @media screen {
+    [data-density="compact"] .chapter { margin-top: 0; }
+    [data-density="compact"] .chapter:not(.chapter--verdict) > :not(.chapter-head) { display: none; }
+    [data-density="compact"] .chapter:not(.chapter--verdict) .chapter-head {
+      grid-template-columns: auto minmax(0, 12em) 1fr; padding: 8px 0;
+      border-top-width: 1px; border-top-color: var(--rule);
+    }
+    [data-density="compact"] .chapter:not(.chapter--verdict) .chapter-head h2 { font-size: 15px; }
+    [data-density="compact"] .chapter:not(.chapter--verdict) .chapter-sub { grid-column: 3; margin: 0; }
+    [data-density="compact"] .chapter--verdict .verdict-line,
+    [data-density="compact"] .contents,
+    [data-density="compact"] .about { display: none; }
+    [data-density="compact"] .chapter--verdict { margin-bottom: 18px; }
+  }
+  @media print { .density { display: none; } }
+
   /* ---------- a chapter: number, name, one line, then the evidence ---------- */
 
   .chapter { margin-top: 56px; scroll-margin-top: 24px; }
@@ -1729,6 +1760,10 @@
 
   <header class="runhead">
     <h1>Design Token Vitals</h1>
+    <div class="density" role="group" aria-label="How much to show">
+      <button type="button" data-density-set="compact" aria-pressed="false">Compact</button>
+      <button type="button" data-density-set="comfortable" aria-pressed="true">Comfortable</button>
+    </div>
     <!-- SLOT:runhead-tag --><span class="sampletag">Sample report · representative data</span><!-- /SLOT:runhead-tag -->
     <p class="factline"><!-- SLOT:runhead-meta --><b>northwind-ds</b> @ 7f0c22ab · 2 commits behind · Jan 1, 2026 · 1,645 files · 240 tokens · 6 of 8 checks measured<!-- /SLOT:runhead-meta --></p>
     <!-- SLOT:about-run --><details class="about" id="about-run" data-measurement-summary-json="{&quot;token_sources&quot;:8,&quot;unresolved_actionable&quot;:3}" data-adapter-versions-json="{&quot;dtcg&quot;:&quot;0.0.0&quot;,&quot;tailwind&quot;:&quot;0.0.0&quot;}" data-held-out-sources="0"><summary>About this run</summary><div class="details-body about-grid"><div class="about-block about-files"><h3>What we read</h3><div class="about-fact" data-run-fact="source-files-in-scope"><span class="about-n">1,645</span><span class="about-what">source files in scope</span><span class="mk-bar" data-tone="ink" role="img" aria-label="1,645 of 1,645 source files in scope (100%)"><i style="width:100.000%"></i></span><span class="about-why">Everything your entry files reach, in code you own.</span></div><div class="about-fact" data-run-fact="CSS-files-scanned"><span class="about-n">96</span><span class="about-what">CSS files scanned</span><span class="mk-bar" data-tone="ink" role="img" aria-label="96 of 1,645 CSS files scanned (6%)"><i style="width:5.836%"></i></span><span class="about-why">Where we looked for hardcoded colors.</span></div><div class="about-fact" data-run-fact="files-that-use-a-token"><span class="about-n">128</span><span class="about-what">files that use a token</span><span class="mk-bar" data-tone="ink" role="img" aria-label="128 of 1,645 files that use a token (8%)"><i style="width:7.781%"></i></span><span class="about-why">Where a token is referenced by name.</span></div><div class="about-fact" data-run-fact="files-read-for-component-use"><span class="about-n">412</span><span class="about-what">files read for component use</span><span class="mk-bar" data-tone="ink" role="img" aria-label="412 of 1,645 files read for component use (25%)"><i style="width:25.046%"></i></span><span class="about-why">Where we counted token use by component.</span></div></div><div class="about-block"><h3>Your setup</h3><dl class="facts"><dt>framework</dt><dd>Nextjs · tailwindcss 4.3.0</dd><dt>entry files</dt><dd>1 entry file (1 owned)</dd><dt>token files</dt><dd>8 confirmed sources</dd><dt>themes you declared</dt><dd>light, dark</dd><dt>code you own</dt><dd>1 path pattern<details class="about-more"><summary>Show them</summary><div class="details-body"><span class="path">src/**</span></div></details></dd></dl></div><div class="about-block"><h3>What we left out</h3><ul><li>src/**/*.{ts,tsx}</li><li>excluded: dist/, node_modules/</li><li>3 imports we couldn't follow.</li></ul></div><div class="about-block"><h3>How current it is</h3><p>Measured 2 commits ago. The code has moved since.</p><!-- SLOT:validation-note --><p class="about-validation" data-validated="false">Not validated yet.</p><!-- /SLOT:validation-note --></div><div class="about-block"><h3>Versions</h3><dl class="facts"><dt>report format</dt><dd>2</dd><dt>design-token-vitals</dt><dd>design-token-vitals @ 0000000</dd><dt>adapters</dt><dd>dtcg · tailwind</dd><dt>generated</dt><dd>2026-01-01 00:00:00 UTC</dd></dl></div></div></details><!-- /SLOT:about-run -->

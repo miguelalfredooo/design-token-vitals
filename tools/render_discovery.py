@@ -208,6 +208,41 @@ INVENTORY_TABS_SCRIPT = """<script data-token-vitals-ui="report-controller">
 
   revealHashTarget();
 
+  // Density: the same page with less of it showing. The choice is the
+  // reader's and is kept for the next report they open.
+  const densityButtons = Array.from(document.querySelectorAll("[data-density-set]"));
+  const setDensity = (value) => {
+    document.documentElement.dataset.density = value;
+    densityButtons.forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.densitySet === value));
+    });
+  };
+  let keptDensity = null;
+  try {
+    keptDensity = window.localStorage.getItem("token-vitals-density");
+  } catch (error) {
+    keptDensity = null;
+  }
+  if (keptDensity === "compact" || keptDensity === "comfortable") {
+    setDensity(keptDensity);
+  }
+  densityButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setDensity(button.dataset.densitySet);
+      try {
+        window.localStorage.setItem("token-vitals-density", button.dataset.densitySet);
+      } catch (error) {
+        // A report opened from a file may have no storage. The choice still holds for this view.
+      }
+    });
+  });
+  window.addEventListener("hashchange", () => {
+    if (document.documentElement.dataset.density === "compact" && window.location.hash.length > 1) {
+      setDensity("comfortable");
+      revealHashTarget();
+    }
+  });
+
   let printDisclosureState = [];
   window.addEventListener("beforeprint", () => {
     if (printDisclosureState.length) {
@@ -1580,7 +1615,10 @@ def augment(discovery_path, report_path, html_path, tokens_path=None,
         document, old_generated, generated, old_version, skill_version
     )
     document = prepare_progressive_disclosures(document)
+    import family
+    page = family.attach(report, document)
     write_json(report_path, report)
+    family.write_beside(report_path, page)
     with open(html_path, "w", encoding="utf-8") as handle:
         handle.write(document)
 
