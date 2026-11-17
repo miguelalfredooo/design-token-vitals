@@ -440,7 +440,10 @@ def augment(components_path, report_path, html_path):
     )
     from render_discovery import prepare_progressive_disclosures
     document = prepare_progressive_disclosures(document)
+    import family
+    page = family.attach(report, document)
     write_json(report_path, report)
+    family.write_beside(report_path, page)
     with open(html_path, "w", encoding="utf-8") as handle:
         handle.write(document)
 

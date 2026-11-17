@@ -226,6 +226,35 @@ python3 tools/taxonomy.py --check
 python3 -m unittest discover -s tools -p 'test_*.py'
 ```
 
+### The page as data
+
+`report.json` keeps the page a reader sees first under `page`, so another
+page can draw this report without the renderer. Both renderers write it, the
+gate refreshes it on a pass, and `VERDICT.md` and `ASK.md` are written beside
+`report.json` from the same two texts.
+
+| What | Where in `report.json` |
+| --- | --- |
+| The one line of facts | `page.factLine` |
+| About this run, grouped | `page.about[].group`, `page.about[].items[]` (`label`, `value`, `note`) |
+| The verdict's sentence and worst state | `page.verdict.sentence`, `page.verdict.state` |
+| The strip of eight | `page.verdict.strip[]` (`key`, `name`, `grade`, `state`) |
+| Fix now, Decide, Unlock | `page.verdict.counters[]` (`kind`, `label`, `count`, `unit`) |
+| The first moves, three at most | `page.verdict.firstMoves[]` (`kind`, `verb`, `title`, `action`, `where`, `command`) |
+| The chapters in order | `page.chapters[]` (`n`, `id`, `name`, `stat`, `state`) |
+| The text to read first, 600 characters at most | `page.verdictText` |
+| The brief for an agent, 900 characters at most | `page.askText` |
+
+`state` is one of Healthy, Watch, Fix, Blocked, Not needed. `grade` keeps the
+raw name for code. A chapter has a state only when it is the verdict or one
+of the three queues. The contract is `assets/page.schema.json` (JSON Schema
+2020-12), and this checks a report against it and against what a schema
+cannot say:
+
+```bash
+python3 tools/family.py .token-vitals/report.json --check
+```
+
 Baselines are passed explicitly, so the skill never writes state into the
 repository it audits. Commit `.token-vitals/report.json` and any past commit
 becomes a baseline.

@@ -79,6 +79,23 @@ copy button.
 **Principle 3 changed**: a chapter opens on what was found, and no longer on
 an eyebrow, a heading and a lede. `test_template.py` checks the new pattern.
 
+**The page as data** (`tools/family.py`, `assets/page.schema.json`).
+`report.json` now carries `page`: the fact line, About this run in its
+groups, the verdict (sentence, strip, counters, the first three moves), the
+fourteen chapters with the line under each name, and two short texts,
+`verdictText` (600 characters at most) and `askText` (900 at most), also
+written beside the report as `VERDICT.md` and `ASK.md`. Nothing in it is
+computed a second way: it comes from the functions the HTML is rendered from
+and from the rendered page itself, and the gate reads it again on a pass, so
+"Not validated yet" cannot outlive the stamp. `family.py --check` rejects a
+page whose counters disagree with its strip, whose moves are out of rank
+order, or whose texts run long or hold a machine path.
+
+**Density.** The page root says `data-density`, `comfortable` by default. A
+switch under the title offers `compact`: the strip, the three counters and
+the first move, then one row a chapter. It hides and never removes, a link
+into a chapter opens the full page again, and print is always comfortable.
+
 **Found on the way.** The lineage table printed "untraced" in three columns
 for every row, because it read keys the lineage tool never wrote. And
 `tools/mutate.py` could leave a stale compiled file behind after restoring a
