@@ -51,16 +51,21 @@ class TestConfidence(unittest.TestCase):
             report(**{"mode-completeness": "not-needed"}), CAPABILITIES)
         entry = state["confidence"]["mode-completeness"]
         self.assertEqual(entry["state"], "not-needed")
-        self.assertEqual(state["split"]["not_visible"], 0)
-        self.assertEqual(state["split"]["your_code"], 0)
+        self.assertEqual(state["split"]["not-visible"], 0)
+        self.assertEqual(state["split"]["not-needed"], 1)
+        self.assertEqual(state["split"]["watch"] + state["split"]["needs-work"], 0)
 
-    def test_the_two_kinds_of_gap_are_counted_separately_and_never_summed(self):
+    def test_the_five_states_are_counted_apart_and_sum_to_the_checks(self):
+        """Watch and Fix used to share a bucket, so two sections of one page
+        printed `2 · 3 · 3` and `2 · 2 · 1 · 3` for the same eight checks."""
         state = unlock_path.build(report(leakage="needs-work", orphans="watch"),
                                   CAPABILITIES)
-        self.assertEqual(state["split"]["your_code"], 2)
-        self.assertEqual(state["split"]["not_visible"], 1)
-        self.assertEqual(state["split"]["healthy"], 5)
+        self.assertEqual(state["split"], {
+            "healthy": 5, "watch": 1, "needs-work": 1, "not-visible": 1,
+            "not-needed": 0})
+        self.assertEqual(sum(state["split"].values()), len(unlock_path.VITALS))
         self.assertNotIn("total_gaps", state["split"])
+        self.assertNotIn("your_code", state["split"])
 
     def test_every_vital_gets_exactly_one_confidence_state(self):
         state = unlock_path.build(report(), CAPABILITIES)
@@ -140,24 +145,22 @@ class TestRunInputGaps(unittest.TestCase):
         self.assertIn("gap in this tool, not in your code", entry["reason"])
 
 
-class TestNextBestQuarterHour(unittest.TestCase):
-    def test_an_audit_gap_leads_when_one_exists(self):
+class TestNoSecondFirstMove(unittest.TestCase):
+    """This tool orders the unlock steps. It does not pick the first move.
+
+    It used to return a `next_15_minutes` card of its own, which led with an
+    unlock while the summary led with a defect. `tools/moves.py` is the one
+    place that ranks, and `test_moves.py` holds that order.
+    """
+
+    def test_the_card_is_gone(self):
         state = unlock_path.build(report(), CAPABILITIES)
-        card = state["next_15_minutes"]
-        self.assertIn("mode", card["action"].lower())
-        self.assertTrue(card["payoff"])
-        self.assertTrue(card["verify"])
+        self.assertNotIn("next_15_minutes", state)
 
-    def test_with_nothing_blocked_the_card_names_the_worst_real_finding(self):
-        state = unlock_path.build(
-            report(leakage="needs-work", **{"mode-completeness": "not-needed"}),
-            CAPABILITIES)
-        self.assertIn("leakage", state["next_15_minutes"]["action"])
-
-    def test_a_clean_verified_run_says_so_rather_than_inventing_work(self):
-        state = unlock_path.build(
-            report(**{"mode-completeness": "not-needed"}), CAPABILITIES)
-        self.assertIsNone(state["next_15_minutes"])
+    def test_the_steps_are_still_ordered_for_the_ranked_list(self):
+        state = unlock_path.build(report(), CAPABILITIES)
+        self.assertEqual(state["unlock_path"][0]["capability"], "mode_resolution")
+        self.assertTrue(state["unlock_path"][0]["verify"])
 
 
 class TestWins(unittest.TestCase):
@@ -193,19 +196,20 @@ if __name__ == "__main__":
 class TestHeadline(unittest.TestCase):
     """A report opens on a sentence. The grid is the detail under it."""
 
-    def test_the_sentence_leads_with_what_is_proven(self):
+    def test_the_line_leads_with_what_was_measured(self):
         line = unlock_path.build(report(), CAPABILITIES)["headline"]
-        self.assertIn("7 of 8", line)
-        self.assertIn("healthy", line)
+        self.assertIn("7 of 8 checks measured", line)
 
-    def test_it_says_audit_capability_rather_than_blaming_the_codebase(self):
+    def test_blocked_is_counted_apart_and_says_what_it_waits_for(self):
         line = unlock_path.build(report(), CAPABILITIES)["headline"]
-        self.assertIn("audit", line.lower())
-        self.assertNotIn("needs-work", line.lower())
+        self.assertIn("1 blocked until themes resolve", line)
+        for raw in ("needs-work", "not-visible", "unmeasured", "audit"):
+            self.assertNotIn(raw, line.lower())
 
-    def test_a_real_problem_is_named_as_one(self):
+    def test_a_real_problem_still_counts_as_measured(self):
+        """A check graded Fix was seen. Only a blocked one was not."""
         line = unlock_path.build(report(leakage="needs-work"), CAPABILITIES)["headline"]
-        self.assertIn("fix in your code", line.lower())
+        self.assertIn("7 of 8 checks measured", line)
 
     def test_a_fully_verified_run_says_so_without_hedging(self):
         clean = {"vitals": {name: {"grade": "healthy"} for name in unlock_path.VITALS}}
@@ -330,10 +334,15 @@ class TestNoUnprovenClaims(unittest.TestCase):
     def test_a_verify_command_has_no_placeholder_left_in_it(self):
         state = self.build()
         commands = [step["verify"] for step in state["unlock_path"]]
-        commands.append(state["next_15_minutes"]["verify"])
+        self.assertTrue(commands)
         for command in commands:
             self.assertNotIn("<", command, command)
-            self.assertIn("/repo", command)
+
+    def test_a_verify_command_never_names_the_machine_it_ran_on(self):
+        """The root is `.`: the reader runs it from the top of their own repo."""
+        for step in self.build()["unlock_path"]:
+            self.assertNotIn("/repo", step["verify"])
+            self.assertRegex(step["verify"], r"\.py \. |^python3 -c ")
 
     def test_no_python_repr_reaches_a_reader(self):
         """`detected_by` is a list, and it was printing as one."""

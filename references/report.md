@@ -61,29 +61,19 @@ few dozen strips. The answer to a large palette is a better rendering,
 never a smaller one — the inventory does not regress to prose as the
 system grows, it compresses through a form built for exactly that.
 
-## Three views, one evidence set
+## One page, read from the top
 
-The report offers three reading depths without running three different audits:
+The report has no views. It opens on the verdict (one sentence, the strip of
+eight, three counters, the first move), then Fix now, Decide and Unlock,
+then the evidence. One numbered contents list reaches all fourteen chapters.
+The inventory and the token sources open folded; a deep link opens whatever
+it lands in. With scripting unavailable every disclosure is open, and
+printing opens them all.
 
-| View | Reader question | Opens with |
-|---|---|---|
-| `snapshot` | What matters now? | Dashboard, maturity, confidence, identity, three priorities, Top 5 component footprint, and eight vital states |
-| `action` | What should we do next? | Snapshot plus the executive summary, decisions, trend, vitals, ranked actions, architecture, fix queue, ownership, Top 20 component roadmap, coverage, leakage, modes, orphans, and rollout strategy |
-| `evidence` | How do we know? | Every section, including lineage, complete token inventory, working set, discovery engine, measurement, and provenance |
-
-Record the initial selection under `rendering.view`; always record
-`rendering.available_views` as `snapshot`, `action`, then `evidence`. Default
-to `snapshot`. A view changes the report's initial disclosure, not its facts:
-every section and every finding remains in the same self-contained HTML file.
-With scripting unavailable, show the complete report. When a deep link points
-into a hidden section, promote the page to the least-detailed view that contains
-the target before scrolling. The switcher stays hidden when scripting is not
-available, while the full report and every evidence disclosure remain visible.
-Printing always includes all sections and all evidence disclosures.
-
-Do not confuse report views with rendering tiers. A view answers how much a
-reader needs now. A tier answers how densely a repository of this size must
-render. The two decisions are independent.
+A grade is stated once, in the strip. A fact about the whole run (the
+commit, the counts of files, the versions) is said once, in About this run.
+The first move comes from one ranked list, `tools/moves.py`: a confirmed
+defect, then a call only the reader can make, then a blocked check.
 
 ## Rendering tiers
 

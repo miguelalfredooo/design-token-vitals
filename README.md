@@ -117,18 +117,18 @@ self-contained HTML report, a JSON working set that duplicates exactly what
 the HTML shows in a machine-readable form for tooling, and a short terminal
 summary naming the one thing worth doing first.
 
-The report opens with an **at-a-glance strip**: the maturity stage as a
-six-tick ladder, the eight grades as one segmented bar, confirmed against
-blocked and unmeasured as another, leakage's three tiers as a third, the
-automatable share of the fix queue as a ring, and the counts as tiles.
-Every mark carries its number. The report ships one fixed, validated script
-for accessible inventory-family tabs; repository content can never enter it.
+The report opens with a **verdict**: one sentence that states the finding,
+the eight checks as one strip, three counters (fix now, decide, unlock) and
+the first move. A grade is stated once, there, in five words: Healthy, Watch,
+Fix, Blocked, Not needed. Blocked means the audit could not see it, and
+never that the code is wrong.
 
-Readers can move between three depths without generating another report:
-**Snapshot** keeps the decision dashboard in view, **Action Plan** adds the
-roadmap and rollout guidance, and **Evidence** reveals the complete audit.
-Deep links promote the view when needed, no-script output stays complete, and
-printing includes every section and disclosure.
+Fourteen numbered chapters follow, in one contents list. Each is a name, one
+line saying what was found, and a drawing: a share is a bar, a count out of
+a whole is a grid of dots, a threshold is a tick on a track, and what could
+not be seen is hatched. The inventory and the token sources open folded,
+a deep link opens whatever it lands in, the page is complete without
+scripting, and printing opens everything.
 
 Below it, an executive summary — the highest-impact problem,
 how many owned files and components it touches, what to fix first, and how
@@ -188,16 +188,20 @@ guardrail the run re-derives each time is a rule that drifts.
 | `tools/audit_literal_colors.py` | Groups hardcoded colors by normalized value and reports each group with its sites, without treating two colors that merely share a value as one intent |
 | `tools/adoption_strategy.py` | Derives and renders the framework-aware unification model, standards baseline, architecture, rollout gates, guardrails, and success measures from the report's measured evidence |
 | `tools/rendering_choices.py` | Derives the list size and each section's form from counts the run already holds, instead of an author typing three sizes and thirteen form values by hand. Reads `--tokens`, `--leakage` and `--discovery`, and prints the count each form was chosen from. A family the run could not see contributes nothing rather than a zero. `rendering.view` stays a choice, because it encodes what the run is FOR |
-| `tools/render_discovery.py` | Rebuilds finished runs from the current template; records Snapshot, Action Plan, or Evidence independently from data density; preserves deep links, no-script completeness, and full print output; keeps summaries, decisions, ownership, lineage, coverage, token inventory, leakage, and provenance identical in report JSON and HTML |
-| `tools/render_component_usage.py` | Renders the dashboard’s five-row token-footprint table, the complete three-band component roadmap, and every component-to-token evidence location |
+| `tools/render_discovery.py` | Rebuilds finished runs from the current template; preserves deep links, no-script completeness, and full print output; keeps summaries, decisions, ownership, lineage, coverage, token inventory, leakage, and provenance identical in report JSON and HTML |
+| `tools/render_component_usage.py` | Renders the components chapter: one ranked table with each row's share of every component's token use drawn as a bar, and every component-to-token evidence location |
+| `tools/vocab.py` | The one vocabulary: five states (Healthy, Watch, Fix, Blocked, Not needed), real plurals, counts with their denominator, and the net that puts an audit's own notes into the report's words |
+| `tools/moves.py` | The one ranked list of what to do next: a confirmed defect, then a call only the reader can make, then a blocked check. Every place that shows a first move renders this list |
+| `tools/draw.py` | The marks the report draws in place of a number in a sentence: bars, stacks, dot grids, threshold tracks, hatched cells, grade dots and side-by-side declarations |
+| `tools/chapters.py` | The verdict, the three action chapters, the eight check cards and About this run, rendered from the three modules above |
 | `tools/findings.py` | Stable, path-independent finding ids, and the priority score `(n + 2f + 3b) x c` over occurrences, affected owned files, breadth, and confidence in the fix |
 | `tools/trend.py` | New, resolved, count changes and regressions between two runs. Refuses when framework, adapters, owned paths, scope or token sources diverge |
 | `tools/discovery_engine.py` | The universal discovery engine, composed from executable framework profiles rather than a per-framework branch. Resolves ownership, scopes orphans to the scope the run was actually given, and is what `discover_environment.py` and `discover_tokens.py` both run on |
 | `tools/import_graph.py` | Walks stylesheet and JS-entry imports from owned production entry points. Reports what is reachable, what is orphaned, and what resolves outside the repository. Reachability is what makes a candidate source an active one |
-| `tools/unlock_path.py` | Splits `not-visible` into *your system has a problem* and *this audit cannot see yet*, gives every vital one of four confidence states, orders the capability gaps by how many vitals each unlocks, and writes the one `next_15_minutes` card. The two gap counts are never summed |
+| `tools/unlock_path.py` | Counts the eight checks in their five states so the breakdown always sums, says what each blocked check is waiting on, and orders the steps that would unblock them, each with a command to run from the repository's own top |
 | `tools/lineage_map.py` | The chain from a value to the role that names it to the components that spend it, plus the blast radius — what moves if this token changes |
 | `tools/freshness.py` | Places a run in history: fresh against the commit it measured, or so many commits and a dirty tree behind it |
-| `tools/mutate.py` | Restores each bug a guard claims to catch and confirms the guard goes red, judging by exit code. `tools/mutations.json` holds 45 mutations and 2 controls — a control is a change that must NOT matter, so a clean sweep is falsifiable rather than assumed |
+| `tools/mutate.py` | Restores each bug a guard claims to catch and confirms the guard goes red, judging by exit code. `tools/mutations.json` holds 49 mutations and 2 controls — a control is a change that must NOT matter, so a clean sweep is falsifiable rather than assumed |
 | `tools/validate_run.py` | Enforces nineteen integrity rules, including discovery, reachability, mode proof, HTML/JSON parity, component adoption, identity evidence, artifact freshness, and a complete evidence-derived unification strategy. `--stamp` writes `provenance.validation_gate` and clears the report's validation banner — the only thing that marks a report finished — and only on a pass |
 | `tools/compare_runs.py` | Diffs two runs on scope, counts, the eight grades, per-vital evidence, initial view, density tier, and rendering forms. Exits non-zero when the grades disagree |
 | `tools/check_voice.py` | The copy standard for generated reports. Skips fenced blocks and inline code, so a document can name a banned word as data |
@@ -212,7 +216,7 @@ python3 tools/discover_tokens.py <repo> --discovery discovery.json --update-disc
 python3 tools/analyze_component_usage.py <repo> --discovery discovery.json --tokens tokens.json --json components.json
 python3 tools/audit_literal_colors.py <repo> --discovery discovery.json --tokens tokens.json --json literal-colors.json
 python3 tools/import_graph.py <repo> --entry app/globals.css --json graph.json
-python3 tools/render_discovery.py --refresh-template --report-view snapshot --discovery discovery.json --tokens tokens.json --leakage literal-colors.json --report-json report.json --html report.html
+python3 tools/render_discovery.py --refresh-template --discovery discovery.json --tokens tokens.json --leakage literal-colors.json --report-json report.json --html report.html
 python3 tools/render_component_usage.py --components components.json --report-json report.json --html report.html
 python3 tools/validate_run.py .token-vitals/report.json --html .token-vitals/report.html --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --components .token-vitals/components.json --leakage .token-vitals/literal-colors.json --current-skill --stamp
 python3 tools/compare_runs.py run-a/report.json run-b/report.json
@@ -241,7 +245,7 @@ bundled tools directly against your repository.
 2. **Detect the styling stack** — match CSS-vars, Tailwind, SCSS, DTCG, and framework-specific mechanisms; profiles and adapters can all apply at once.
 3. **Read what the project declares** — modes, categories, and any accessibility target, taken from the repository, never assumed.
 4. **Grade the eight vitals** — each one graded against the stack and declarations from the prior stages, with at least one real `file:line` attached to every grade.
-5. **Choose the report view and rendering tier** — the reader chooses Snapshot, Action Plan, or Evidence; token count independently decides how densely listings render.
+5. **Derive the rendering tier** — token count decides how densely listings render. The page itself is one document read from the top.
 6. **Rank, queue, and trace** — score every finding, build the fix queue, group by owner, rank component token usage, trace lineage, fill the coverage matrix, and derive the unification strategy — the layers that sit above the raw findings.
 7. **Fill the template** — the self-contained report is built by filling named slots in a fixed template, never by writing free-form HTML.
 8. **Write the outputs** — the HTML report, a JSON working set that duplicates it for tooling, and a terminal summary naming one next step.

@@ -82,10 +82,11 @@ class TestRendering(unittest.TestCase):
         self.assertIn('window.addEventListener("beforeprint"', rendered)
         self.assertIn('window.addEventListener("afterprint"', rendered)
         self.assertIn("disclosure.open = wasOpen", rendered)
-        self.assertIn("const setReportView", rendered)
+        self.assertNotIn("setReportView", rendered)
         self.assertIn("revealHashTarget", rendered)
         self.assertIn("target.scrollIntoView", rendered)
-        self.assertIn('document.documentElement.classList.add("report-views--ready")', rendered)
+        self.assertIn('document.documentElement.classList.add("report--ready")', rendered)
+        self.assertIn("navigator.clipboard.writeText", rendered)
         self.assertIn(
             'disclosure.open = disclosure.dataset.reportDefaultOpen === "true"',
             rendered,
@@ -110,44 +111,6 @@ class TestRendering(unittest.TestCase):
             render_discovery.prepare_progressive_disclosures(rendered), rendered
         )
 
-    def test_report_view_switcher_has_three_plain_language_choices(self):
-        rendered = render_discovery.render_report_view_switcher("action")
-        self.assertIn('data-report-view-default="action"', rendered)
-        self.assertIn('data-report-views-json="[&quot;snapshot&quot;,&quot;action&quot;,&quot;evidence&quot;]"', rendered)
-        self.assertEqual(rendered.count('data-report-view-button="'), 3)
-        self.assertIn(
-            'data-report-view-button="action" aria-pressed="true"', rendered
-        )
-        for label, helper in (
-                ("Snapshot", "What matters now"),
-                ("Action Plan", "What to do next"),
-                ("Evidence", "How we know")):
-            self.assertIn("<strong>%s</strong>" % label, rendered)
-            self.assertIn("<span>%s</span>" % helper, rendered)
-
-    def test_report_view_resolution_defaults_and_rejects_unknown_values(self):
-        self.assertEqual(render_discovery.resolve_report_view(), "snapshot")
-        self.assertEqual(
-            render_discovery.resolve_report_view("evidence"), "evidence"
-        )
-        with self.assertRaisesRegex(ValueError, "report view must be one of"):
-            render_discovery.resolve_report_view("brief")
-
-    def test_measurement_names_initial_view_and_density(self):
-        _root, discovery = fixture()
-        rendered = render_discovery.render_measurement(
-            discovery,
-            {"concept_count": 1, "sources": []},
-            {
-                "schema_version": "1",
-                "rendering": {"view": "action", "tier": "short"},
-                "provenance": {"adapter_versions": {}},
-            },
-            "local-test",
-            "2026-09-03T00:00:00Z",
-        )
-        self.assertIn("action view · short list", rendered)
-
     def test_provenance_separates_confirmed_sources_and_actionable_imports(self):
         _root, discovery = fixture()
         discovery["import_graph"]["unresolved"] = [
@@ -171,467 +134,16 @@ class TestRendering(unittest.TestCase):
             "provenance": {"adapter_versions": {}},
         }
 
-        measurement = render_discovery.render_measurement(
-            discovery, tokens, report, "local-test", "2026-09-03T00:00:00Z"
-        )
+        summary = render_discovery.run_summary(discovery, tokens, report)
         runhead = render_discovery.render_runhead(
             discovery, tokens, report, "local-test"
         )
 
-        self.assertIn("2 confirmed definition sources", measurement)
-        self.assertIn("2 confirmed definition sources", runhead)
-        self.assertIn("2 actionable imports remain unresolved", measurement)
-        self.assertIn("All 3 classified import misses", measurement)
-        self.assertIn("1 external package; 1 missing local source", measurement)
-        self.assertIn("1 unsupported resolver", measurement)
-
-    def test_template_sections_follow_the_fixed_view_contract(self):
-        with open(render_discovery.TEMPLATE_PATH, encoding="utf-8") as handle:
-            template = handle.read()
-        for section_id, views in render_discovery.REPORT_VIEW_SECTIONS.items():
-            if section_id == "discovery-engine":
-                continue
-            tag = re.search(
-                r'<section\b[^>]*\bid="%s"[^>]*>' % re.escape(section_id),
-                template,
-            )
-            self.assertIsNotNone(tag, section_id)
-            self.assertIn(
-                'data-report-views="%s"' % " ".join(views), tag.group(0)
-            )
-        self.assertNotIn('section data-report-views="', template)
-        self.assertNotIn('section hidden', template)
-        self.assertIn(
-            'section[data-report-views] { display: block !important; }', template
-        )
-
-    def test_template_has_accessible_inventory_family_relationships(self):
-        with open(render_discovery.TEMPLATE_PATH, encoding="utf-8") as handle:
-            template = handle.read()
-        self.assertIn('role="tablist"', template)
-        self.assertEqual(template.count('role="tab"'), 3)
-        self.assertEqual(template.count('role="tabpanel"'), 3)
-        for family in ("color", "typography", "foundation"):
-            self.assertIn(
-                'aria-controls="inventory-panel-%s"' % family, template)
-            self.assertIn(
-                'id="inventory-panel-%s" aria-labelledby="inventory-tab-%s"' % (
-                    family, family), template)
-        self.assertNotIn('role="tabpanel" hidden', template)
-        self.assertIn('display: none; gap: 4px;', template)
-        self.assertIn(
-            '.token-tabs--ready .token-tabs__list { display: flex; }',
-            template,
-        )
-        self.assertIn('<!-- SLOT:inventory-tabs-script -->', template)
-
-    def test_dashboard_links_have_visible_keyboard_focus(self):
-        with open(render_discovery.TEMPLATE_PATH, encoding="utf-8") as handle:
-            template = handle.read()
-        self.assertIn(".dashboard-action:focus-visible", template)
-        self.assertIn(".dashboard-readiness:focus-visible", template)
-        self.assertIn(".dashboard-vital:focus-visible", template)
-        self.assertIn(".dashboard-link:focus-visible", template)
-
-    def test_dashboard_keeps_evidence_and_plain_language_with_an_empty_fix_queue(self):
-        rendered = render_discovery.render_at_a_glance({
-            "stage": {
-                "current": "declared", "next": "adopted",
-                "threshold": "Resolve semantic equivalence.",
-            },
-            "vitals": {
-                "coverage": {"grade": "watch"},
-                "enforcement": {"grade": "not-visible"},
-            },
-            "executive_summary": {"confidence_split": {
-                "confirmed": 2, "not-visible": 1, "not-visible": 1,
-            }},
-            "leakage_analysis": {
-                "consumer_files_scanned": 4,
-                "exact_value_candidates": [{"id": "one"}],
-                "uncovered_candidates": [{"id": "two"}],
-            },
-            "fix_queue": [],
-            "run": {"token_count": 20, "files_scanned": 4},
-            "rendering": {"tier": "full"},
-            "inventory": {
-                "families": {},
-                "identity": {
-                    "typography": {"state": "verified", "family": "DM Sans"},
-                    "brand_colors": {"state": "verified", "colors": [{
-                        "token": "brand-primary", "value": "#5b4bd6",
-                    }]},
-                },
-            },
-            "component_usage": {"top_20": [{
-                "name": "layout / qotd", "distinct_tokens": 12,
-                "references": 30,
-            }]},
-            "discovery": {"roots": [{
-                "path": "app.scss", "ownership": "unknown",
-                "profiles": ["discourse"],
-            }]},
-        })
-        self.assertIn('class="dashboard" data-report-region="at-a-glance"', rendered)
-        self.assertIn("Your token foundation is in place", rendered)
-        self.assertIn("You’re here", rendered)
-        self.assertIn("How the system is doing", rendered)
-        self.assertIn("What we could verify", rendered)
-        self.assertIn("Needs evidence", rendered)
-        self.assertIn("DM Sans", rendered)
-        self.assertIn("brand-primary", rendered)
-        self.assertIn("layout / qotd", rendered)
-        self.assertIn("Discourse", rendered)
-        self.assertIn('class="ladder" data-glance-mark="stage"', rendered)
-        self.assertEqual(rendered.count('class="seg" data-glance-mark='), 3)
-        self.assertIn('class="dashboard-progress" data-glance-mark="fix-queue"', rendered)
-        self.assertEqual(rendered.count("data-glance-mark="), 6)
-        self.assertIn('data-fix-total="0" data-fix-verified="0"', rendered)
-        self.assertIn('style="width:0.000%"', rendered)
-        self.assertIn("No automatic changes are queued yet", rendered)
-        self.assertIn('class="dashboard-readiness" href="#fix-queue"', rendered)
-        self.assertIn('href="#measurement"', rendered)
-        self.assertIn("Review ownership", rendered)
-        self.assertNotIn("<svg", rendered)
-
-    def test_dashboard_component_roadmap_shows_five_evidenced_rows(self):
-        components = [{
-            "id": "component-%d" % index,
-            "rank": index,
-            "name": "app / component-%d" % index,
-            "kind": "component",
-            "references": 7 - index,
-            "distinct_tokens": index,
-        } for index in range(1, 7)]
-        roadmap = analyze_component_usage.build_roadmap(components)
-
-        rendered = render_discovery.render_dashboard_component_roadmap({
-            "component_usage": {
-                "state": "counted",
-                "roadmap": roadmap,
-                "top_20": components,
-            },
-        })
-
-        self.assertIn(
-            "Where component token work has the widest footprint", rendered
-        )
-        self.assertIn('data-dashboard-component-roadmap-json=', rendered)
-        self.assertEqual(rendered.count('data-dashboard-component="'), 5)
-        self.assertIn('role="region" tabindex="0"', rendered)
-        self.assertIn('aria-labelledby="dashboard-component-roadmap-title"', rendered)
-        self.assertIn('href="#component-detail-component-1"', rendered)
-        self.assertIn('data-component-paths="0"', rendered)
-        self.assertIn("app / component-5", rendered)
-        self.assertNotIn("app / component-6", rendered)
-        self.assertIn("Assess first", rendered)
-        self.assertIn("Plan next", rendered)
-        self.assertIn("Focused follow-up", rendered)
-        self.assertIn("95.2%", rendered)
-
-    def test_dashboard_calls_mixed_component_and_surface_rows_entries(self):
-        components = [
-            {
-                "id": "component", "rank": 1, "name": "app / component",
-                "kind": "component", "references": 2,
-                "distinct_tokens": 1, "paths": ["app/component.scss"],
-            },
-            {
-                "id": "surface", "rank": 2, "name": "app / route",
-                "kind": "surface", "references": 1,
-                "distinct_tokens": 1, "paths": ["app/routes/home.ts"],
-            },
-        ]
-        roadmap = analyze_component_usage.build_roadmap(components)
-
-        rendered = render_discovery.render_dashboard_component_roadmap({
-            "component_usage": {
-                "state": "counted", "fallback_surfaces": 1,
-                "roadmap": roadmap, "top_20": components,
-            },
-        })
-
-        self.assertIn("These 2 entries", rendered)
-        self.assertIn("Explore all 2 entries", rendered)
-        self.assertIn("component and surface token work", rendered)
-
-    def test_dashboard_side_copy_names_fallback_surfaces(self):
-        rendered = render_discovery.render_at_a_glance({
-            "stage": {"current": "unresolved"},
-            "vitals": {}, "executive_summary": {"confidence_split": {}},
-            "leakage_analysis": {}, "fix_queue": [],
-            "run": {"token_count": 0, "files_scanned": 1},
-            "inventory": {"families": {}, "identity": {}},
-            "component_usage": {
-                "fallback_surfaces": 1,
-                "top_20": [{
-                    "name": "app / route", "kind": "surface",
-                    "references": 3, "distinct_tokens": 1,
-                }],
-            },
-            "discovery": {"roots": []},
-        })
-
-        self.assertIn("Most connected component or surface", rendered)
-        self.assertIn("See the top 1 entry", rendered)
-
-    def test_single_fallback_roadmap_uses_singular_copy(self):
-        components = [{
-            "id": "surface", "rank": 1, "name": "app / route",
-            "kind": "surface", "references": 3, "distinct_tokens": 1,
-            "paths": ["app/routes/home.ts"],
-        }]
-        roadmap = analyze_component_usage.build_roadmap(components)
-
-        rendered = render_discovery.render_dashboard_component_roadmap({
-            "component_usage": {
-                "state": "counted", "fallback_surfaces": 1,
-                "roadmap": roadmap, "top_20": components,
-            },
-        })
-
-        self.assertIn("This component or surface accounts for", rendered)
-        self.assertIn("Explore all 1 entry", rendered)
-
-    def test_dashboard_does_not_promote_blocked_identity_candidates(self):
-        rendered = render_discovery.render_at_a_glance({
-            "stage": {"current": "unresolved"},
-            "vitals": {},
-            "executive_summary": {"confidence_split": {}},
-            "leakage_analysis": {},
-            "fix_queue": [],
-            "run": {"token_count": 3, "files_scanned": 1},
-            "inventory": {
-                "families": {
-                    "color": {"state": "counted"},
-                    "typography": {"state": "not-visible"},
-                },
-                "identity": {
-                    "typography": {
-                        "state": "not-visible", "family": "DM Sans",
-                        "candidates": [{"family": "DM Sans"}],
-                    },
-                    "brand_colors": {
-                        "state": "not-visible",
-                        "colors": [{"token": "brand-primary", "value": "#5b4bd6"}],
-                    },
-                },
-            },
-            "discovery": {
-                "environment": ["discourse", "rails-sprockets", "monorepo"],
-                "roots": [],
-            },
-        })
-        self.assertIn("across 1 measured family", rendered)
-        self.assertIn("1 measured family · 1 family needs evidence", rendered)
-        self.assertIn("Candidates: DM Sans", rendered)
-        self.assertIn('data-font-verified="false"', rendered)
-        self.assertNotIn("brand-primary", rendered)
-        self.assertIn("Brand colors need stronger source evidence", rendered)
-        self.assertIn("Discourse + Rails Sprockets + Monorepo", rendered)
-
-    def test_dashboard_distinguishes_absent_families_from_evidence_gaps(self):
-        rendered = render_discovery.render_at_a_glance({
-            "stage": {"current": "declared"},
-            "vitals": {"coverage": {"grade": "not-visible"}},
-            "executive_summary": {"confidence_split": {}},
-            "leakage_analysis": {},
-            "fix_queue": [],
-            "run": {"token_count": 4, "files_scanned": 2},
-            "inventory": {"families": {
-                "color": {"state": "counted"},
-                "motion": {"state": "not-visible"},
-                "elevation": {"state": "none-used"},
-            }},
-            "discovery": {"roots": []},
-        })
-
-        self.assertIn(
-            "1 measured family · 1 family needs evidence · 1 absent family",
-            rendered,
-        )
-        self.assertNotIn("2 families need evidence", rendered)
-        self.assertIn("More evidence needed", rendered)
-
-    def test_dashboard_does_not_overstate_an_ungraded_run(self):
-        rendered = render_discovery.render_at_a_glance({
-            "stage": {"current": "unresolved"},
-            "vitals": {},
-            "executive_summary": {"confidence_split": {}},
-            "leakage_analysis": {},
-            "fix_queue": [],
-            "run": {"token_count": 0, "files_scanned": 0},
-            "inventory": {"families": {}},
-            "discovery": {"roots": []},
-        })
-
-        self.assertIn("Not yet graded", rendered)
-        self.assertNotIn("Well supported", rendered)
-
-    def test_stage_summary_handles_a_punctuated_threshold(self):
-        rendered = render_discovery.stage_summary({"stage": {
-            "current": "declared", "next": "adopted",
-            "threshold": "Resolve semantic equivalence.",
-        }})
-        self.assertNotIn("equivalence..", rendered)
-        self.assertNotIn("equivalence.,", rendered)
-        self.assertIn("equivalence. <b>Then:</b>", rendered)
-
-    def test_large_token_inventory_uses_see_more_without_dropping_rows(self):
-        for count in (19, 20, 21, 25):
-            concepts = [{
-                "name": "space-%02d" % index, "family": "spacing",
-                "values": ["%dpx" % index],
-                "representations": ["css-custom-property"],
-                "sites": ["tokens.css:%d" % index],
-                "definitions": [{"value": "%dpx" % index}],
-            } for index in range(count)]
-            rendered = render_discovery.concept_inventory_table(concepts)
-            parsed = InventoryParser()
-            parsed.feed(rendered)
-
-            self.assertEqual(len(parsed.visible_rows), min(count, 20))
-            self.assertEqual(len(parsed.tail_rows), max(count - 20, 0))
-            self.assertFalse(any(parsed.details_open))
-            for index, attributes in enumerate(
-                    parsed.visible_rows + parsed.tail_rows):
-                self.assertEqual(attributes["data-token-concept"], "space-%02d" % index)
-                for name in (
-                        "data-token-family", "data-token-representations-json",
-                        "data-token-sites-json", "data-token-values-json",
-                        "data-token-definitions-json"):
-                    self.assertIn(name, attributes)
-            if count > 20:
-                self.assertIn(
-                    'data-token-inventory-more="%d"' % (count - 20), rendered)
-                self.assertIn("See %d more tokens" % (count - 20), rendered)
-            else:
-                self.assertNotIn("data-token-inventory-more", rendered)
-
-    def test_typography_uses_discovered_quoted_or_unquoted_family(self):
-        quoted = render_discovery.typography_block([{
-            "name": "font-family", "family": "typography",
-            "values": ['"DM Sans", sans-serif'], "representations": [],
-            "sites": ["styles/type.css:1"],
-        }], {
-            "state": "verified", "family": "DM Sans", "token": "font-family",
-            "confidence": "explicit-family-token",
-            "evidence": ["styles/type.css:1"],
-        })
-        unquoted = render_discovery.typography_block([{
-            "name": "font-family", "family": "typography",
-            "values": ["Inter, system-ui, sans-serif"], "representations": [],
-            "sites": ["styles/type.css:1"],
-        }], {
-            "state": "verified", "family": "Inter", "token": "font-family",
-            "confidence": "explicit-family-token",
-            "evidence": ["styles/type.css:1"],
-        })
-        self.assertIn("Verified family: DM Sans", quoted)
-        self.assertIn("Verified family: Inter", unquoted)
-
-    def test_blocked_typography_renders_no_generic_specimen(self):
-        rendered = render_discovery.typography_block([{
-            "name": "font-size-body", "family": "typography",
-            "values": ["16px"], "representations": [],
-            "sites": ["styles/type.css:1"],
-        }], {
-            "state": "not-visible", "confidence": "unresolved",
-            "family": None, "token": None, "evidence": [],
-            "note": "No concrete family.",
-        })
-        self.assertNotIn('class="typescale"', rendered)
-        self.assertNotIn("font-family:inherit", rendered)
-        self.assertIn("Typography identity is blocked", rendered)
-
-    def test_blocked_typography_surfaces_conflicting_candidates(self):
-        rendered = render_discovery.typography_block([], {
-            "state": "not-visible", "confidence": "unresolved",
-            "family": None, "token": None, "evidence": [],
-            "specimen": {"state": "not-visible", "asset": None},
-            "candidates": [{
-                "family": "DM Sans", "token": "font-family", "priority": 100,
-                "evidence": ["a.css:1"],
-            }, {
-                "family": "Inter", "token": "font-family", "priority": 100,
-                "evidence": ["b.css:1"],
-            }],
-        })
-        self.assertIn('data-typography-candidates="2"', rendered)
-        self.assertIn('data-typography-candidate-family="DM Sans"', rendered)
-        self.assertIn('data-typography-candidate-priority="100"', rendered)
-        self.assertIn('data-typography-candidate-evidence="b.css:1"', rendered)
-
-    def test_typography_embeds_verified_repository_font(self):
-        root = tempfile.mkdtemp()
-        relative = "public/fonts/acme.woff2"
-        path = os.path.join(root, relative)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        payload = b"wOF2self-contained-font"
-        with open(path, "wb") as handle:
-            handle.write(payload)
-        style_path = os.path.join(root, "styles/type.css")
-        os.makedirs(os.path.dirname(style_path), exist_ok=True)
-        with open(style_path, "w", encoding="utf-8") as handle:
-            handle.write(
-                '@font-face { font-family: "Acme Sans"; '
-                'src: url("/fonts/acme.woff2") format("woff2"); }\n')
-        digest = hashlib.sha256(payload).hexdigest()
-        rendered = render_discovery.typography_block([{
-            "name": "font-size-body", "family": "typography",
-            "values": ["16px"], "representations": [],
-            "sites": ["styles/type.css:2"],
-        }], {
-            "state": "verified", "family": "Acme Sans",
-            "token": "font-family", "confidence": "explicit-family-token",
-            "evidence": ["styles/type.css:1"],
-            "specimen": {
-                "state": "verified", "note": "Verified asset.",
-                "asset": {
-                    "state": "verified", "family": "Acme Sans",
-                    "declaration": "styles/type.css:1",
-                    "url": "/fonts/acme.woff2", "path": relative,
-                    "sha256": digest, "format": "woff2",
-                    "size_bytes": len(payload),
-                },
-            },
-        }, root)
-        self.assertIn("data:font/woff2;base64,", rendered)
-        self.assertIn('data-typography-specimen-state="verified"', rendered)
-        self.assertIn('font-family:Token Vitals Identity', rendered)
-        self.assertNotIn("sans-serif", rendered)
-
-    def test_brand_colors_are_surfaced_as_verified_swatches(self):
-        concepts = [{
-            "name": "acme-brand", "family": "color", "values": ["#123456"],
-            "representations": ["css-custom-property"],
-            "sites": ["styles/colors.css:1"],
-        }]
-        rendered = render_discovery.color_block(concepts, {
-            "state": "verified", "confidence": "explicit-brand-semantics",
-            "note": "Only explicit brand semantics.",
-            "colors": [{
-                "token": "acme-brand", "value": "#123456",
-                "confidence": "explicit-brand-token-name",
-                "evidence": ["styles/colors.css:1"],
-            }],
-        })
-        self.assertIn('data-brand-color="acme-brand"', rendered)
-        self.assertIn('style="background:#123456"', rendered)
-        self.assertIn("Full color inventory", rendered)
-
-    def test_brand_conflicts_are_visible_and_not_swatched(self):
-        rendered = render_discovery.color_block([], {
-            "state": "not-visible", "confidence": "unresolved", "colors": [],
-            "conflicts": [{
-                "token": "brand-primary", "values": ["#111111", "#abcdef"],
-                "evidence": ["a.scss:1", "b.scss:1"],
-                "reason": "multiple concrete values lack explicit mode provenance",
-            }],
-        })
-        self.assertIn('data-brand-conflict="brand-primary"', rendered)
-        self.assertIn('data-brand-conflicts-blocked="1"', rendered)
-        self.assertNotIn('data-brand-color="brand-primary"', rendered)
+        self.assertEqual(summary["token_sources"], 2)
+        self.assertEqual(summary["unresolved_actionable"], 2)
+        self.assertEqual(summary["unresolved_total"], 3)
+        self.assertEqual(summary["held_out_sources"], 2)
+        self.assertIn("&quot;token_sources&quot;:2", runhead)
 
     def test_leakage_sync_refreshes_denominators(self):
         report = {
@@ -648,7 +160,12 @@ class TestRendering(unittest.TestCase):
         })
         self.assertEqual(report["run"]["files_scanned"], 42)
         self.assertEqual(report["executive_summary"]["affected"]["owned_files"], 42)
-        self.assertIn("across 42 owned", report["vitals"]["leakage"]["note"])
+        note = report["vitals"]["leakage"]["note"]
+        self.assertIn("One hardcoded color has the same value as a token", note)
+        self.assertIn("2 match no token", note)
+        # The count of files scanned is a fact about the run. It is said in
+        # About this run, and a note that repeated it drifted from it.
+        self.assertNotIn("42", note)
 
     def test_nothing_scanned_reports_no_tier_counts(self):
         """Zero scanned files cannot yield a count of zero findings.
@@ -670,11 +187,14 @@ class TestRendering(unittest.TestCase):
         self.assertTrue(
             all(value is None for value in tiers.values()),
             "a run that scanned nothing reported a tier count: %r" % tiers)
-        self.assertIn("no owned reachable consumer styles",
+        self.assertIn("couldn't look for hardcoded colors",
                       report["vitals"]["leakage"]["note"])
 
-    def test_an_empty_trend_block_is_removed_like_a_missing_one(self):
-        """No baseline means no trend section, however the block is spelled.
+    def test_an_empty_trend_block_is_emptied_like_a_missing_one(self):
+        """No baseline means no comparison, however the block is spelled.
+
+        The section itself stays, so `#trend` still resolves: a section may
+        move or empty, and never disappears.
 
         The stripper tested `if not report.get("trend")`, so a schema-shaped
         block of nulls survived and shipped the template's own sample
@@ -682,9 +202,8 @@ class TestRendering(unittest.TestCase):
         sample content, once, on every fresh report.
         """
         document = (
-            '<body data-report-view="snapshot">'
-            '\n  <a href="#trend" data-tier="full">Trend</a>'
-            '\n  <section id="trend" data-report-views="action evidence">'
+            '<body>'
+            '\n  <section id="trend">'
             '\n    <b>Compared against <code>a91f4c07</code>.</b>'
             '\n  </section>\n'
             '</body>'
@@ -694,8 +213,8 @@ class TestRendering(unittest.TestCase):
                             "shrank": [], "regressions": []}}
         stripped = render_discovery.strip_trend_without_a_baseline(document, report)
         self.assertNotIn("a91f4c07", stripped)
-        self.assertNotIn('id="trend"', stripped)
-        self.assertNotIn('href="#trend"', stripped)
+        self.assertIn('<section id="trend">', stripped)
+        self.assertIn("nothing to compare it to yet", stripped)
 
     def test_family_block_keeps_every_source_visible(self):
         sources = ["styles/source-%d.scss:%d" % (index, index)
@@ -711,11 +230,11 @@ class TestRendering(unittest.TestCase):
         for source in sources:
             path = source.rsplit(":", 1)[0]
             self.assertIn('data-family-source="%s"' % path, rendered)
-        self.assertIn("Show 2 more sources", rendered)
+        self.assertIn("Show 2 more files", rendered)
 
     def test_leakage_block_keeps_every_location_visible(self):
         locations = ["styles/a.scss:1", "styles/b.scss:2", "styles/c.scss:3"]
-        rendered = render_discovery.render_leakage({
+        rendered = render_discovery.chapters.render_leakage({}, {
             "consumer_files_scanned": 3,
             "exact_value_candidates": [{
                 "id": "abc123", "tier": "exact-value candidate",
@@ -727,7 +246,9 @@ class TestRendering(unittest.TestCase):
         })
         for location in locations:
             self.assertIn('data-finding-location="%s"' % location, rendered)
-        self.assertIn("Show 2 more locations", rendered)
+        self.assertIn("Show 2 more places", rendered)
+        self.assertIn("matches a token", rendered)
+        self.assertNotIn("exact-value candidate<", rendered)
 
     def test_section_contains_profiles_ladder_and_all_roots(self):
         _, discovery = fixture()
@@ -790,11 +311,8 @@ class TestRendering(unittest.TestCase):
             discovery_path, report_path, html_path, tokens_path)
         with open(report_path, encoding="utf-8") as handle:
             report = json.load(handle)
-        self.assertEqual(report["rendering"]["view"], "snapshot")
-        self.assertEqual(
-            report["rendering"]["available_views"],
-            list(render_discovery.REPORT_VIEWS),
-        )
+        self.assertNotIn("view", report["rendering"])
+        self.assertNotIn("available_views", report["rendering"])
         self.assertEqual(
             report["discovery"]["capabilities"]["token_source_discovery"],
             "verified",
@@ -836,44 +354,6 @@ class TestRendering(unittest.TestCase):
             rendered.index('<div class="eyebrow">Measurement</div>'),
         )
 
-    def test_augment_records_and_renders_requested_report_view(self):
-        root, discovery = fixture()
-        discovery_path = os.path.join(root, "discovery.json")
-        report_path = os.path.join(root, "report.json")
-        html_path = os.path.join(root, "report.html")
-        with open(discovery_path, "w", encoding="utf-8") as handle:
-            json.dump(discovery, handle)
-        with open(report_path, "w", encoding="utf-8") as handle:
-            json.dump({"run": {}, "provenance": {}}, handle)
-        with open(render_discovery.TEMPLATE_PATH, encoding="utf-8") as handle:
-            template = handle.read()
-        with open(html_path, "w", encoding="utf-8") as handle:
-            handle.write(template)
-
-        render_discovery.augment(
-            discovery_path, report_path, html_path,
-            refresh_template=True, report_view="evidence",
-        )
-
-        with open(report_path, encoding="utf-8") as handle:
-            report = json.load(handle)
-        with open(html_path, encoding="utf-8") as handle:
-            rendered = handle.read()
-        self.assertEqual(report["rendering"]["view"], "evidence")
-        self.assertIn('<body data-report-view="evidence">', rendered)
-        self.assertIn('data-report-view-default="evidence"', rendered)
-        self.assertIn(
-            'data-report-view-button="evidence" aria-pressed="true"', rendered
-        )
-        self.assertNotIn('<section id="trend"', rendered)
-        self.assertNotIn("a91f4c07", rendered)
-        disclosure_tags = re.findall(r'<details\b[^>]*>', rendered)
-        self.assertTrue(disclosure_tags)
-        self.assertTrue(all(" open " in tag for tag in disclosure_tags))
-        self.assertTrue(all(
-            'data-report-default-open="' in tag for tag in disclosure_tags
-        ))
-
     def test_invalid_html_does_not_partially_update_report_json(self):
         root, discovery = fixture()
         discovery_path = os.path.join(root, "discovery.json")
@@ -896,148 +376,6 @@ class TestRendering(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-class TestConfidenceAndLineageRegions(unittest.TestCase):
-    """The new evidence has to reach the HTML, or it does not exist.
-
-    Every finding the run produces is rendered in the page; a reader who
-    never opens the JSON still sees everything. These regions were the last
-    four that lived only in JSON.
-    """
-
-    UNLOCK = {
-        "headline": "5 of 8 vitals verified against evidence; 2 waiting on "
-                    "audit capability rather than on your codebase.",
-        "split": {"healthy": 5, "your_code": 1, "not_visible": 2,
-                  "not_needed": 0},
-        "confidence": {
-            "leakage": {"state": "needs-work", "grade": "needs-work",
-                        "reason": "Checked, and the codebase has a real finding here.",
-                        "blocked_by": []},
-            "mode-completeness": {"state": "not-visible",
-                                  "grade": "not-visible",
-                                  "reason": "Waiting on mode_resolution.",
-                                  "blocked_by": ["mode_resolution"]},
-        },
-        "unlock_path": [{
-            "capability": "mode_resolution",
-            "action": "Give the run a resolved output per mode",
-            "verify": "python3 tools/discover_environment.py <root>",
-            "unlocks": ["mode-completeness"], "unlocks_count": 1,
-        }],
-        "wins": [{"claim": "Import graph verified",
-                  "evidence": ["291 file(s) reached; 147 classified"]}],
-        "next_15_minutes": {
-            "action": "Give the run a resolved output per mode",
-            "payoff": "Unlocks 1 vital(s): mode-completeness",
-            "verify": "python3 tools/discover_environment.py <root>",
-            "kind": "audit-capability"},
-        "decisions_owed": [],
-    }
-    LINEAGE = {
-        "summary": {"traced_to_a_primitive": 768,
-                    "stops_before_a_primitive": 303,
-                    "with_a_named_consumer": 204, "longest_chain": 4},
-        "fully_traceable_families": ["motion", "radius"],
-        "blast_radius": [{
-            "token": "color-surface", "tier": "primitive", "family": "color",
-            "dependent_tokens": ["a", "b"],
-            "components": ["Button", "Chip", "Card"], "component_count": 3,
-        }],
-        "chains": [],
-    }
-
-    def render(self, unlock=None, lineage=None, freshness=None):
-        document = template_text()
-        return render_discovery.render_confidence_slots(
-            document,
-            self.UNLOCK if unlock is None else unlock,
-            self.LINEAGE if lineage is None else lineage,
-            freshness)
-
-    def test_the_headline_replaces_the_template_sample(self):
-        html = self.render()
-        self.assertIn("5 of 8 vitals verified", html)
-        section = html.split('id="confidence"')[1].split("</section>")[0]
-        self.assertNotIn("Sample report", section)
-
-    def test_the_two_gap_counts_are_rendered_and_never_summed(self):
-        html = self.render()
-        self.assertIn('data-gap-kind="not-visible"', html)
-        self.assertIn('data-gap-kind="your-code"', html)
-        self.assertNotIn('data-gap-kind="total"', html)
-
-    def test_every_unlock_step_renders_its_action_unlocks_and_command(self):
-        html = self.render()
-        self.assertIn("Give the run a resolved output per mode", html)
-        self.assertIn("mode-completeness", html)
-        self.assertIn("discover_environment.py", html)
-
-    def test_the_next_15_minutes_card_is_present_with_all_three_parts(self):
-        html = self.render()
-        card = html.split('data-report-region="unlock-path"')[1]
-        self.assertIn("Unlocks 1 vital(s)", card)
-        self.assertIn('data-card="next-15-minutes"', card)
-
-    def test_the_wins_are_rendered_rather_than_left_in_json(self):
-        self.assertIn("Import graph verified", self.render())
-
-    def test_the_blast_radius_names_the_components_not_only_the_count(self):
-        html = self.render()
-        self.assertIn("color-surface", html)
-        self.assertIn("Button", html)
-        self.assertIn("3", html)
-
-    def test_freshness_is_shown_when_it_was_measured(self):
-        html = self.render(freshness={
-            "state": "stale", "ref": "8934653a48ff", "commits_since": 14,
-            "dirty": False,
-            "note": "Evidence is behind the tree: 14 commit(s) since 8934653a48ff."})
-        self.assertIn("8934653a48ff", html)
-        self.assertIn('data-freshness="stale"', html)
-
-    def test_an_unexplained_boundary_is_rendered_as_owed_not_as_a_win(self):
-        unlock = dict(self.UNLOCK, decisions_owed=["mode-completeness"])
-        html = self.render(unlock=unlock)
-        self.assertIn('data-decisions-owed="1"', html)
-
-    def test_nothing_to_render_leaves_the_region_honest_not_sampled(self):
-        html = self.render(unlock={}, lineage={})
-        section = html.split('id="confidence"')[1].split("</section>")[0]
-        self.assertNotIn("Sample report", section)
-        self.assertIn("not produced", section)
-
-
-class TestEverySectionHasAViewContract(unittest.TestCase):
-    """A section in the template but not in the registry fails rule 6.
-
-    `#confidence` was added to the template and not to REPORT_VIEW_SECTIONS,
-    so every report carrying it failed validation with "confidence section
-    has no report-view contract". Caught by running the pipeline against a
-    second repository, which is the only thing that exercises the whole
-    shape at once.
-    """
-
-    def test_the_registry_covers_every_section_in_the_template(self):
-        template = template_text()
-        ids = re.findall(r'<section\b[^>]*\bid="([^"]+)"', template)
-        self.assertTrue(ids)
-        missing = [i for i in ids if i not in render_discovery.REPORT_VIEW_SECTIONS]
-        self.assertEqual(missing, [], "sections with no view contract")
-
-    def test_every_registered_section_declares_those_views_in_the_markup(self):
-        template = template_text()
-        for match in re.finditer(r'<section\b([^>]*)\bid="([^"]+)"([^>]*)>', template):
-            attrs = match.group(1) + match.group(3)
-            section_id = match.group(2)
-            expected = render_discovery.REPORT_VIEW_SECTIONS.get(section_id)
-            if expected is None:
-                continue
-            declared = re.search(r'data-report-views="([^"]*)"', attrs)
-            self.assertIsNotNone(declared, section_id)
-            self.assertEqual(set(declared.group(1).split()), set(expected),
-                             section_id)
 
 
 class TestLeakageSyncRespectsTheMeasurement(unittest.TestCase):

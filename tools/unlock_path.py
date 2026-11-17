@@ -23,6 +23,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cli import EXIT_OK, add_json_flag, emit_json  # noqa: E402
+from vocab import (  # noqa: E402
+    GRADE_LABEL, breakdown, fmt, grade_counts, measured, plural,
+)
 
 VITALS = (
     "tier-integrity", "leakage", "coverage", "mode-completeness",
@@ -39,6 +42,7 @@ RATINGS = ("healthy", "watch", "needs-work", "not-visible", "not-needed")
 
 # Kept as an alias so an older caller does not break on the rename.
 CONFIDENCE_STATES = RATINGS
+assert set(RATINGS) == set(GRADE_LABEL), "the ratings and their labels drifted"
 
 # What each vital needs the run to have been able to SEE. This is not the
 # vital's subject matter — it is the capability whose absence stops the
@@ -63,48 +67,57 @@ VITAL_CAPABILITIES = {
 # whether it worked. A step a reader cannot verify is a suggestion.
 CAPABILITY_ACTIONS = {
     "detection": (
-        "Name the framework this repository builds with, or pass --profile "
-        "so discovery stops guessing",
+        "Name the framework you build with, or pass --profile so we stop guessing",
         "python3 tools/discover_environment.py <root> --json .token-vitals/discovery.json",
     ),
     "production_roots": (
-        "Point the run at the entry the product actually loads, with --app "
-        "or an explicit root",
+        "Point us at the entry your product loads, with --app or an explicit root",
         "python3 tools/discover_environment.py <root> --app <workspace-app> "
         "--json .token-vitals/discovery.json",
     ),
     "import_resolution": (
-        "Resolve the imports the graph could not follow — an alias the "
-        "config declares, or a path the walk cannot reach",
+        "Resolve the imports we couldn't follow: an alias your config "
+        "declares, or a path we couldn't reach",
         "python3 tools/import_graph.py <root> --json .token-vitals/graph.json",
     ),
     "token_source_discovery": (
-        "Confirm a reachable token source, or name one with --source",
+        "Confirm a token file we can reach, or name one with --source",
         "python3 tools/discover_tokens.py <root> --discovery "
         ".token-vitals/discovery.json --json .token-vitals/tokens.json",
     ),
     "ownership": (
-        "State which paths this team owns with --owned, so the run grades "
-        "your code and not a dependency's",
+        "Say which paths your team owns with --owned, so we grade your code "
+        "and not a dependency's",
         "python3 tools/discover_environment.py <root> --owned '<glob>' "
         "--json .token-vitals/discovery.json",
     ),
     "framework_versions": (
-        "Record the installed version of every framework whose default theme "
-        "an adapter reads a category from",
+        "Record the installed version of each framework whose defaults we read",
         "python3 -c \"import json;print(json.load(open('package.json'))"
         "['devDependencies'])\"",
     ),
     "mode_resolution": (
-        "Give the run a resolved output per mode — the built CSS for each "
-        "theme, or the mechanism that produces it",
+        "Give us the resolved output for each theme: the built CSS, or the "
+        "step that makes it",
         "python3 tools/discover_environment.py <root> --json .token-vitals/discovery.json",
     ),
     "runtime_verification": (
-        "Give the run a built artifact to read, so computed values can be "
-        "checked rather than inferred",
+        "Give us a build to read, so we can check computed values instead of "
+        "inferring them",
         "python3 tools/discover_environment.py <root> --json .token-vitals/discovery.json",
     ),
+}
+
+# The end of the sentence "blocked until ...", for each capability.
+CAPABILITY_UNTIL = {
+    "detection": "the framework is named",
+    "production_roots": "the product entry is named",
+    "import_resolution": "imports resolve",
+    "token_source_discovery": "token files are found",
+    "ownership": "ownership is stated",
+    "framework_versions": "framework versions are recorded",
+    "mode_resolution": "themes resolve",
+    "runtime_verification": "a build is read",
 }
 
 # What each capability is called when a person reads it. The snake_case key
@@ -150,8 +163,8 @@ def ladder_evidence(capability, discovery):
         if step.get("capability") == capability:
             found = step.get("evidence") or []
             if found:
-                return ["%d source(s): %s"
-                        % (len(found), ", ".join(str(item) for item in found[:4]))]
+                return ["%s: %s" % (plural(len(found), "source"),
+                                    ", ".join(str(item) for item in found[:4]))]
     return []
 
 
@@ -173,7 +186,7 @@ def win_evidence(capability, discovery):
                           ", from %s" % proof if proof else "")]
     if capability == "production_roots":
         roots = discovery.get("roots") or []
-        return ["%d root(s): %s" % (len(roots), ", ".join(
+        return ["%s: %s" % (plural(len(roots), "root"), ", ".join(
             str(item.get("path")) for item in roots[:4]))] if roots else []
     if capability == "import_resolution":
         unresolved = graph.get("unresolved") or []
@@ -182,13 +195,13 @@ def win_evidence(capability, discovery):
             return []
         stuck = [item for item in unresolved
                  if item.get("reason") == "missing local source"]
-        return ["%d file(s) reached; %d import(s) classified, %d unresolved "
-                "as a missing local file"
-                % (len(reachable), len(unresolved), len(stuck))]
+        return ["%s reached; %s classified, %s of them a missing local file"
+                % (plural(len(reachable), "file"),
+                   plural(len(unresolved), "import"), fmt(len(stuck)))]
     if capability == "token_source_discovery":
         sources = discovery.get("token_sources") or []
         if sources:
-            return ["%d confirmed source(s)" % len(sources)]
+            return [plural(len(sources), "confirmed source")]
         # Token discovery records its evidence on the ladder step rather
         # than under a key of its own. Looking in one place suppressed a win
         # the run had fully established — a false zero of exactly the kind
@@ -207,30 +220,32 @@ def win_evidence(capability, discovery):
         return ["read from %s" % artifact] if artifact else []
     return []
 
-def headline(split):
-    """One sentence, before any grid.
+def until(steps):
+    """`imports resolve`: what the first unlock step is waiting for."""
+    if not steps:
+        return ""
+    return CAPABILITY_UNTIL.get(steps[0].get("capability"), "")
 
-    The first thing a reader sees decides what they think the report is
-    about. A grid of eight grades reads as a scorecard; a sentence that
-    separates what is proven from what the audit cannot yet see reads as a
-    status, which is what it is.
+
+def headline(counts, steps=()):
+    """One line before any grid: how many checks we measured, how many we couldn't see.
+
+    Blocked means we couldn't see it. It never means the code is wrong, so
+    the line counts the two apart and never adds them.
     """
-    total = len(VITALS)
-    healthy = split["healthy"]
-    if healthy + split["not_needed"] == total and not split["your_code"]:
-        return ("Everything that applies here is healthy — all %d checks "
-                "passed." % total)
-    parts = ["%d of %d checks look healthy" % (healthy, total)]
-    if split["not_visible"]:
-        parts.append("%d the audit cannot see yet — that is a limit of this "
-                     "run, not of your code" % split["not_visible"])
-    if split["your_code"]:
-        parts.append("%d with something to fix in your code"
-                     % split["your_code"])
-    if split["not_needed"]:
-        parts.append("%d you have decided you do not need"
-                     % split["not_needed"])
-    return "; ".join(parts) + "."
+    total = sum(counts.values())
+    seen = measured(counts)
+    blocked = counts["not-visible"]
+    if not blocked and seen and seen == counts["healthy"]:
+        return "All %s are healthy" % plural(seen, "check")
+    line = "%s of %s measured" % (fmt(seen), plural(total, "check"))
+    if blocked:
+        waiting = until(steps)
+        line += " · %s blocked%s" % (
+            fmt(blocked), " until %s" % waiting if waiting else "")
+    if counts["not-needed"]:
+        line += " · %s not needed" % fmt(counts["not-needed"])
+    return line
 
 
 def ladder_order(capabilities):
@@ -238,15 +253,14 @@ def ladder_order(capabilities):
     return list(capabilities) or list(CAPABILITY_ACTIONS)
 
 
-def substitute_root(command, discovery):
+def substitute_root(command, discovery=None):
     """A verify command with `<root>` left in it is not a command.
 
-    The card tells a reader to run something and check the result. Handing
-    them a template makes that step unrunnable, which quietly turns a
-    verification into a suggestion.
+    The root is written as `.`: the reader runs it from the top of their own
+    repository. An absolute path would name the machine the audit ran on,
+    which is no use on anybody else's and says more than a report should.
     """
-    root = ((discovery or {}).get("repository") or {}).get("root")
-    return command.replace("<root>", root) if root and command else command
+    return command.replace("<root>", ".") if command else command
 
 
 def build(report, capabilities, ladder=None, discovery=None):
@@ -267,15 +281,15 @@ def build(report, capabilities, ladder=None, discovery=None):
         if state == "not-visible":
             entry["blocked_by"] = missing
             entry["reason"] = (
-                "Waiting on %s — the run could not see enough to check this."
-                % ", ".join(label_for(item) for item in missing) if missing else
-                "The check could not run, and nothing explains why. That is "
-                "a gap in this tool, not in your code.")
+                "We couldn't see this. It is waiting on %s."
+                % " and ".join(label_for(item) for item in missing) if missing else
+                "We couldn't see this, and nothing says why. That is a gap in "
+                "this tool, not in your code.")
         elif state in ("needs-work", "watch"):
             # States the grade back, and nothing more. Calling a finding
             # "real" was this tool editorializing about a judgment somebody
             # else made.
-            entry["reason"] = "Checked. This one has findings in your code."
+            entry["reason"] = "Checked. We found something in your code."
         elif state == "healthy":
             # Not "checked against evidence": a clean check is allowed to
             # carry an empty evidence list, so that phrasing could be false.
@@ -300,20 +314,11 @@ def build(report, capabilities, ladder=None, discovery=None):
         name for name, entry in confidence.items()
         if entry["state"] == "not-needed" and not entry.get("rationale"))
 
-    # Never summed. `your_code` is work on the design system, `not_visible`
-    # is work on the audit, and a reader who cannot tell them apart learns
-    # the wrong thing about their own codebase. The keys say which is which
-    # without anybody having to look up what a "gap" was.
-    split = {
-        "healthy": sum(1 for item in confidence.values()
-                       if item["state"] == "healthy"),
-        "your_code": sum(1 for item in confidence.values()
-                         if item["state"] in ("needs-work", "watch")),
-        "not_visible": sum(1 for item in confidence.values()
-                           if item["state"] == "not-visible"),
-        "not_needed": sum(1 for item in confidence.values()
-                          if item["state"] == "not-needed"),
-    }
+    # ONE breakdown, and it sums to the number of checks. The four-way split
+    # this used to return put Watch and Fix in one bucket called "to fix in
+    # your code", so the page showed `2 · 3 · 3` here and `2 · 2 · 1 · 3` two
+    # sections later and a reader could not make them agree.
+    split = grade_counts(report)
 
     waiting = {}
     for name, entry in confidence.items():
@@ -352,38 +357,13 @@ def build(report, capabilities, ladder=None, discovery=None):
         for name, entry in sorted(confidence.items())
         if entry["state"] == "not-needed" and entry.get("rationale"))
 
-    card = None
-    if steps:
-        first = steps[0]
-        card = {
-            "action": first["action"],
-            "payoff": ("Unlocks %d more check(s): %s"
-                       % (first["unlocks_count"], ", ".join(first["unlocks"]))),
-            "verify": first["verify"],
-            "kind": "not-visible",
-        }
-    else:
-        worst = next((name for name in VITALS
-                      if confidence[name]["grade"] == "needs-work"), None)
-        worst = worst or next((name for name in VITALS
-                               if confidence[name]["grade"] == "watch"), None)
-        if worst:
-            card = {
-                "action": "Take the top-ranked %s finding from the fix queue"
-                          % worst,
-                "payoff": "Moves %s to healthy with one bounded change"
-                          % worst,
-                "verify": "python3 tools/validate_run.py .token-vitals/report.json",
-                "kind": "system-work",
-            }
     return {
-        "headline": headline(split),
+        "headline": headline(split, steps),
         "confidence": confidence,
         "decisions_owed": decisions_owed,
         "split": split,
         "unlock_path": steps,
         "wins": wins,
-        "next_15_minutes": card,
     }
 
 
@@ -410,14 +390,11 @@ def main(argv):
         ladder.append("framework_versions")
     result = build(report, capabilities, ladder or None, discovery)
     emit_json(args.json_out, result)
-    split = result["split"]
-    print("%d healthy · %d to fix in your code · %d the audit cannot see yet "
-          "· %d not needed"
-          % (split["healthy"], split["your_code"], split["not_visible"],
-             split["not_needed"]))
+    print(breakdown(result["split"], zeros=True))
     for step in result["unlock_path"]:
-        print("  unlock %-36s -> %d more check(s): %s"
-              % (label_for(step["capability"]), step["unlocks_count"],
+        print("  unlock %-36s -> %s: %s"
+              % (label_for(step["capability"]),
+                 plural(step["unlocks_count"], "more check"),
                  ", ".join(step["unlocks"])))
     return EXIT_OK
 

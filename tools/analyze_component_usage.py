@@ -494,6 +494,10 @@ def analyze(root, discovery, tokens, limit=20):
         "files_scanned": scanned,
         "total_usage_units": len(ranked),
         "total_components_with_token_usage": len(components),
+        # The denominators a share is drawn against. A share of the twenty
+        # rows shown reads as a share of everything, and it is not.
+        "component_references_total": sum(item["references"] for item in components),
+        "usage_references_total": sum(item["references"] for item in ranked),
         "additional_style_surfaces": len(surfaces),
         "shown": len(selected),
         "shown_components": shown_components,

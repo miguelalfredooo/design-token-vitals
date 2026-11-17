@@ -4,6 +4,78 @@ What changed, by version. The skill stamps its version into every report
 as `provenance.skill_version`, so a report can be traced back to the rules
 that produced it.
 
+## 0.3.0 — unreleased
+
+The report is glanceable: show, don't tell, and sound like a person.
+
+The report restated the same eight grades in six sections before any
+evidence, gave three different first moves, and read like a spec sheet. A run
+against a real design system showed all of it on one page: `2 · 3 · 3` in one
+section and `2 · 2 · 1 · 3` in the next for the same eight checks, and
+`5 confirmed · 3 blocked · 3 unmeasured` in a third.
+
+**The shape.** One fact line, a collapsed *About this run*, one numbered
+contents list, then fourteen chapters: Verdict, Fix now, Decide, Unlock,
+Components, Checks, Architecture, Inventory, Sources, Coverage, Themes,
+Unused, Method, Next. A chapter is a number, a name, one line saying what was
+found, and the evidence. No section was deleted: they were merged, moved and
+folded, and every id an earlier report linked to still resolves. The depth
+switcher (Snapshot, Action Plan, Evidence), the chip rail and "All sections"
+are gone, and `--report-view` with them.
+
+**Three rules, each in code and each checked by rule 6 or rule 19.**
+
+- **One vocabulary** (`tools/vocab.py`): Healthy, Watch, Fix, Blocked, Not
+  needed. Blocked always means *we couldn't see it*. The raw names stay in
+  JSON and data attributes. A grade is stated once, in the verdict strip.
+- **One first move** (`tools/moves.py`): a confirmed defect, then a call only
+  the reader can make, then a blocked check. `unlock_path.py` no longer
+  returns a `next_15_minutes` card, which led with an unlock while the
+  summary led with a defect.
+- **One place for a run-wide fact.** The commit, the counts of files, the
+  framework and the versions are said in *About this run* and linked from
+  anywhere else. The three counts of files that all read "files" are named.
+
+**Counts reconcile.** `confidence.split` counts the five states and sums to
+the number of checks. The old four-way split put Watch and Fix in one bucket.
+`trend.py` still reads a baseline written the old way.
+
+**Drawn, not described** (`tools/draw.py`). A share is a bar, a count out of
+a whole is a grid of dots, a threshold is a marker on a track, a defect is its
+two declarations side by side with the loser struck through, a matching color
+sits beside its token, and what could not be seen is hatched. Each mark keeps
+its figure as text and one line saying what it means. The palette, the hatch
+and the contrast decisions are untouched.
+
+**New optional fields**, which a run sets so a check can be drawn:
+`vitals.<name>.measure`, `.headline`, `.fix`, `.where`, `.declarations`, and
+`.candidates` on orphans; `decisions[].other_grade`. A report without them
+still renders, in words.
+
+**Changed numbers.** A component's share is now of every component's token
+use, where the run records that total (`component_references_total`). It was
+a share of the twenty rows shown, so the first five read as 44% of token use
+when they were 25%. The three roadmap bands ("assess first", "plan next") are
+one table: a count of token uses says nothing about what is safe to change.
+
+**Commands** are relative to the repository (`.`), never the absolute path of
+the machine that ran the audit, and each sits behind *Show command* with a
+copy button.
+
+**Principle 3 changed**: a chapter opens on what was found, and no longer on
+an eyebrow, a heading and a lede. `test_template.py` checks the new pattern.
+
+**Found on the way.** The lineage table printed "untraced" in three columns
+for every row, because it read keys the lineage tool never wrote. And
+`tools/mutate.py` could leave a stale compiled file behind after restoring a
+mutation of the same length, so the next run of the suite executed the bug
+it had already put back; it now writes no bytecode while a mutation is in the
+tree. 4 mutations were added and 4 rewritten for the guards that moved: 49
+bite, 2 controls hold.
+
+`SKILL.md` and `references/` are 402 words shorter, so principle 7 asks for
+no new blind runs.
+
 ## 0.2.0 — 2026-09-15
 
 Three things landed on top of the entries below, all on 2026-09-15.

@@ -156,10 +156,10 @@
   ]
  },
  {
-  "name": "gap counts merged into one total",
+  "name": "watch and fix merged back into one count",
   "file": "tools/unlock_path.py",
-  "old": "        \"your_code\": sum(1 for item in confidence.values()\n                         if item[\"state\"] in (\"needs-work\", \"watch\")),",
-  "new": "        \"your_code\": sum(1 for item in confidence.values()\n                         if item[\"state\"] in (\"needs-work\", \"watch\", \"not-visible\")),",
+  "old": "    split = grade_counts(report)\n",
+  "new": "    split = grade_counts(report)\n    split[\"needs-work\"] += split.pop(\"watch\")\n    split[\"watch\"] = 0\n",
   "tests": [
    "test_unlock_path.TestConfidence"
   ]
@@ -232,7 +232,7 @@
  {
   "name": "verify command keeps its <root> placeholder",
   "file": "tools/unlock_path.py",
-  "old": "    return command.replace(\"<root>\", root) if root and command else command",
+  "old": "    return command.replace(\"<root>\", \".\") if command else command",
   "new": "    return command",
   "tests": [
    "test_unlock_path.TestNoUnprovenClaims"
@@ -378,12 +378,12 @@
   ]
  },
  {
-  "name": "a template section left out of the view registry",
-  "file": "tools/render_discovery.py",
-  "old": "    \"confidence\": (\"snapshot\", \"action\", \"evidence\"),\n",
-  "new": "",
+  "name": "the verdict picks its own first move",
+  "file": "tools/chapters.py",
+  "old": "    summary = report.get(\"executive_summary\") or {}\n    move = moves.first(report)\n",
+  "new": "    summary = report.get(\"executive_summary\") or {}\n    move = (moves.unlock_moves(report) or [None])[0]\n",
   "tests": [
-   "test_render_discovery.TestEverySectionHasAViewContract"
+   "test_report_shape.TestTheFirstMoveIsTheSameEverywhere"
   ]
  },
  {
@@ -414,10 +414,10 @@
   ]
  },
  {
-  "name": "the stamped banner goes back to a literal count",
+  "name": "the stamped note goes back to a literal count",
   "file": "tools/validate_run.py",
-  "old": "            'all %d rules passed %s</div>'\n            % (rule_count(), html_tools.escape(checked_at))",
-  "new": "            'all 18 rules passed %s</div>'\n            % (html_tools.escape(checked_at))",
+  "old": "            'Checked: all %d rules passed %s.</p>'\n            % (rule_count(), html_tools.escape(",
+  "new": "            'Checked: all 18 rules passed %s.</p>'\n            % (html_tools.escape(",
   "tests": [
    "test_validate_run.TestNoRuleCountIsWrittenDownTwice"
   ]
@@ -429,6 +429,43 @@
   "new": "    counts = section_counts({}, {}, {})",
   "tests": [
    "test_rendering_choices.TestTheCliProducesTheWholeBlock"
+  ]
+ },
+ {
+  "name": "an audit note reaches the reader unfiltered",
+  "file": "tools/vocab.py",
+  "old": "    for pattern, word in _PLAIN:\n        text = pattern.sub(word, text)\n    return text",
+  "new": "    return text",
+  "tests": [
+   "test_vocab.TestPlainWords",
+   "test_report_shape.TestNoOldWordReachesAReader"
+  ]
+ },
+ {
+  "name": "an unlock outranks a confirmed defect",
+  "file": "tools/moves.py",
+  "old": "    return fix_moves(report) + decide_moves(report) + unlock_moves(report)",
+  "new": "    return unlock_moves(report) + fix_moves(report) + decide_moves(report)",
+  "tests": [
+   "test_moves.TestTheOrderIsARule"
+  ]
+ },
+ {
+  "name": "the gate stops reading the page for retired words",
+  "file": "tools/validate_run.py",
+  "old": "    for word, instead in BANNED_WORDS:\n        if word in text:",
+  "new": "    for word, instead in BANNED_WORDS:\n        if False:",
+  "tests": [
+   "test_validate_run.TestRule6HtmlJsonParity"
+  ]
+ },
+ {
+  "name": "a stack is stretched to fill its track",
+  "file": "tools/draw.py",
+  "old": "    total = float(whole if whole is not None else\n                  sum(value for _name, value, _tone in segments))",
+  "new": "    total = float(sum(value for _name, value, _tone in segments))",
+  "tests": [
+   "test_draw.TestSharesAreDrawnToScale"
   ]
  }
 ]

@@ -206,23 +206,10 @@ point at when nothing was found, or when the check could not run. A vital
 with a count and no reachable instance is `not-visible`, never `needs-work` —
 silence is not evidence.
 
-## Stage 5 — Choose the report view (everything else is derived)
+## Stage 5 — Derive the rendering (nothing is chosen)
 
-Choose the report's initial view independently of its data density:
-
-- `snapshot` — open on the dashboard: what matters now.
-- `action` — open the working plan: the one card that leads, then priorities,
-  owners, component roadmap, gaps, and rollout guidance.
-- `evidence` — open the complete audit: inventory, lineage, discovery,
-  provenance, and every implementation detail.
-
-Default to `snapshot` unless the user asks for another view. Record the
-selection as `rendering.view` and the fixed ordered list
-`[snapshot, action, evidence]` as `rendering.available_views`. Keep every
-section and finding in the one self-contained HTML file regardless of the
-initial view. Treat the view as progressive disclosure, never as permission
-to omit evidence. Make a deep link reveal the least-detailed view containing
-its target, and show every section when printing.
+The report is one page read from the top: the verdict, then Fix now, Decide
+and Unlock, then the evidence. There is no view to pick.
 
 **The list size and the per-section form are derived, not chosen.** Run:
 
@@ -243,10 +230,9 @@ token total never decides a section.
 These were two hand-set axes — three list sizes and thirteen form values
 across seven sections — where a wrong value is a silent formatting bug
 rather than an error, and both rules were already deterministic and written
-down. The only axis still chosen is `rendering.view`, because it encodes
-what the run is FOR rather than how much data came back.
+down.
 
-Recording the view, tier, and forms lets two runs be compared on presentation
+Recording the tier and forms lets two runs be compared on presentation
 as well as on findings. A run that grades the same and renders differently has
 diverged, and the `rendering` block is where that shows up.
 
@@ -282,22 +268,20 @@ findings. All of them go into both the HTML and the JSON.
   Split the ranked view into cumulative-use roadmap bands: the rows that carry
   the first roughly 50% of confirmed references are `assess-first`, the rows
   through roughly 80% are `plan-next`, and the remainder are
-  `focused-follow-up`. Show the first five on the dashboard and all ranked rows
-  in the component section. This orders investigation by token footprint.
+  `focused-follow-up`. Show every ranked row in the components chapter. This orders investigation by token footprint.
   Runtime frequency, migration safety, and component quality require separate
   evidence.
-- **Split the gaps, and build the unlock path**, with
-  `tools/unlock_path.py`. `not-visible` says two unrelated things in one word —
-  *your system has a problem* and *this audit cannot see far enough yet* —
-  and a repository whose token layer is in good shape reads as mostly
-  blocked, which is both wrong and the reason a reader closes the tab. Every
-  vital gets one of four confidence states: `verified`,
-  `needs-work`, `not-visible`, `not-needed`. **Report
-  the two kinds of gap as two numbers and never sum them.** Order the
-  capability gaps by how many vitals each unlocks, give each one an action
-  and the command that shows whether it worked, and lead the dashboard with
-  the single `next_15_minutes` card. A `not-needed` vital is a declared
-  boundary and belongs with the wins, not with the holes.
+- **Count the states, and build the unlock path**, with
+  `tools/unlock_path.py`. Blocked means the audit could not see it, and never
+  that the code is wrong. Count the eight checks in the five states so the
+  breakdown sums to eight, order the capability gaps by how many checks each
+  unblocks, and give each an action and a command that runs from the
+  repository's top. The first move is not chosen here: `tools/moves.py` ranks
+  a confirmed defect, then a call only the reader can make, then an unlock.
+  **Give a check what the page needs to draw it:** `measure` (a threshold, a
+  count out of a whole) with one plain `means` line, and for a check graded
+  `needs-work` a `headline`, a `fix` and its `declarations`. A close call
+  carries `other_grade`. The fields are in `assets/capability-map.yml`.
 
   ```
   python3 tools/unlock_path.py .token-vitals/report.json --discovery .token-vitals/discovery.json --json .token-vitals/unlock.json
@@ -381,15 +365,13 @@ its section — that is expected, not an omission.
 
 Work through the regions below as a checklist. Every region still
 present after tier removal must be filled with real findings from this run
-— leaving every other line of the template — headings, ledes, legend, panel
-titles — unchanged. A region that still holds the template's own sample
+— leaving every other line of the template — chapter names, panel titles —
+unchanged. A region that still holds the template's own sample
 data once you are done is a bug, not an acceptable gap: it means the
 report ships describing a codebase that was never scanned.
 
 Every region that lists findings — `inventory-color`, `inventory-type`,
-`inventory-space`, `family-coverage`, `families`, `leak-ranked`,
-`leak-redundant`, `leak-exact-value-candidates`, `leak-near-miss`,
-`leak-uncovered`, `modes-gaps`, and
+`inventory-space`, `family-coverage`, `families`, `modes-gaps`, and
 `orphans` — enumerates
 what the run found, in the form you chose for it in Stage 5. When a section
 outgrows its form, move to the denser form from the table in
@@ -401,7 +383,7 @@ After filling the template, merge and render the deterministic discovery and
 component-adoption views:
 
 ```
-python3 tools/render_discovery.py --refresh-template --report-view snapshot --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --leakage .token-vitals/literal-colors.json --unlock .token-vitals/unlock.json --lineage .token-vitals/lineage.json --report-json .token-vitals/report.json --html .token-vitals/report.html
+python3 tools/render_discovery.py --refresh-template --discovery .token-vitals/discovery.json --tokens .token-vitals/tokens.json --leakage .token-vitals/literal-colors.json --unlock .token-vitals/unlock.json --lineage .token-vitals/lineage.json --report-json .token-vitals/report.json --html .token-vitals/report.html
 ```
 
 `--unlock` and `--lineage` carry the confidence split, the unlock path, the
@@ -424,29 +406,15 @@ comment, fills the mandatory summary, decision, ownership, lineage, coverage,
 mode, orphan, and enforcement regions from `report.json`, and prevents an old
 partial shell from silently dropping rich JSON-only evidence.
 
-`next-steps` is the one exception, and it goes the other way: it shows five
-ranked actions, because its value comes from what it leaves out.
+`next-steps` lists every ranked move, in order.
 
 ### One answer to "what do I do next"
 
-The report grew five differently-shaped answers to the most obvious question
-a reader has: `next_15_minutes`, `next-steps`, `fix-queue`, the roadmap
-bands, and the rollout phases in `adoption_strategy`. Someone opening the
-page and asking what to do got five, in five places, with no stated relation
-between them. That is not thoroughness; it is a reader deciding which list
-to believe.
-
-**One card leads: `next_15_minutes`.** It is the only action on the
-dashboard, and everything else is framed as the rest of *that* queue rather
-than as a parallel recommendation:
-
-| Surface | What it is, said out loud |
-|---|---|
-| `next_15_minutes` | The one thing to do now. On the dashboard. |
-| `next-steps` | The next five, once that one is done. |
-| `fix-queue` | Every mechanical fix, ranked — the long tail of `next-steps`. |
-| roadmap bands | Which components to *look at* first. Not a to-do list. |
-| `adoption_strategy` | The quarter-scale plan. Not this week's work. |
+`tools/moves.py` ranks, and nothing else does: a confirmed defect, then a
+call only the reader can make, then a blocked check. The verdict shows the
+first move, the three action chapters show their own kind, and `next-steps`
+shows all of them, from that one list. The components table orders a look
+and is never a to-do list; `adoption_strategy` is the quarter-scale plan.
 
 Say which one a section is when you render it. A reader who cannot tell a
 fifteen-minute task from a quarter-long programme will do neither.
@@ -475,21 +443,19 @@ paginate arbitrary table rows.
       `validate_run.py --stamp` run may clear it (see below)
 - [ ] `doc-title`, `runhead-tag`, `runhead-meta` — the subject, never
       "Sample report · representative data"
-- [ ] `report-view-switcher` — Snapshot, Action Plan, and Evidence from one
-      complete evidence set; selected view matches `rendering.view`
-- [ ] `at-a-glance` — the strip above the summary; every mark carries its
-      number
-- [ ] `exec-summary` — the stage line, then the four questions
+- [ ] `about-run` — every fact true of the whole run, said here and nowhere
+      else
+- [ ] `headline`, `at-a-glance`, `exec-summary` — the verdict: one sentence,
+      the strip of eight, three counters, the first move
 - [ ] `decisions` — every close call, with what it moved and the other
       reading
 - [ ] `trend` — remove when no baseline was given; never fill it with a
       comparison the gate refused
-- [ ] `vitals-grid`, `next-steps` (five, in the documented order)
+- [ ] `vitals-grid`, `next-steps` (every ranked move, in order), `stage`
 - [ ] `fix-queue` — priority inputs beside the score, confidence, effort,
       `safe_to_automate`, `data-finding` on every row
-- [ ] `unlock-path` — the two gap counts side by side and never summed, the
-      ordered capability steps with what each unlocks, and the single
-      `next_15_minutes` card with its action, payoff and verify command
+- [ ] `unlock-path` — each blocked check once, as one sentence, its command
+      behind Show command
 - [ ] `wins` — ground gained, in the run's own words: capabilities verified,
       families fully traceable, declared boundaries named as decisions
 - [ ] `groups`, `discovery-engine`, `component-usage`, `lineage`, `coverage-matrix`
@@ -501,15 +467,12 @@ paginate arbitrary table rows.
       a repository font proven by its reachable `@font-face`; show all competing
       typography candidates and brand-value conflicts; if identity or its
       specimen is blocked, show the block and render no generic substitute
-- [ ] `families`, `leak-ranked`, `leak-redundant`,
-      `leak-exact-value-candidates`, `leak-near-miss`, `leak-uncovered`,
-      `modes-coverage`, `modes-gaps`, `orphans`,
+- [ ] `families`, `decide-calls`, `modes-coverage`, `modes-gaps`, `orphans`,
       `enforcement`
 - [ ] `measurement` — everything in `provenance` and `discovery`, including
       the capability table, root evidence, ownership split, unresolved
       imports by reason, and bundle × scheme verification; plus the
-      initial report view, rendering tier, and forms, read back from the
-      capability map
+      rendering tier and forms, read back from the capability map
 - [ ] `discovery-capabilities` — the seven universal capabilities, each
       with state, strongest evidence, and current limitation
 - [ ] `adoption-strategy` — the final report section; the evidence-derived
@@ -597,9 +560,10 @@ report while one of these is still failing:
   named there matches the block actually left in the file.
 - Every `SLOT` region present in the file (after tier removal) has real
   content between its markers — none are empty.
-- Every vital card's `data-grade` matches its chip's `data-g`.
-- The three report-view buttons are present once, the selected button matches
-  `rendering.view`, and every section declares its allowed views.
+- A grade is stated once, in the verdict strip, and the strip's counts sum to
+  eight.
+- There is one contents list, and every id an earlier report linked to still
+  resolves.
 - The leading instruction comment is gone.
 
 ## Stage 7 — Write the outputs
@@ -618,10 +582,10 @@ Stamp `provenance.skill_version` from `python3 tools/version.py` before
 writing. Then print five lines and stop:
 
 ```
-<n> verified · <n> need system work · <n> need audit capability · <n> not applicable
-next 15 min: <the card's action> → <its payoff>
-unlock: <first capability step> unlocks <n> vital(s): <which>
-<worst vital> <grade> — <one sentence on what it found>
+<n> Healthy · <n> Watch · <n> Fix · <n> Blocked · <n> Not needed
+first move: <the first of the ranked moves>
+unlock: <first step> unblocks <which checks>
+<worst check> <its state> — <one sentence on what it found>
 <path to report.html>
 ```
 
