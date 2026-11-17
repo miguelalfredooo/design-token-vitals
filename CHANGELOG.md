@@ -36,6 +36,13 @@ are gone, and `--report-view` with them.
   framework and the versions are said in *About this run* and linked from
   anywhere else. The three counts of files that all read "files" are named.
 
+**A prompt for an agent** closes the Next chapter, behind *Show the prompt*
+with a copy button. `moves.agent_prompt` writes it from the ranked list, and
+each kind of move becomes a different instruction: a defect is work to do, a
+decision is a question to put to a person, and a blocked check is something
+to leave alone. A run may add one line of its own rules
+(`handoff.house_rules`); the tool assumes none. A clean run gets no prompt.
+
 **Counts reconcile.** `confidence.split` counts the five states and sums to
 the number of checks. The old four-way split put Watch and Fix in one bucket.
 `trend.py` still reads a baseline written the old way.
@@ -70,7 +77,9 @@ for every row, because it read keys the lineage tool never wrote. And
 `tools/mutate.py` could leave a stale compiled file behind after restoring a
 mutation of the same length, so the next run of the suite executed the bug
 it had already put back; it now writes no bytecode while a mutation is in the
-tree. 4 mutations were added and 4 rewritten for the guards that moved: 49
+tree. And the filter that puts an audit's notes into the report's words was
+renaming `.token-vitals/` inside commands, so they did not run; it now leaves
+a name alone. 4 mutations were added and 4 rewritten for the guards that moved: 49
 bite, 2 controls hold.
 
 `SKILL.md` and `references/` are 402 words shorter, so principle 7 asks for

@@ -35,7 +35,7 @@
   vitals-grid, families, inventory-color, inventory-type, inventory-space,
   family-coverage, lineage-lead, lineage, blast-radius, coverage-matrix,
   modes-coverage, modes-gaps, orphans, enforcement, measurement, wins,
-  next-steps, stage, adoption-strategy, trend, footer-meta, and one
+  next-steps, agent-prompt, stage, adoption-strategy, trend, footer-meta, and one
   sub-<chapter> region for each chapter's one line. This file calls them
   regions rather than slots to avoid colliding with the sentence slots
   defined in references/voice.md.
@@ -1483,6 +1483,13 @@
   .report--ready .copy { display: inline-block; }
   .copy:hover { border-color: var(--ink); }
   .copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .agent-prompt:empty { display: none; }
+  .prompt-row { align-items: flex-start; }
+  .prompt-row pre {
+    flex: 1 1 auto; min-width: 0; margin: 0; padding: 12px 14px; border-radius: 4px;
+    background: var(--surface-sunk); color: var(--ink);
+    font-family: var(--mono); font-size: 12px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere;
+  }
   .cmd { margin-top: 6px; border: 0; background: transparent; }
   .cmd[open] { background: transparent; }
   .cmd > summary { padding: 2px 0; font-size: 11px; }
@@ -1790,7 +1797,7 @@
       <p class="chapter-sub"><!-- SLOT:sub-unlock -->2 checks blocked until imports resolve<!-- /SLOT:sub-unlock --></p>
     </header>
     <section id="unlock">
-      <!-- SLOT:unlock-path --><div data-report-region="unlock-path" data-split-json="{&quot;healthy&quot;:3,&quot;needs-work&quot;:1,&quot;not-needed&quot;:0,&quot;not-visible&quot;:2,&quot;watch&quot;:2}"><ul class="unlock-list"><li data-blocked-check="leakage" data-unlock-capabilities="import_resolution"><span class="mk-hatch" role="img" aria-label="We couldn&#x27;t see it"><span>We couldn&#x27;t see it</span></span><div class="unlock-body"><p><a href="#vital-leakage"><b>Leakage</b></a> is blocked until imports resolve.</p><details class="cmd"><summary>Show command</summary><div class="details-body"><p>Resolve the imports we couldn&#x27;t follow: an alias your config declares, or a path we couldn&#x27;t reach.</p><div class="cmd-row"><code data-copy-source>python3 tools/import_graph.py . --json .token-checks/graph.json</code><button type="button" class="copy" data-copy aria-label="Copy command">Copy</button></div></div></details></div></li><li data-blocked-check="mode-completeness" data-unlock-capabilities="mode_resolution"><span class="mk-hatch" role="img" aria-label="We couldn&#x27;t see it"><span>We couldn&#x27;t see it</span></span><div class="unlock-body"><p><a href="#vital-mode-completeness"><b>Themes</b></a> is blocked until themes resolve.</p><details class="cmd"><summary>Show command</summary><div class="details-body"><p>Give us the resolved output for each theme: the built CSS, or the step that makes it.</p><div class="cmd-row"><code data-copy-source>python3 tools/discover_environment.py . --json .token-checks/discovery.json</code><button type="button" class="copy" data-copy aria-label="Copy command">Copy</button></div></div></details></div></li></ul><p class="mk-means">Hatched means we couldn’t see it. None of this says your code is wrong.</p></div><!-- /SLOT:unlock-path -->
+      <!-- SLOT:unlock-path --><div data-report-region="unlock-path" data-split-json="{&quot;healthy&quot;:3,&quot;needs-work&quot;:1,&quot;not-needed&quot;:0,&quot;not-visible&quot;:2,&quot;watch&quot;:2}"><ul class="unlock-list"><li data-blocked-check="leakage" data-unlock-capabilities="import_resolution"><span class="mk-hatch" role="img" aria-label="We couldn&#x27;t see it"><span>We couldn&#x27;t see it</span></span><div class="unlock-body"><p><a href="#vital-leakage"><b>Leakage</b></a> is blocked until imports resolve.</p><details class="cmd"><summary>Show command</summary><div class="details-body"><p>Resolve the imports we couldn&#x27;t follow: an alias your config declares, or a path we couldn&#x27;t reach.</p><div class="cmd-row"><code data-copy-source>python3 tools/import_graph.py . --json .token-vitals/graph.json</code><button type="button" class="copy" data-copy aria-label="Copy command">Copy</button></div></div></details></div></li><li data-blocked-check="mode-completeness" data-unlock-capabilities="mode_resolution"><span class="mk-hatch" role="img" aria-label="We couldn&#x27;t see it"><span>We couldn&#x27;t see it</span></span><div class="unlock-body"><p><a href="#vital-mode-completeness"><b>Themes</b></a> is blocked until themes resolve.</p><details class="cmd"><summary>Show command</summary><div class="details-body"><p>Give us the resolved output for each theme: the built CSS, or the step that makes it.</p><div class="cmd-row"><code data-copy-source>python3 tools/discover_environment.py . --json .token-vitals/discovery.json</code><button type="button" class="copy" data-copy aria-label="Copy command">Copy</button></div></div></details></div></li></ul><p class="mk-means">Hatched means we couldn’t see it. None of this says your code is wrong.</p></div><!-- /SLOT:unlock-path -->
     </section>
   </div>
   <div class="chapter" id="components" data-chapter="04">
@@ -2386,6 +2393,30 @@
     <section id="start">
       <h3 class="part">Every move, in order</h3>
       <!-- SLOT:next-steps --><div class="moves" data-report-region="next-steps" data-next-steps-json="[[&quot;The button&#x27;s hover color is set twice, so the first value never ships.&quot;,&quot;acme-storefront/src/button.css:118&quot;],[&quot;Decide what the 1 matching color is.&quot;,&quot;acme-storefront/src/Card.css:14&quot;],[&quot;Resolve the imports we couldn&#x27;t follow: an alias your config declares, or a path we couldn&#x27;t reach.&quot;,&quot;python3 tools/import_graph.py . --json .token-vitals/graph.json&quot;],[&quot;Give us the resolved output for each theme: the built CSS, or the step that makes it.&quot;,&quot;python3 tools/discover_environment.py . --json .token-vitals/discovery.json&quot;]]"><div class="move" data-move="fix:single-source" data-move-kind="fix"><span class="move-n">1</span><div class="move-body"><span class="move-verb" data-kind="fix">Fix</span><span class="move-do">Keep one declaration and delete the other.</span><span class="path">acme-storefront/src/button.css:118</span></div></div><div class="move" data-move="decide:matching-colors" data-move-kind="decide"><span class="move-n">2</span><div class="move-body"><span class="move-verb" data-kind="decide">Decide</span><span class="move-do">Decide what the 1 matching color is.</span><span class="move-why">Leakage stays blocked until you do.</span><span class="path">acme-storefront/src/Card.css:14</span></div></div><div class="move" data-move="unlock:import_resolution" data-move-kind="unlock"><span class="move-n">3</span><div class="move-body"><span class="move-verb" data-kind="unlock">Unlock</span><span class="move-do">Resolve the imports we couldn&#x27;t follow: an alias your config declares, or a path we couldn&#x27;t reach.</span><span class="move-why">Unblocks leakage.</span></div></div><div class="move" data-move="unlock:mode_resolution" data-move-kind="unlock"><span class="move-n">4</span><div class="move-body"><span class="move-verb" data-kind="unlock">Unlock</span><span class="move-do">Give us the resolved output for each theme: the built CSS, or the step that makes it.</span><span class="move-why">Unblocks themes.</span></div></div><p class="mk-means">Confirmed defects come first, then calls only you can make, then what we couldn’t see.</p></div><!-- /SLOT:next-steps -->
+      <!-- SLOT:agent-prompt --><div class="agent-prompt" data-report-region="agent-prompt" data-agent-prompt-moves="fix:single-source decide:matching-colors unlock:import_resolution unlock:mode_resolution"><h3 class="part">Hand this to your design system agent</h3><p class="mk-means">The moves above, written as a brief: what to fix, what to ask you, and what to leave alone.</p><details class="cmd"><summary>Show the prompt</summary><div class="details-body"><div class="cmd-row prompt-row"><pre data-copy-source>You are working on this repository&#x27;s design tokens. An audit of them found 1 confirmed defect, 1 call that needs a person and 2 checks it could not see.
+
+FIX. Do this, and only this:
+- The button&#x27;s hover color is set twice, so the first value never ships. Keep one declaration and delete the other. At acme-storefront/src/button.css:118.
+    acme-storefront/src/button.css:40  --button-hover: #0F8A83;  (never applies)
+    acme-storefront/src/button.css:118  --button-hover: #0B7285;  (this one wins)
+  It reaches every primary button in acme-storefront.
+
+ASK. Do not decide these yourself. Put each to the person you are working for, and wait:
+- Decide what the 1 matching color is. (acme-storefront/src/Card.css:14)
+
+LEAVE ALONE:
+- Leakage and Themes are blocked. That means the audit could not see them. It does not mean the code is wrong, so change nothing to fix them.
+- Remove no token and replace no hardcoded color. A value that matches a token is not yet the same decision.
+
+If the person wants the blocked checks measured, these let the audit see more. They change no product code:
+- Resolve the imports we couldn&#x27;t follow: an alias your config declares, or a path we couldn&#x27;t reach.
+    python3 tools/import_graph.py . --json .token-vitals/graph.json
+- Give us the resolved output for each theme: the built CSS, or the step that makes it.
+    python3 tools/discover_environment.py . --json .token-vitals/discovery.json
+
+DONE WHEN:
+- The audit is run again and Single source is no longer graded Fix.
+- Each question above has an answer from a person, written down where the next run can read it.</pre><button type="button" class="copy" data-copy aria-label="Copy the prompt">Copy</button></div></div></details></div><!-- /SLOT:agent-prompt -->
       <!-- SLOT:stage --><div class="stage" data-report-region="stage" data-stage-json="{&quot;already_met&quot;:[&quot;tokens live in one place&quot;],&quot;current&quot;:&quot;declared&quot;,&quot;next&quot;:&quot;adopted&quot;,&quot;threshold&quot;:&quot;Decide what the 2 matching colors are&quot;}"><h3 class="part">Where your system stands</h3><ol class="mk-ladder" aria-label="Stage 2 of 6: declared"><li class="done"><i></i><span>scattered</span></li><li class="now"><i></i><span>declared</span></li><li class=""><i></i><span>adopted</span></li><li class=""><i></i><span>layered</span></li><li class=""><i></i><span>complete</span></li><li class=""><i></i><span>held</span></li></ol><p class="mk-means"><b>To reach adopted</b> decide what the 2 matching colors are.</p><details><summary>Already met</summary><div class="details-body"><ul><li>tokens live in one place</li></ul></div></details></div><!-- /SLOT:stage -->
     </section>
 

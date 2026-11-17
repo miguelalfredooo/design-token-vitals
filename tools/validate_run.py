@@ -1218,6 +1218,13 @@ def report_shape_problems(doc, html):
         if listed and re.findall(r'data-move="([^"]+)"', listed.group(1)) != ranked:
             bad.append("the closing list of moves is not the ranked list")
 
+    # The prompt for an agent is the ranked list again, and never a fourth
+    # opinion about what to do first.
+    prompted = re.search(r'data-agent-prompt-moves="([^"]*)"', html)
+    if prompted and doc.get("vitals"):
+        if prompted.group(1).split() != [move["id"] for move in moves.rank(doc)]:
+            bad.append("the prompt for an agent is not the ranked list of moves")
+
     disclosure_tags = re.findall(r'<details\b[^>]*>', html, re.I)
     for tag in disclosure_tags:
         if not re.search(r'\sopen(?:\s|=|>)', tag, re.I):

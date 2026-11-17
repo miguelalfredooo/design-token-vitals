@@ -22,8 +22,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from vocab import (  # noqa: E402
-    CHECK_NAME, CHECK_ORDER, CHECK_PHRASE, first_sentence, join_and, plural,
-    sentence,
+    CHECK_NAME, CHECK_ORDER, CHECK_PHRASE, first_sentence, join_and, plain,
+    plural, sentence,
 )
 
 KINDS = ("fix", "decide", "unlock")
@@ -195,3 +195,81 @@ def as_rows(report):
     """`[title, where]` for every move: the shape the JSON twin of the list keeps."""
     return [[move["title"], move["where"] or move["command"] or ""]
             for move in rank(report)]
+
+
+def agent_prompt(report, root=None):
+    """The ranked moves as a brief to hand an agent that works on the design system.
+
+    It is the same list, sorted the same way, and each kind of move becomes a
+    different instruction: a defect is work to do, a decision is a question to
+    put to a person, and a blocked check is something to leave alone. An
+    agent told only "here are the findings" will tidy all three, and two of
+    them are not its to tidy.
+
+    Returns an empty string when nothing is waiting: a brief with no work in
+    it is an invitation to invent some.
+    """
+    fixes, decisions = fix_moves(report), decide_moves(report)
+    unlocks, blocked = unlock_moves(report), blocked_checks(report)
+    if not (fixes or decisions or unlocks):
+        return ""
+    say = lambda text: plain(text, root)  # noqa: E731
+    lines = [
+        "You are working on this repository's design tokens. An audit of them "
+        "found %s, %s and %s." % (
+            plural(len(fixes), "confirmed defect"),
+            plural(len(decisions), "call that needs a person",
+                   "calls that need a person"),
+            plural(len(blocked), "check it could not see",
+                   "checks it could not see")),
+    ]
+    if fixes:
+        lines += ["", "FIX. Do this, and only this:"]
+        for move in fixes:
+            where = " At %s." % say(move["where"]) if move.get("where") else ""
+            lines.append("- %s %s%s" % (say(move["title"]), say(move["action"]), where))
+            for item in move.get("declarations") or []:
+                lines.append("    %s  %s  (%s)" % (
+                    say(item.get("location")), item.get("code") or "",
+                    item.get("note") or ("this one wins" if item.get("wins")
+                                         else "never applies")))
+            if move.get("reach"):
+                lines.append("  It reaches %s." % say(move["reach"]).rstrip("."))
+    if decisions:
+        lines += ["", "ASK. Do not decide these yourself. Put each to the person "
+                      "you are working for, and wait:"]
+        for move in decisions:
+            where = " (%s)" % say(move["where"]) if move.get("where") else ""
+            lines.append("- %s%s" % (say(move["title"]), where))
+    lines += ["", "LEAVE ALONE:"]
+    if blocked:
+        lines.append(
+            "- %s %s blocked. That means the audit could not see %s. It does "
+            "not mean the code is wrong, so change nothing to fix %s." % (
+                join_and([CHECK_NAME[name] for name in blocked]),
+                "is" if len(blocked) == 1 else "are",
+                "it" if len(blocked) == 1 else "them",
+                "it" if len(blocked) == 1 else "them"))
+    lines.append("- Remove no token and replace no hardcoded color. A value "
+                 "that matches a token is not yet the same decision.")
+    if unlocks:
+        lines += ["", "If the person wants the blocked checks measured, these "
+                      "let the audit see more. They change no product code:"]
+        for move in unlocks:
+            lines.append("- %s" % say(move["title"]))
+            if move.get("command"):
+                lines.append("    %s" % say(move["command"]))
+    house = ((report.get("handoff") or {}).get("house_rules") or "").strip()
+    if house:
+        lines += ["", "HOUSE RULES: %s" % say(house)]
+    lines += ["", "DONE WHEN:"]
+    if fixes:
+        lines.append("- The audit is run again and %s %s no longer graded Fix." % (
+            join_and([CHECK_NAME[move["check"]] for move in fixes]),
+            "is" if len(fixes) == 1 else "are"))
+    if decisions:
+        lines.append("- Each question above has an answer from a person, "
+                     "written down where the next run can read it.")
+    if not fixes and not decisions:
+        lines.append("- The person has said which of the steps above to run.")
+    return "\n".join(lines)

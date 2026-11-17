@@ -1216,6 +1216,8 @@ def render_report_slots(document, report, tokens, discovery):
     document = replace_slot(document, "sub-next", esc(chapters.sub_next(report)))
     document = replace_slot(document, "next-steps", chapters.render_next_steps(report))
     document = replace_slot(document, "stage", chapters.render_stage(report))
+    document = replace_slot(
+        document, "agent-prompt", chapters.render_agent_prompt(report))
     document = replace_slot(document, "lineage", chapters.render_lineage(report))
     document = replace_slot(document, "sub-coverage", esc(chapters.sub_coverage(report)))
     document = replace_slot(

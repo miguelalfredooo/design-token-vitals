@@ -158,8 +158,11 @@ _PLAIN = (
     (re.compile(r"\bblast radius\b", re.I), "reach"),
     (re.compile(r"\bvital\(s\)", re.I), "checks"),
     (re.compile(r"\bcheck\(s\)", re.I), "checks"),
-    (re.compile(r"\bvitals\b"), "checks"),
-    (re.compile(r"\bvital\b"), "check"),
+    # The noun, and never part of a name: `.token-vitals/report.json` and
+    # `design-token-vitals` are a folder and a tool, and a command that had
+    # its path "corrected" to `.token-checks/` does not run.
+    (re.compile(r"(?<![-./\w])vitals\b(?![-./\w])"), "checks"),
+    (re.compile(r"(?<![-./\w])vital\b(?![-./\w])"), "check"),
     (re.compile(r"\b(\w+)\(s\)"), r"\1s"),
 )
 

@@ -191,7 +191,7 @@ guardrail the run re-derives each time is a rule that drifts.
 | `tools/render_discovery.py` | Rebuilds finished runs from the current template; preserves deep links, no-script completeness, and full print output; keeps summaries, decisions, ownership, lineage, coverage, token inventory, leakage, and provenance identical in report JSON and HTML |
 | `tools/render_component_usage.py` | Renders the components chapter: one ranked table with each row's share of every component's token use drawn as a bar, and every component-to-token evidence location |
 | `tools/vocab.py` | The one vocabulary: five states (Healthy, Watch, Fix, Blocked, Not needed), real plurals, counts with their denominator, and the net that puts an audit's own notes into the report's words |
-| `tools/moves.py` | The one ranked list of what to do next: a confirmed defect, then a call only the reader can make, then a blocked check. Every place that shows a first move renders this list |
+| `tools/moves.py` | The one ranked list of what to do next: a confirmed defect, then a call only the reader can make, then a blocked check. Every place that shows a first move renders this list, and `agent_prompt` writes the same list as a brief for an agent |
 | `tools/draw.py` | The marks the report draws in place of a number in a sentence: bars, stacks, dot grids, threshold tracks, hatched cells, grade dots and side-by-side declarations |
 | `tools/chapters.py` | The verdict, the three action chapters, the eight check cards and About this run, rendered from the three modules above |
 | `tools/findings.py` | Stable, path-independent finding ids, and the priority score `(n + 2f + 3b) x c` over occurrences, affected owned files, breadth, and confidence in the fix |

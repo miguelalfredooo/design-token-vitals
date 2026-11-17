@@ -155,6 +155,17 @@ class TestTheFirstMoveIsTheSameEverywhere(unittest.TestCase):
         listed = re.findall(r'data-move="([^"]+)"', region(self.html, "next-steps"))
         self.assertEqual(listed, [move["id"] for move in moves.rank(self.report)])
 
+    def test_the_prompt_for_an_agent_is_that_list_again(self):
+        block = region(self.html, "agent-prompt")
+        listed = re.search(r'data-agent-prompt-moves="([^"]*)"', block).group(1).split()
+        self.assertEqual(listed, [move["id"] for move in moves.rank(self.report)])
+        self.assertIn("data-copy-source", block)
+        self.assertIn('data-report-default-open="false" class="cmd"', block)
+        tampered = self.html.replace(
+            'data-agent-prompt-moves="', 'data-agent-prompt-moves="unlock:first ', 1)
+        self.assertIn("the prompt for an agent is not the ranked list of moves",
+                      validate_run.report_shape_problems(self.report, tampered))
+
     def test_nothing_else_offers_a_competing_first_step(self):
         text = text_of(self.html)
         for retired in ("Next best 15 minutes", "Start here", "Fix first",

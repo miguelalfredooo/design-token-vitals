@@ -112,6 +112,15 @@ class TestPlainWords(unittest.TestCase):
             vocab.plain("python3 t.py /home/a/app --json o", "/home/a/app/"),
             "python3 t.py . --json o")
 
+    def test_a_name_that_holds_the_old_noun_is_left_alone(self):
+        """A command with its folder renamed does not run. This shipped for an
+        hour: every "Show command" pointed at `.token-checks/`."""
+        command = "python3 tools/import_graph.py . --json .token-vitals/graph.json"
+        self.assertEqual(vocab.plain(command), command)
+        self.assertEqual(vocab.plain("design-token-vitals 0.3.0"),
+                         "design-token-vitals 0.3.0")
+        self.assertEqual(vocab.plain("3 vitals, 1 vital"), "3 checks, 1 check")
+
     def test_ordinary_prose_is_left_alone(self):
         text = "Five checks read tokens on every pull request."
         self.assertEqual(vocab.plain(text), text)

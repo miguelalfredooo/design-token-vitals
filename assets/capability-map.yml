@@ -219,6 +219,12 @@ stage:
 # graded that way.
 decisions: []
 
+# Optional. One line the prompt for an agent ends on: this repository's own
+# rules for making a change (branching, review, what never to run). The tool
+# assumes none.
+handoff:
+  house_rules: null
+
 executive_summary:
   highest_impact: null      # {finding_id, statement, blast_radius}
   affected: null            # {owned_files, components}

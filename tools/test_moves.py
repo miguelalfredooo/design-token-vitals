@@ -139,5 +139,60 @@ class TestCounters(unittest.TestCase):
                          [move["title"] for move in moves.rank(doc)])
 
 
+class TestThePromptForAnAgent(unittest.TestCase):
+    """The same ranked list, as a brief. Each kind of move is a different order."""
+
+    def setUp(self):
+        self.prompt = moves.agent_prompt(with_everything())
+
+    def section(self, name):
+        start = self.prompt.index(name)
+        rest = self.prompt[start:].split("\n\n", 1)[0]
+        return rest
+
+    def test_a_defect_is_work_to_do_with_its_place(self):
+        fix = self.section("FIX.")
+        self.assertIn("The hover color is set twice. Keep one declaration. At src/a.css:4.", fix)
+
+    def test_a_decision_is_a_question_for_a_person_and_never_a_task(self):
+        ask = self.section("ASK.")
+        self.assertIn("Do not decide these yourself", ask)
+        self.assertIn("Decide what the 2 matching colors are.", ask)
+        self.assertNotIn("matching colors", self.section("FIX."))
+
+    def test_a_blocked_check_is_named_as_unseen_and_left_alone(self):
+        leave = self.section("LEAVE ALONE:")
+        self.assertIn("Leakage and Unused tokens are blocked", leave)
+        self.assertIn("does not mean the code is wrong", leave)
+        self.assertIn("Remove no token and replace no hardcoded color", leave)
+
+    def test_it_says_when_the_work_is_done(self):
+        self.assertIn("Single source is no longer graded Fix", self.section("DONE WHEN:"))
+
+    def test_every_ranked_move_is_in_it_in_order(self):
+        positions = [self.prompt.index(move["title"]) for move in moves.rank(with_everything())]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_a_clean_run_hands_an_agent_nothing_to_invent(self):
+        self.assertEqual(moves.agent_prompt(report()), "")
+
+    def test_the_runs_own_house_rules_are_added_and_none_is_assumed(self):
+        self.assertNotIn("HOUSE RULES", self.prompt)
+        doc = with_everything()
+        doc["handoff"] = {"house_rules": "One pull request for each change."}
+        self.assertIn("HOUSE RULES: One pull request for each change.",
+                      moves.agent_prompt(doc))
+
+    def test_paths_and_commands_are_relative_and_still_run(self):
+        doc = with_everything()
+        doc["vitals"]["single-source"]["where"] = "/work/app/src/a.css:90"
+        doc["confidence"]["unlock_path"][0]["verify"] = (
+            "python3 tools/import_graph.py . --json .token-vitals/graph.json")
+        prompt = moves.agent_prompt(doc, "/work/app")
+        self.assertNotIn("/work/app", prompt)
+        self.assertIn("At src/a.css:90.", prompt)
+        self.assertIn(".token-vitals/graph.json", prompt)
+
+
 if __name__ == "__main__":
     unittest.main()

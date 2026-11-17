@@ -1174,6 +1174,29 @@ def render_next_steps(report):
             % (json_attr(moves.as_rows(report)), body))
 
 
+def render_agent_prompt(report):
+    """The ranked moves as a prompt for an agent, behind a button, with copy.
+
+    Built by `moves.agent_prompt` from the one ranked list, so it cannot say
+    something the page above it does not.
+    """
+    prompt = moves.agent_prompt(report, root_of(report))
+    ids = " ".join(move["id"] for move in moves.rank(report))
+    if not prompt:
+        return ('<div class="agent-prompt" data-report-region="agent-prompt" '
+                'data-agent-prompt-moves=""></div>')
+    return (
+        '<div class="agent-prompt" data-report-region="agent-prompt" '
+        'data-agent-prompt-moves="%s"><h3 class="part">Hand this to your '
+        'design system agent</h3><p class="mk-means">The moves above, written '
+        'as a brief: what to fix, what to ask you, and what to leave alone.</p>'
+        '<details class="cmd"><summary>Show the prompt</summary>'
+        '<div class="details-body"><div class="cmd-row prompt-row">'
+        '<pre data-copy-source>%s</pre><button type="button" class="copy" '
+        'data-copy aria-label="Copy the prompt">Copy</button></div></div>'
+        '</details></div>' % (esc(ids), esc(prompt)))
+
+
 def render_stage(report):
     stage = report.get("stage") or {}
     current = stage.get("current") or "unresolved"
